@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>استوديو Shorts</title>
+<style>
+:root{--bg:#0b1220;--card:#131c2e;--line:#243049;--tx:#e8eefc;--mu:#8fa0c0;--gold:#ffd678;--ok:#3fb27f;--bad:#e5645f;--warn:#e8a94a}
+@media (prefers-color-scheme:light){:root{--bg:#f3f5fa;--card:#fff;--line:#d9dfec;--tx:#14203a;--mu:#5b6b8c;--gold:#b8801a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:"Noto Kufi Arabic","Segoe UI",Tahoma,sans-serif;line-height:1.7}
+.wrap{max-width:900px;margin:0 auto;padding:20px 16px 80px}
+h1{font-size:24px;margin:8px 0 4px}h2{font-size:17px;margin:0 0 10px}
+.sub{color:var(--mu);margin:0 0 16px;font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:14px 0}
+textarea,input,select{width:100%;background:transparent;color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font:inherit;font-size:14px}
+textarea{resize:vertical;min-height:70px}
+label{display:block;font-size:12px;color:var(--mu);margin:8px 0 3px}
+button{font:inherit;font-size:14px;border:0;border-radius:10px;padding:9px 16px;cursor:pointer;background:var(--gold);color:#1b1400;font-weight:700}
+button.sec{background:transparent;color:var(--tx);border:1px solid var(--line);font-weight:500}
+button:disabled{opacity:.5;cursor:wait}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.chip{font-size:12px;padding:2px 10px;border-radius:99px;border:1px solid var(--line);color:var(--mu)}
+.chip.on{color:var(--ok);border-color:var(--ok)}
+.chip.err{color:var(--bad);border-color:var(--bad)}
+.tag{font-size:11px;font-weight:700;padding:2px 9px;border-radius:6px;background:#2b3a5c;color:#cfe}
+.cnt{font-size:12px;color:var(--mu)}
+.iss{font-size:13px;padding:5px 10px;border-radius:8px;margin:4px 0;border-inline-start:3px solid}
+.iss.error{border-color:var(--bad);background:#e5645f1a}.iss.warn{border-color:var(--warn);background:#e8a94a1a}
+.ok{color:var(--ok)}.bad{color:var(--bad)}
+.bar{height:10px;background:var(--line);border-radius:9px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:var(--gold);transition:width .4s}
+video{width:100%;max-width:340px;border-radius:14px;background:#000;display:block;margin:10px auto}
+pre{white-space:pre-wrap;font-size:12px;color:var(--mu);max-height:150px;overflow:auto;margin:8px 0 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:640px){.grid2{grid-template-columns:1fr}}
+.fix{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:6px 0;font-size:13px}
+code{direction:ltr;unicode-bidi:plaintext;font-size:12px}
+.vis{font-family:ui-monospace,Consolas,monospace;direction:ltr;text-align:left;font-size:12px;min-height:60px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>استوديو Shorts</h1>
+  <p class="sub">فكرة ← سكربت (HOOK / BODY / LOOP) ← مراجعتك ← فحص حقائق ← فيديو عمودي جاهز.</p>
+  <div class="row" id="chips"></div>
+
+  <div class="card">
+    <h2>١. الفكرة</h2>
+    <textarea id="idea" placeholder="مثال: لماذا لبوليفيا عاصمتان؟"></textarea>
+    <div class="row" style="margin-top:10px">
+      <button id="bGen">اكتب السكربت (Gemini)</button>
+      <button class="sec" id="bSample">حمّل سكربتاً تجريبياً</button>
+      <span class="cnt" id="genMsg"></span>
+    </div>
+  </div>
+
+  <div id="editor" hidden>
+    <div class="card">
+      <h2>٢. السكربت — عدّله كما تشاء</h2>
+      <div class="row" style="justify-content:space-between"><span class="cnt" id="est"></span>
+        <button class="sec" id="bVal">تحقق من الشروط</button></div>
+      <div id="issues"></div>
+      <div id="scenes"></div>
+      <div class="row" style="display:none"><button class="sec" id="bAdd">+ مقطع</button></div>
+    </div>
+
+    <div class="card">
+      <h2>التعبئة (عنوان / وصف / وسوم)</h2>
+      <label>العنوان <span class="cnt" id="tc"></span></label><input id="title">
+      <label>الوصف</label><textarea id="desc"></textarea>
+      <label>الوسوم (بفواصل)</label><input id="tags">
+    </div>
+
+    <div class="card">
+      <h2>٣. المخرج البصري — مشهد حركي لكل جملة</h2>
+      <p class="sub">عند نطق كل جملة يظهر مشهد خاص بها مرسوم بالكود في Remotion: خريطة، رقم، مقارنة، خط زمني، قائمة، أيقونات، أو كانفس حر بعناصر وأسهم. DeepSeek يصمّمها من نص الجملة، وبلا مفتاح تُبنى مقاطع بسيطة آمنة. يمكنك تعديل JSON أي مقطع في بطاقات السكربت أعلاه.</p>
+      <div class="row"><button id="bDir">ارسم مشهداً لكل جملة (DeepSeek)</button><button class="sec" id="bDirAuto">مقاطع بسيطة بلا نموذج</button><span class="cnt" id="dirMsg"></span></div>
+    </div>
+
+    <div class="card">
+      <h2>٤. الستايل البصري — يختلف مع كل فيديو</h2>
+      <p class="sub">لا قوالب ثابتة: «المدير الفني» (DeepSeek) يصمّم الألوان والخط والخلفية والحركة وشكل الترجمة والخريطة والأرقام لهذا الفيديو. تُولَّد ستايلات عشوائية تلقائياً عند كل سكربت جديد.</p>
+      <div class="row"><button id="bArt">صمّم ستايلاً (مدير فني)</button><button class="sec" id="bRand">ستايل عشوائي جديد</button><span class="cnt" id="stMsg"></span></div>
+      <div id="stInfo" style="margin:10px 0"></div>
+      <label>تفاصيل الستايل (JSON قابل للتعديل)</label><textarea class="vis" id="stJson" style="min-height:140px"></textarea>
+      <div class="row" style="margin-top:10px"><select id="pvScene" style="width:auto"></select>
+        <input id="pvBeat" type="number" min="0" value="0" title="رقم المقطع داخل المشهد" style="width:70px"><button class="sec" id="bPrev">معاينة إطار</button><span class="cnt" id="pvMsg"></span></div>
+      <img id="pvImg" alt="" style="display:none;width:100%;max-width:300px;border-radius:12px;margin:10px auto 0">
+    </div>
+
+    <div class="card">
+      <h2>٥. فحص الحقائق (Gemini)</h2>
+      <p class="sub">الذكاء الاصطناعي قد يخطئ في الحقائق. افحص قبل الإنتاج، وراجع بنفسك المصادر الحساسة.</p>
+      <button id="bFact">افحص الحقائق</button> <span class="cnt" id="factMsg"></span>
+      <div id="factOut"></div>
+    </div>
+
+    <div class="card">
+      <h2>٦. الإنتاج</h2>
+      <div class="grid2">
+        <div><label>الصوت (ElevenLabs)</label><select id="voice"></select></div>
+        <div><label>محرّك الرسم</label><select id="engine"><option value="">تلقائي (Remotion إن توفّر)</option><option value="remotion">Remotion</option><option value="pil">PIL (احتياطي)</option></select></div>
+        <div><label>&nbsp;</label><label style="display:flex;gap:8px;align-items:center;color:var(--tx);font-size:14px;margin:0;padding:9px 0">
+          <input type="checkbox" id="photos" checked style="width:auto"> صور حقيقية مرخّصة من الإنترنت (Wikimedia / Pexels)</label></div>
+      </div>
+      <div class="row" style="margin-top:12px"><button id="bRender">أنشئ الفيديو</button><span class="cnt" id="rMsg"></span></div>
+      <div class="bar" style="margin-top:12px"><i id="prog"></i></div>
+      <pre id="log"></pre>
+      <div id="result"></div>
+    </div>
+  </div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+let S=null, voicesLoaded=false;
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function api(p,b){
+  const r=await fetch(p,b!==undefined?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}:{});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(j.error||('خطأ '+r.status));
+  return j;
+}
+const words=s=>(s||'').trim().split(/\s+/).filter(Boolean).length;
+function get(path){return path.split('.').reduce((o,k)=>o?.[k],S)}
+function set(path,v){const ks=path.split('.');const l=ks.pop();ks.reduce((o,k)=>o[k],S)[l]=v}
+
+async function status(){
+  const s=await api('/api/status');
+  $('#chips').innerHTML=[['Gemini (السكربت)',s.gemini],['DeepSeek (المخرج البصري)',s.deepseek],['ElevenLabs (الصوت)',s.elevenlabs]]
+    .map(([n,on])=>`<span class="chip ${on?'on':'err'}">${n}: ${on?'جاهز':'مفتاح ناقص ⚠'}</span>`).join('')+
+    `<span class="chip ${s.photos?'on':''}">الصور: Wikimedia${s.pexels?' + Pexels':''}${s.rembg?' + قصّ الخلفية':''}</span>`;
+}
+async function loadVoices(){
+  if(voicesLoaded) return; voicesLoaded=true;
+  const v=await api('/api/voices');
+  $('#voice').innerHTML=v.voices.map(x=>`<option value="${esc(x.id)}" ${x.id===v.default?'selected':''}>${esc(x.name)}</option>`).join('')||'<option value="">— لا أصوات —</option>';
+}
+
+const sentCount=t=>{const g=(t||'').trim().split(/\s+/).filter(Boolean);let n=0,c=0,m=[];g.forEach((w,i)=>{c++;if(/[.!؟?؛:…]+$/.test(w.replace(/[»«"')(""'']/g,''))){m.push(c);c=0}});if(c)m.push(c);const mm=[];m.forEach(x=>{if(mm.length&&mm[mm.length-1]<3)mm[mm.length-1]+=x;else mm.push(x)});if(mm.length>1&&mm[mm.length-1]<3){const l=mm.pop();mm[mm.length-1]+=l}while(mm.length>3){const l=mm.pop();mm[mm.length-1]+=l}return mm.length||0};
+const PARTS = [
+  {id: 'hook', title: '1. HOOK — الخطاف (أول 3 ثوانٍ)', lim: 15},
+  {id: 'lead', title: '2. LEAD — المقدمة والوعد والسياق', lim: 22},
+  {id: 'body1', title: '3. BODY 1 — الحقيقة الأولى أو الخطوة', lim: 28},
+  {id: 'open_loop1', title: '4. OPEN LOOP 1 — حلقة التشويق الأولى', lim: 14, openLoop: true},
+  {id: 'body2', title: '5. BODY 2 — الحقيقة الثانية ومفاجأة', lim: 28},
+  {id: 'open_loop2', title: '6. OPEN LOOP 2 — حلقة التشويق الكبرى', lim: 14, openLoop: true},
+  {id: 'body3', title: '7. BODY 3 — الذروة والإجابة الكبرى', lim: 28},
+  {id: 'cta', title: '8. CTA — الدعوة والخاتمة الدائرية', lim: 14, cta: true}
+];
+
+function sceneHTML(key,title,o,opts={}){
+  const n=words(o?.narration), lim=opts.lim;
+  const isOver=lim && n>lim;
+  return `<div class="card" style="margin:10px 0;${opts.openLoop?'border-right:4px solid var(--accent);background:rgba(255,214,120,0.03)':''}" data-k="${key}">
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <span class="tag">${title}</span>
+        ${opts.openLoop?'<span class="chip on" style="font-size:11px;margin-right:6px">⚡ مشهد تشويق (Tension)</span>':''}
+        ${opts.cta?'<span class="chip" style="font-size:11px;margin-right:6px">🔄 متصل بـ HOOK</span>':''}
+      </div>
+      <span class="cnt"><span data-cnt="${key}" style="${isOver?'color:var(--bad);font-weight:bold':''}">${n}</span> كلمة${lim?` / ${lim}`:''}</span>
+    </div>
+    <label>السرد (ما سيُنطق)</label><textarea data-p="${key}.narration">${esc(o?.narration||'')}</textarea>
+    <div class="grid2">
+      <div><label>نص الشاشة (≤ 6 كلمات)</label><input data-p="${key}.on_screen" value="${esc(o?.on_screen||'')}"></div>
+      <div><label>بصري احتياطي (JSON)</label><textarea class="vis" data-v="${key}.visual">${esc(JSON.stringify(o?.visual||{"type":"text"},null,1))}</textarea></div>
+    </div>
+    <label>المشاهد الحركية (Beats): مشهد يُرسم بالكود لكل جملة (${sentCount(o?.narration||'')} جملة)</label>
+    <textarea class="vis" style="min-height:90px" data-v="${key}.beats">${esc(JSON.stringify(o?.beats||[],null,1))}</textarea>
+  </div>`;
+}
+
+function renderEditor(){
+  $('#editor').hidden=false;if(typeof fillPvScenes==='function'&&S)fillPvScenes();
+  let h='';
+  PARTS.forEach(p=>{
+    const o=S[p.id]||{narration:'',on_screen:'',visual:{type:'text'}};
+    h+=sceneHTML(p.id,p.title,o,{lim:p.lim,openLoop:p.openLoop,cta:p.cta});
+  });
+  $('#scenes').innerHTML=h;
+  $('#title').value=S.title||'';$('#desc').value=S.description||'';$('#tags').value=(S.tags||[]).join('، ');
+  bind();count();
+}
+
+function bind(){
+  document.querySelectorAll('[data-p]').forEach(el=>el.oninput=()=>{set(el.dataset.p,el.value);count()});
+  document.querySelectorAll('[data-v]').forEach(el=>el.oninput=()=>{
+    try{set(el.dataset.v,JSON.parse(el.value));el.style.borderColor=''}catch{el.style.borderColor='var(--bad)'}});
+}
+
+function count(){
+  document.querySelectorAll('[data-cnt]').forEach(el=>{
+    const k=el.dataset.cnt;
+    const nw=words(get(k+'.narration'));
+    el.textContent=nw;
+    const pdef=PARTS.find(p=>p.id===k);
+    if(pdef && nw>pdef.lim) el.style.color='var(--bad)';
+    else el.style.color='';
+  });
+  const w=PARTS.reduce((acc,p)=>acc+words(S[p.id]?.narration),0);
+  $('#est').textContent=`${w} كلمة ≈ ${(w/2.6).toFixed(0)} ثانية (المطلوب 100–140 كلمة)`;
+  if(w<100||w>140) $('#est').style.color='var(--bad)';
+  else $('#est').style.color='var(--accent)';
+  $('#tc').textContent=`${(S.title||'').length}/55`;
+}
+['title','desc','tags'].forEach(id=>document.addEventListener('input',e=>{
+  if(!S||e.target.id!==id) return;
+  if(id==='title')S.title=e.target.value; if(id==='desc')S.description=e.target.value;
+  if(id==='tags')S.tags=e.target.value.split(/[,،]/).map(x=>x.trim()).filter(Boolean); count();}));
+
+function showIssues(list){
+  $('#issues').innerHTML=list.length?list.map(i=>`<div class="iss ${i.level}">${i.level==='error'?'⛔':'⚠️'} ${esc(i.msg)}</div>`).join(''):'<div class="ok" style="font-size:13px">✓ كل الشروط متحققة.</div>';
+}
+async function validate(){const r=await api('/api/validate',{script:S});showIssues(r.issues);return r}
+async function runDirect(auto){
+  $('#dirMsg').textContent='جارٍ التصميم…';
+  try{const r=await api('/api/direct',{script:S,style:ST,auto,photos:$('#photos').checked});S=r.script;renderEditor();showIssues(r.issues);
+    $('#dirMsg').textContent=(r.by==='deepseek'?'صمّمها DeepSeek.':'مقاطع بسيطة.')+(r.warning?' (تعذّر DeepSeek: '+r.warning+')':'')}
+  catch(e){$('#dirMsg').textContent='⛔ '+e.message}
+}
+async function take(r,auto=true){S=r.script;renderEditor();showIssues(r.issues);fillPvScenes();await newStyle(true);await runDirect(auto)}
+$('#bDir').onclick=()=>runDirect(false);
+$('#bDirAuto').onclick=()=>runDirect(true);
+
+$('#bGen').onclick=async()=>{
+  $('#bGen').disabled=true;$('#genMsg').textContent='جارٍ الكتابة بواسطة Gemini…';
+  try{
+    const r=await api('/api/script',{idea:$('#idea').value});
+    await take(r,false);
+    $('#genMsg').textContent=(r.by==='deepseek'?'تمّت الكتابة بواسطة DeepSeek (احتياطي).':'تمّت الكتابة بواسطة Gemini.')+' راجع السكربت والمشاهد وعدّلها.';
+  }
+  catch(e){$('#genMsg').textContent='⛔ '+e.message}
+  $('#bGen').disabled=false;
+};
+$('#bSample').onclick=async()=>{
+  const raw=await api('/api/sample');
+  S=raw;
+  await take(await api('/api/validate',{script:S}),true);
+};
+$('#bVal').onclick=validate;
+$('#bAdd').onclick=()=>{S.body.push({narration:'',on_screen:'',visual:{type:'text',text:''}});renderEditor()};
+
+$('#bFact').onclick=async()=>{
+  $('#bFact').disabled=true;$('#factMsg').textContent='جارٍ الفحص…';$('#factOut').innerHTML='';
+  try{
+    const r=await api('/api/factcheck',{script:S});
+    const col={correct:'ok',incorrect:'bad',uncertain:''};
+    let h=`<p><b>النتيجة العامة: ${esc(r.overall)}</b></p>`;
+    (r.items||[]).forEach(i=>h+=`<div class="fix"><span class="${col[i.status]||''}">${esc(i.status)}</span> — ${esc(i.claim)}<br><span class="cnt">${esc(i.note)}${i.fix?' | المقترح: '+esc(i.fix):''}</span></div>`);
+    (r.narration_fixes||[]).forEach((f,k)=>h+=`<div class="fix">تصحيح مقترح لـ <code>${esc(f.scene)}</code>:<br>${esc(f.narration)}<br><button class="sec" data-fx="${k}" style="margin-top:6px">طبّق التصحيح</button></div>`);
+    if(r.packaging) h+=`<div class="fix">تعبئة مقترحة: <b>${esc(r.packaging.title)}</b><br><button class="sec" id="applyPack" style="margin-top:6px">طبّق العنوان والوصف والوسوم</button></div>`;
+    $('#factOut').innerHTML=h;$('#factMsg').textContent='';
+    document.querySelectorAll('[data-fx]').forEach(b=>b.onclick=()=>{const f=r.narration_fixes[+b.dataset.fx];
+      if(get(f.scene)){set(f.scene+'.narration',f.narration);renderEditor();b.textContent='طُبّق ✓';}});
+    const ap=$('#applyPack'); if(ap) ap.onclick=()=>{S.title=r.packaging.title||S.title;S.description=r.packaging.description||S.description;
+      if(r.packaging.tags) S.tags=r.packaging.tags;renderEditor();ap.textContent='طُبّق ✓'};
+  }catch(e){$('#factMsg').textContent='⛔ '+e.message}
+  $('#bFact').disabled=false;
+};
+
+$('#bRender').onclick=async()=>{
+  $('#rMsg').textContent='';$('#result').innerHTML='';$('#log').textContent='';$('#prog').style.width='0';
+  const v=await validate();
+  if(v.issues.some(i=>i.level==='error')){$('#rMsg').textContent='⛔ أصلح الأخطاء أولاً.';return}
+  $('#bRender').disabled=true;
+  try{
+    const {job}=await api('/api/render',{script:S,style:ST,voice_id:$('#voice').value,engine:$('#engine').value,photos:$('#photos').checked});
+    for(;;){
+      await new Promise(r=>setTimeout(r,1500));
+      const j=await api('/api/job/'+job);
+      $('#prog').style.width=Math.round(j.progress*100)+'%';$('#log').textContent=j.log.join('\n');
+      if(j.state==='done'){const r=j.result;
+        let mrH = '';
+        if (r.media_report && r.media_report.length) {
+          mrH = `<div class="card" style="margin-top:14px"><h3 style="margin:0 0 8px;font-size:15px">📸 تقرير الوسائط والصور لكل جملة</h3>` +
+            r.media_report.map((rep, idx) => `
+              <div class="fix">
+                <b>${idx+1}. «${esc(rep.sentence)}»</b><br>
+                <span class="cnt">الاستعلامات: <code>${esc((rep.queries_tried || [rep.query]).join(', '))}</code> | المرشحات: ${rep.candidates_count || 0}</span><br>
+                ${rep.status === 'accepted'
+                  ? `<span class="ok">✓ اعتُمدت صورة</span> (التقييم: ${rep.score}/10) — ${esc(rep.reason || '')}`
+                  : `<span class="bad">⚠ بديل: ${esc(rep.fallback || 'text')}</span> — السبب: ${esc(rep.reason || 'تعذر العثور على صورة مناسبة')}`}
+              </div>`).join('') + `</div>`;
+        }
+        $('#result').innerHTML=`<video src="${r.url}" controls playsinline></video>
+          <div class="row" style="justify-content:center"><a href="${r.url}" download="short.mp4"><button>تنزيل MP4</button></a></div>
+          <p class="cnt" style="text-align:center">المدة ${r.duration} ث</p>
+          ${mrH}
+          ${r.credits?`<p class="cnt">مصادر الصور (أُضيفت إلى الوصف):</p><pre style="white-space:pre-wrap;direction:ltr;font-size:12px">${esc(r.credits)}</pre>`:''}`;
+        break}
+      if(j.state==='error'){$('#rMsg').innerHTML='⛔ '+esc(j.error)+' <button id="bRetry">أعد المحاولة</button>';$('#bRetry').onclick=()=>$('#bRender').click();break}
+    }
+  }catch(e){$('#rMsg').innerHTML='⛔ '+esc(e.message)+' <button id="bRetry">أعد المحاولة</button>';$('#bRetry').onclick=()=>$('#bRender').click();}
+  $('#bRender').disabled=false;
+};
+
+let ST=null;
+const sw=c=>`<span style="display:inline-block;width:26px;height:26px;border-radius:7px;border:1px solid var(--line);background:rgb(${c.join(',')})"></span>`;
+function showStyle(by){
+  const p=ST.palette;
+  $('#stInfo').innerHTML=`<div class="row"><b>${esc(ST.name)}</b> ${[p.c1,p.c2,p.accent,p.accent2,p.text].map(sw).join('')}
+    <span class="chip">خط: ${ST.font}</span><span class="chip">خلفية: ${ST.bg.type}</span><span class="chip">عنوان: ${ST.headline.pos}/${ST.headline.box}</span>
+    <span class="chip">ترجمة: ${ST.caption.mode}</span><span class="chip">أرقام: ${ST.stat.layout}</span><span class="chip">نص: ${ST.text.layout}</span>
+    ${by?`<span class="chip on">${by==='deepseek'?'صمّمه DeepSeek':'عشوائي'}</span>`:''}</div>`;
+  $('#stJson').value=JSON.stringify(ST,null,1);
+}
+async function newStyle(rand){
+  $('#stMsg').textContent='…';
+  try{const r=await api('/api/style',{script:S,random:rand});ST=r.style;showStyle(r.by);$('#stMsg').textContent=''}
+  catch(e){$('#stMsg').textContent='⛔ '+e.message}
+}
+function fillPvScenes(){
+  const o=PARTS.map((p,i)=>`<option value="${i}">${p.title}</option>`);
+  $('#pvScene').innerHTML=o.join('');
+}
+$('#stJson').oninput=e=>{try{ST=JSON.parse(e.target.value);e.target.style.borderColor=''}catch{e.target.style.borderColor='var(--bad)'}};
+$('#bArt').onclick=()=>newStyle(false);
+$('#bRand').onclick=()=>newStyle(true);
+$('#bPrev').onclick=async()=>{
+  $('#pvMsg').textContent='جارٍ الرسم…';$('#bPrev').disabled=true;
+  try{
+    const r=await fetch('/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({script:S,style:ST,scene:+$('#pvScene').value,beat:+$('#pvBeat').value,t:2.0})});
+    if(!r.ok) throw new Error((await r.json().catch(()=>({}))).error||('خطأ '+r.status));
+    const im=$('#pvImg');im.src=URL.createObjectURL(await r.blob());im.style.display='block';$('#pvMsg').textContent='';
+  }catch(e){$('#pvMsg').textContent='⛔ '+e.message}
+  $('#bPrev').disabled=false;
+};
+status().catch(()=>{});
+loadVoices().catch(()=>{});
+</script>
+</body>
+</html>

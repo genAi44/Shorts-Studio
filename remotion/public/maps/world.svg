@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" fill="none" data-region="world">
+  <defs>
+    <linearGradient id="mapGrad_world" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2a3342" stop-opacity="0.9" />
+      <stop offset="50%" stop-color="#18202c" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.95" />
+    </linearGradient>
+    <filter id="mapGlow_world" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#D4AF37" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <!-- Background border subtle glow -->
+  <path d="M 120 180 Q 180 140 260 170 Q 280 240 240 320 L 260 480 L 210 520 L 170 380 L 110 260 Z M 450 140 Q 520 120 580 160 L 590 260 L 530 320 L 550 490 L 480 520 L 440 340 L 420 220 Z M 620 120 Q 780 110 880 180 Q 860 320 780 380 L 720 340 L 660 360 L 600 240 Z M 740 420 Q 840 410 860 480 L 820 540 L 730 500 Z" fill="url(#mapGrad_world)" stroke="#D4AF37" stroke-width="3" stroke-opacity="0.6" filter="url(#mapGlow_world)"/>
+  
+</svg>
