@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" fill="none" data-region="egypt">
+  <defs>
+    <linearGradient id="mapGrad_egypt" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2a3342" stop-opacity="0.9" />
+      <stop offset="50%" stop-color="#18202c" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.95" />
+    </linearGradient>
+    <filter id="mapGlow_egypt" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#D4AF37" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <!-- Background border subtle glow -->
+  <path d="M 150 120 L 700 120 L 680 180 L 650 210 L 660 300 L 630 380 L 720 480 L 680 620 L 620 700 L 150 700 L 150 120 Z" fill="url(#mapGrad_egypt)" stroke="#D4AF37" stroke-width="3" stroke-opacity="0.6" filter="url(#mapGlow_egypt)"/>
+  <path d="M 480 700 Q 470 550 460 420 Q 450 320 440 240 Q 435 200 450 180 Q 430 140 400 125 M 450 180 Q 480 150 510 130" fill="none" stroke="#38bdf8" stroke-width="6" stroke-linecap="round" opacity="0.8" />
+</svg>

@@ -1,0 +1,188 @@
+{
+  "egypt": {
+    "file": "maps/egypt.svg",
+    "viewBox": "0 0 800 800",
+    "cities": [
+      {
+        "name": "القاهرة",
+        "name_en": "cairo",
+        "x": 445,
+        "y": 235
+      },
+      {
+        "name": "الإسكندرية",
+        "name_en": "alexandria",
+        "x": 395,
+        "y": 140
+      },
+      {
+        "name": "الأقصر",
+        "name_en": "luxor",
+        "x": 490,
+        "y": 510
+      },
+      {
+        "name": "أسوان",
+        "name_en": "aswan",
+        "x": 495,
+        "y": 620
+      },
+      {
+        "name": "الفسطاط",
+        "name_en": "fustat",
+        "x": 447,
+        "y": 242
+      },
+      {
+        "name": "منف",
+        "name_en": "memphis",
+        "x": 442,
+        "y": 260
+      }
+    ]
+  },
+  "world": {
+    "file": "maps/world.svg",
+    "viewBox": "0 0 1000 600",
+    "cities": [
+      {
+        "name": "الشرق الأوسط",
+        "name_en": "middle_east",
+        "x": 560,
+        "y": 270
+      },
+      {
+        "name": "أوروبا",
+        "name_en": "europe",
+        "x": 490,
+        "y": 180
+      },
+      {
+        "name": "آسيا",
+        "name_en": "asia",
+        "x": 730,
+        "y": 220
+      },
+      {
+        "name": "أمريكا",
+        "name_en": "americas",
+        "x": 220,
+        "y": 300
+      }
+    ]
+  },
+  "middle_east": {
+    "file": "maps/middle_east.svg",
+    "viewBox": "0 0 800 800",
+    "cities": [
+      {
+        "name": "الرياض",
+        "name_en": "riyadh",
+        "x": 480,
+        "y": 450
+      },
+      {
+        "name": "مكة",
+        "name_en": "mecca",
+        "x": 360,
+        "y": 480
+      },
+      {
+        "name": "المدينة",
+        "name_en": "medina",
+        "x": 370,
+        "y": 420
+      },
+      {
+        "name": "بغداد",
+        "name_en": "baghdad",
+        "x": 450,
+        "y": 270
+      },
+      {
+        "name": "دمشق",
+        "name_en": "damascus",
+        "x": 370,
+        "y": 280
+      },
+      {
+        "name": "القاهرة",
+        "name_en": "cairo",
+        "x": 260,
+        "y": 340
+      },
+      {
+        "name": "دبي",
+        "name_en": "dubai",
+        "x": 600,
+        "y": 430
+      }
+    ]
+  },
+  "saudi_arabia": {
+    "file": "maps/saudi_arabia.svg",
+    "viewBox": "0 0 800 800",
+    "cities": [
+      {
+        "name": "الرياض",
+        "name_en": "riyadh",
+        "x": 460,
+        "y": 400
+      },
+      {
+        "name": "جدة",
+        "name_en": "jeddah",
+        "x": 270,
+        "y": 460
+      },
+      {
+        "name": "مكة",
+        "name_en": "mecca",
+        "x": 290,
+        "y": 480
+      },
+      {
+        "name": "المدينة",
+        "name_en": "medina",
+        "x": 300,
+        "y": 380
+      },
+      {
+        "name": "الدمام",
+        "name_en": "dammam",
+        "x": 560,
+        "y": 360
+      }
+    ]
+  },
+  "bolivia": {
+    "file": "maps/bolivia.svg",
+    "viewBox": "0 0 800 800",
+    "cities": [
+      {
+        "name": "لاباز",
+        "name_en": "la_paz",
+        "x": 340,
+        "y": 360
+      },
+      {
+        "name": "سوكري",
+        "name_en": "sucre",
+        "x": 420,
+        "y": 480
+      },
+      {
+        "name": "سانتا كروز",
+        "name_en": "santa_cruz",
+        "x": 480,
+        "y": 430
+      },
+      {
+        "name": "أويوني",
+        "name_en": "uyuni",
+        "x": 360,
+        "y": 540
+      }
+    ]
+  }
+}
