@@ -27,7 +27,7 @@ ICONS = ["pin", "building", "mountain", "clock", "coin", "person", "people", "bo
          "leaf", "shield", "scale", "crown", "rocket", "brain", "phone", "sun", "moon", "check", "cross", "plane", "home",
          "warning", "question", "bolt", "eye"]
 
-KINDS = ["icon_scene", "map_pin", "timeline_card", "stat_ring_v2", "elevation_profile", "line_chart", "pie_chart", "map", "stat", "bigtext", "bars", "timeline", "versus", "list", "icons", "canvas", "photo", "split", "ticker", "cardstack"]
+KINDS = ["icon_scene", "map_pin", "timeline_card", "stat_ring_v2", "elevation_profile", "line_chart", "pie_chart", "map", "stat", "bigtext", "bars", "timeline", "versus", "list", "icons", "canvas", "photo", "split", "ticker", "cardstack", "city_skyline", "architecture", "mystery_scene"]
 
 COLORS = ["accent", "accent2", "text", "hl0", "hl1", "hl2", "hl3"]
 
@@ -404,6 +404,32 @@ def normalize_beat(b, sentence="", geo=None):
             return bigtext()
         out["items"] = items
         return _add_camera(out, b)
+    if kind == "city_skyline":
+        o = {"kind": "city_skyline", "title": _words(b.get("title") or fallback_text, 5)}
+        if b.get("subtitle") or b.get("sub"):
+            o["subtitle"] = _words(b.get("subtitle") or b.get("sub"), 6)
+        if isinstance(b.get("seed"), (int, float)):
+            o["seed"] = int(b["seed"])
+        return _add_camera(o, b)
+    if kind == "architecture":
+        o = {"kind": "architecture", "title": _words(b.get("title") or fallback_text, 5)}
+        if b.get("subtitle") or b.get("sub"):
+            o["subtitle"] = _words(b.get("subtitle") or b.get("sub"), 6)
+        if b.get("era"):
+            o["era"] = _words(b.get("era"), 5)
+        if isinstance(b.get("seed"), (int, float)):
+            o["seed"] = int(b["seed"])
+        return _add_camera(o, b)
+    if kind == "mystery_scene":
+        q = b.get("question") or b.get("text") or fallback_text
+        o = {"kind": "mystery_scene", "question": _words(q, 10)}
+        if b.get("subtitle") or b.get("sub"):
+            o["subtitle"] = _words(b.get("subtitle") or b.get("sub"), 6)
+        if isinstance(b.get("variant"), int):
+            o["variant"] = b["variant"] % 3
+        if isinstance(b.get("seed"), (int, float)):
+            o["seed"] = int(b["seed"])
+        return _add_camera(o, b)
     # canvas
     els = []
     for e in (b.get("elements") or [])[:14]:
@@ -617,7 +643,10 @@ DIRECTOR_SYSTEM = """أنت مخرج فني ومحلل بيانات لفيديو
 | مكان/خريطة | map |
 | ارتفاع جبل/بناية | elevation_profile |
 | خطوات/عملية | list أو cardstack |
-| شيء مرئي حقيقي | photo |
+| مدينة / أفق حضري | city_skyline |
+| مبنى تاريخي / معماري | architecture |
+| سؤال / غموض / لغز | mystery_scene |
+| شيء مرئي لا يُعبَّر عنه بالمتجهات | photo |
 | رمز مفاهيمي/استعارة | icon_scene |
 | علاقات/أسهم/بنية | canvas |
 | عبارة قوية مجردة | bigtext |
@@ -704,11 +733,17 @@ DIRECTOR_SYSTEM = """أنت مخرج فني ومحلل بيانات لفيديو
 
 - "cardstack": بطاقات مكدّسة تظهر تباعاً. {"kind":"cardstack","title":"...","items":[{"text":"نقطة قصيرة","icon":"check","value":"95%"}]} (2 إلى 4 بطاقات)
 
+- "city_skyline": أفق مدينة ليلي متجه ثلاثي الأبعاد (SVG تعميمي، لا صور). استعمله دائماً عند ذكر مدينة أو عاصمة أو أفق حضري. {"kind":"city_skyline","title":"لا باز","subtitle":"عاصمة بوليفيا"}
+
+- "architecture": مبنى تاريخي/معماري مرسوم بالمتجهات (أعمدة، نوافذ قوسية، واجهة كلاسيكية). استعمله عند ذكر مبنى تاريخي أو معلم معماري أو قصر أو كنيسة. {"kind":"architecture","title":"بيت الحرية","era":"١٨٢٥ م"}
+
+- "mystery_scene": مشهد لغز بتصاميم هندسية متحركة وعلامة استفهام ضخمة. استعمله دائماً عند طرح سؤال أو تقديم لغز أو مقدمة لمعلومة مجهولة. {"kind":"mystery_scene","question":"ما سر هذه المدينة؟","subtitle":"الغموض يبدأ"}
+
 قواعد:
 
 - كل مقطع يرسم معنى جملته هي، لا الفيديو عموماً. استعمل canvas عندما تصف الجملة علاقة أو عملية أو فكرة تحتاج رسماً خاصاً (أسهم بين مفاهيم، عناصر متحركة...).
 
-- استعمل photo كلما ذكرت الجملة شيئاً حقيقياً قابلاً للتصوير (معلم، أثر، شخص، مكان، أداة، وثيقة).
+- مدينة أو أفق حضري → city_skyline. مبنى تاريخي أو معماري → architecture. سؤال أو لغز → mystery_scene. استعمل photo فقط لما لا يمكن تمثيله بالرسوم المتجهة (وجه شخص، حدث تاريخي فريد). لا تزد نسبة photo عن 15-25% من المقاطع.
 
 - تنويع صارم: لا مقطعان متتاليان من نفس النوع أبداً. ممنوع تكرار نفس تخطيط الأرقام stat (ring أو bar أو plain أو stack) مرتين في الفيديو؛ وممنوع تكرار تخطيط bigtext (center|stack|diag|left) مرتين في الفيديو.
 
@@ -740,7 +775,7 @@ PHOTO_RULES = """
 
 - camera: "parallax" للمناظر والمدن، "push-in" للوجوه والمباني، "static" للأحداث التاريخية.
 
-- استعمل photo عندما تذكر الجملة شيئاً حقيقياً قابلاً للتصوير. لا تزد عن نصف المقاطع، ولا مقطعين متتاليين منه."""
+- استعمل photo فقط لما لا تستطيع city_skyline أو architecture أو mystery_scene أو icon_scene أو map تمثيله (وجه شخص حقيقي، حدث تاريخي لا يُختزل في رمز). لا تزد عن 15-25% من المقاطع، ولا مقطعين متتاليين منه."""
 
 def director_system(photos=True):
 
