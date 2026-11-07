@@ -30,6 +30,7 @@ import {clamp01, enterStyle, EnterKind, Pop, useFont, useIdle, useProgress, useS
 import {Headline} from './text';
 
 import {AccentShapes, PhotoBeat, isAlt, useFont2} from './photo';
+import {CitySceneBeat, ArchitectureBeat, MysterySceneBeat} from './sceneBeats';
 
 import {MotionCtx, on, rgba, useTheme} from './theme';
 import {BEAT_ZONE, CAPTION_ZONE, HEADLINE_ZONE, SAFE_BOTTOM, SAFE_TOP} from './layout';
@@ -2234,6 +2235,12 @@ export const BeatView: React.FC<{beat: Beat}> = ({beat}) => {
     case 'canvas': body = <CanvasBeat beat={beat} />; break;
 
     case 'photo': body = <PhotoBeat beat={beat} />; break;
+
+    case 'city_skyline': body = <CitySceneBeat beat={beat} />; break;
+
+    case 'architecture': body = <ArchitectureBeat beat={beat} />; break;
+
+    case 'mystery_scene': body = <MysterySceneBeat beat={beat} />; break;
 
     case 'split': body = <SplitBeat beat={beat} />; break;
 

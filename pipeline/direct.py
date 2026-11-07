@@ -79,7 +79,8 @@ KINDS = [
     "versus_battle", "animated_route", "balance_meter", "deep_time_slider",
     "stack_pyramid", "macro_zoom_globe", "subsurface_mine", "dot_matrix_population",
     "money_waterfall", "frontline_clash",
-    "line_chart", "pie_chart", "map", "stat", "bigtext", "bars", "timeline", "versus", "list", "icons", "canvas", "photo", "split", "ticker", "cardstack"
+    "line_chart", "pie_chart", "map", "stat", "bigtext", "bars", "timeline", "versus", "list", "icons", "canvas", "photo", "split", "ticker", "cardstack",
+    "city_skyline", "architecture", "mystery_scene",
 ]
 
 COLORS = ["accent", "accent2", "text", "hl0", "hl1", "hl2", "hl3"]
@@ -511,6 +512,32 @@ def normalize_beat(b, sentence="", geo=None):
             return bigtext()
         out["items"] = items
         return _add_camera(out, b)
+    if kind == "city_skyline":
+        o = {"kind": "city_skyline", "title": _words(b.get("title") or fallback_text, 5)}
+        if b.get("subtitle") or b.get("sub"):
+            o["subtitle"] = _words(b.get("subtitle") or b.get("sub"), 6)
+        if isinstance(b.get("seed"), (int, float)):
+            o["seed"] = int(b["seed"])
+        return _add_camera(o, b)
+    if kind == "architecture":
+        o = {"kind": "architecture", "title": _words(b.get("title") or fallback_text, 5)}
+        if b.get("subtitle") or b.get("sub"):
+            o["subtitle"] = _words(b.get("subtitle") or b.get("sub"), 6)
+        if b.get("era"):
+            o["era"] = _words(b.get("era"), 5)
+        if isinstance(b.get("seed"), (int, float)):
+            o["seed"] = int(b["seed"])
+        return _add_camera(o, b)
+    if kind == "mystery_scene":
+        q = b.get("question") or b.get("text") or fallback_text
+        o = {"kind": "mystery_scene", "question": _words(q, 10)}
+        if b.get("subtitle") or b.get("sub"):
+            o["subtitle"] = _words(b.get("subtitle") or b.get("sub"), 6)
+        if isinstance(b.get("variant"), int):
+            o["variant"] = b["variant"] % 3
+        if isinstance(b.get("seed"), (int, float)):
+            o["seed"] = int(b["seed"])
+        return _add_camera(o, b)
     # canvas
     els = []
     for e in (b.get("elements") or [])[:14]:
@@ -1044,6 +1071,7 @@ DIRECTOR_SYSTEM = """أنت مخرج فني ومحلل بيانات لفيديو
 **الخطوة ٣: خريطة الاختيار الذكي**
 | نوع المعلومة | النوع الأمثل |
 |---|---|
+
 | رسم حر/عملية/شبكة/تفاعل/قوة/فكرة ديناميكية | generative_canvas |
 | صراع طرفين/مقارنة بطولية أو تنافسية | versus_battle |
 | هرمية/طبقات/ترتيب تصاعدي أو تنازلي | stack_pyramid |
@@ -1058,6 +1086,9 @@ DIRECTOR_SYSTEM = """أنت مخرج فني ومحلل بيانات لفيديو
 | رسم بياني لسلسلة زمنية متعاقبة | line_chart |
 | رسم بياني لنسب مئوية | pie_chart |
 | عبارة افتتاحية خاطفة قوية | bigtext (مرة واحدة فقط كحد أقصى) |
+| مدينة / أفق حضري | city_skyline |
+| مبنى تاريخي / معماري | architecture |
+| سؤال / غموض / لغز | mystery_scene |
 
 **الخطوة ٤: تحقق صحة البيانات**
 - لا تخترع أرقاماً أو نسباً لم ترد في الجملة أو في facts
@@ -1128,7 +1159,9 @@ DIRECTOR_SYSTEM = """أنت مخرج فني ومحلل بيانات لفيديو
 - "photo": للجمل التي تذكر شخصاً، معلماً، أثراً، مدينة، أو كائناً حقيقياً قابلاً للتصوير:
   {"kind":"photo","query":"pyramids of giza cairo egypt","text":"أهرامات الجيزة الخالدة","camera":"parallax","must_show":"pyramids","avoid":"watermark text collage"}
 
+
 قواعد صارمة:
+- مدينة أو أفق حضري → city_skyline. مبنى تاريخي أو معماري → architecture. سؤال أو لغز → mystery_scene. استعمل photo فقط لما لا يمكن تمثيله بالرسوم المتجهة. لا تزد نسبة photo عن 15-25% من المقاطع.
 - ممنوع بتاتاً استخدام نوع "icons" (الدوائر القديمة بنجوم مكررة ملغاة تماماً).
 - مشهد البداية (Hook - أول جملة): يجب أن يكون مشهداً سينمائياً بطلاً يخطف الأبصار فوراً (Hero Visual)! استخدم نوع "photo" مع استعلام إنجليزي فائق الدقة أو "generative_canvas" بتكوين فني غني. يُمنع منعاً باتاً عرض شاشة سوداء فارغة بنص فقط (bigtext مجرد).
 - ممنوع تكرار "bigtext" نهائياً، ويُمنع استخدامه لأكثر من مرة واحدة فقط وبشرط وجود مغزى قوي! بقية المشاهد يجب أن تكون بصرية سينمائية (generative_canvas, photo, versus_battle, stack_pyramid, balance_meter, bars, stat_ring_v2).
@@ -1163,7 +1196,7 @@ PHOTO_RULES = """
 
 - camera: "parallax" للمناظر والمدن، "push-in" للوجوه والمباني، "static" للأحداث التاريخية.
 
-- استعمل photo عندما تذكر الجملة شيئاً حقيقياً قابلاً للتصوير. لا تزد عن نصف المقاطع، ولا مقطعين متتاليين منه."""
+- استعمل photo فقط لما لا تستطيع city_skyline أو architecture أو mystery_scene أو icon_scene أو map تمثيله (وجه شخص حقيقي، حدث تاريخي لا يُختزل في رمز). لا تزد عن 15-25% من المقاطع، ولا مقطعين متتاليين منه."""
 
 def director_system(photos=True):
 
