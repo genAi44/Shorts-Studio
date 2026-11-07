@@ -62,6 +62,13 @@ def map_view(geo, beat):
     S, K, lonc, latc = v["S"], v["K"], v["lonc"], v["latc"]
     CY = 870
 
+    # حماية الدبابيس من التصادم مع شريط العنوان (HEADLINE_ZONE ينتهي عند 440px)
+    if pts:
+        min_proj_y = min(CY - (float(p["lat"]) - latc) * S for p in pts)
+        if min_proj_y < 540:
+            shift_y = 540 - min_proj_y
+            CY = min(CY + shift_y, 1000)
+
     def proj(a):
         a = np.asarray(a, np.float64)
         return np.stack([540 + (a[:, 0] - lonc) * S * K, CY - (a[:, 1] - latc) * S], 1)
@@ -146,7 +153,7 @@ def _make_cues(kind: str, fps: int) -> list:
         cues.append({"frame": round(0.15 * f), "type": "zoom_city"})
         cues.append({"frame": round(0.45 * f), "type": "pin_drop"})
         cues.append({"frame": round(0.70 * f), "type": "ripple"})
-    if kind in ("icon_scene", "canvas", "icons"):
+    if kind in ("canvas", "icons"):
         cues.append({"frame": round(0.4 * f),  "type": "icon_drop"})
         cues.append({"frame": round(0.65 * f), "type": "arrow_draw"})
     if kind == "elevation_profile":
@@ -187,7 +194,7 @@ def scene_beats(scene, words, dur_frames, geo, hook_first=None, photo=None, degr
             if photo:
                 b = photo(b, sents[i] if i < len(sents) else "")
             elif degrade:
-                b = direct.photo_to_text(b)
+                b = direct.photo_to_text(b, sents[i] if i < len(sents) else "")
             # بلا محلّل وبلا تحويل (معاينة): يبقى photo بمكان محجوز
         fr = starts[i]
         end = starts[i + 1] + OVERLAP if i + 1 < len(starts) else dur_frames
@@ -206,8 +213,14 @@ def scene_beats(scene, words, dur_frames, geo, hook_first=None, photo=None, degr
 
 def build_spec(script, style, plan, total_frames, geo, audio_name="audio.wav", photo=None, degrade=True):
     """plan: [{sc, audio:{words:[(w,s,e)]}, dur, t0}] من run.plan_scenes."""
+    from . import visual_tools
     scenes, hook_first = [], None
-    for p in plan:
+    seed = int(style.get("seed", 42)) if isinstance(style, dict) else 42
+    icon_sets = ["lucide", "ph", "tabler"]
+    preferred_icon_set = icon_sets[seed % len(icon_sets)]
+    transitions = visual_tools.pick_transitions(len(plan), seed=seed)
+
+    for idx, p in enumerate(plan):
         sc = p["sc"]
         dur = int(round(p["dur"] * FPS))
         words = [{"t": w, "s": round(s, 3), "e": round(e, 3)} for (w, s, e) in p["audio"]["words"]]
@@ -218,8 +231,18 @@ def build_spec(script, style, plan, total_frames, geo, audio_name="audio.wav", p
                 beats[0] = dict(beats[0])
                 beats[0]["settled"] = True
             hook_first = beats[0] if beats else None
-        scenes.append({"id": sc["id"], "role": sc["role"], "from": int(round(p["t0"] * FPS)), "dur": dur,
-                       "words": words, "beats": beats})
+        visuals = visual_tools.enrich_scene_visuals(sc, scene_index=idx, preferred_icon_set=preferred_icon_set)
+        transition = sc.get("transition") if isinstance(sc.get("transition"), dict) else transitions[idx]
+        scenes.append({
+            "id": sc["id"],
+            "role": sc["role"],
+            "from": int(round(p["t0"] * FPS)),
+            "dur": dur,
+            "words": words,
+            "beats": beats,
+            "visuals": visuals,
+            "transition": transition,
+        })
     return {"fps": FPS, "width": 1080, "height": 1920, "total": total_frames, "audio": audio_name, "style": style,
             "scenes": scenes}
 
@@ -231,10 +254,10 @@ def make_public(pub, audio_wav=None):
         shutil.copy(f, os.path.join(pub, "fonts"))
     if (REM / "public" / "grain.png").exists():
         shutil.copy(REM / "public" / "grain.png", pub)
-    if (REM / "public" / "icons").exists():
-        shutil.copytree(REM / "public" / "icons", os.path.join(pub, "icons"), dirs_exist_ok=True)
-    if (REM / "public" / "maps").exists():
-        shutil.copytree(REM / "public" / "maps", os.path.join(pub, "maps"), dirs_exist_ok=True)
+    for asset_folder in ("icons", "maps", "emoji", "flags", "lottie"):
+        src_folder = REM / "public" / asset_folder
+        if src_folder.exists():
+            shutil.copytree(src_folder, os.path.join(pub, asset_folder), dirs_exist_ok=True)
     _sfx.ensure_sfx(pub)
     if audio_wav:
         shutil.copy(audio_wav, os.path.join(pub, "audio.wav"))
@@ -258,9 +281,9 @@ def _run(cmd, progress=None):
             continue
         except Exception:
             tail.append(line)
-            tail = tail[-25:]
+            tail = tail[-50:]
     if p.wait() != 0:
-        raise RemError("فشل رندر Remotion:\n" + "\n".join(tail[-12:]))
+        raise RemError("فشل رندر Remotion:\n" + "\n".join(tail[-50:]))
 
 
 def render_video(spec, out_mp4, work_dir, audio_wav, progress=None):

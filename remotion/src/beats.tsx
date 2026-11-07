@@ -3,11 +3,27 @@ import React, {useContext, useId} from 'react';
 import {AbsoluteFill, Audio, Easing, interpolate, Sequence, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {SafeImg} from './SafeImg';
 import {ArrowFlow, CaptionScrim, FireSparks, FloatBadge, GlowText, MapOverlay, Particles} from './fx';
-import {IconSceneBeat} from './iconScene';
 import {CameraRig, ParallaxLayer, SvgZoomIn, useCameraShake} from './camera';
 import {AnimatedMetric} from './metrics';
 
 import {Icon} from './icons';
+import {Flag} from './flag';
+import {SceneVisualsLayer} from './visualLayer';
+import {ChartVisual} from './charts';
+import {TypographyVisual} from './typography';
+import {
+  AnimatedRouteBeat,
+  BalanceMeterBeat,
+  DeepTimeSliderBeat,
+  DotMatrixPopulationBeat,
+  FrontlineClashBeat,
+  MacroZoomGlobeBeat,
+  MoneyWaterfallBeat,
+  StackPyramidBeat,
+  SubsurfaceMineBeat,
+  VersusBattleBeat,
+} from './visualStoryBeats';
+import {GenerativeCanvasBeat} from './generativeCanvas';
 
 import {clamp01, enterStyle, EnterKind, Pop, useFont, useIdle, useProgress, useSpring} from './hooks';
 
@@ -16,7 +32,7 @@ import {Headline} from './text';
 import {AccentShapes, PhotoBeat, isAlt, useFont2} from './photo';
 
 import {MotionCtx, on, rgba, useTheme} from './theme';
-
+import {BEAT_ZONE, CAPTION_ZONE, HEADLINE_ZONE, SAFE_BOTTOM, SAFE_TOP} from './layout';
 import {Beat, RGB} from './types';
 
 
@@ -190,17 +206,12 @@ export const BeatShell: React.FC<{beat: Beat; children: React.ReactNode}> = ({be
 
       ) : null}
 
-      {beat.title && !['icon_scene', 'map_pin', 'timeline_card', 'bigtext'].includes(beat.kind) ? <div style={{opacity: 1 - exit}}><Headline text={beat.title} /></div> : null}
-
-      {!beat.settled && (
-
-        <Sequence from={0} durationInFrames={8} layout="none">
-
-          <Audio src={staticFile('sfx/whoosh.wav')} volume={0.22} />
-
-        </Sequence>
-
-      )}
+      {beat.title && ![
+        'icon_scene', 'map_pin', 'timeline_card', 'bigtext',
+        'generative_canvas', 'versus_battle', 'balance_meter', 'stack_pyramid',
+        'deep_time_slider', 'macro_zoom_globe', 'subsurface_mine', 'dot_matrix_population',
+        'money_waterfall', 'frontline_clash', 'animated_route', 'bars', 'line_chart', 'pie_chart'
+      ].includes(beat.kind) ? <div style={{opacity: 1 - exit}}><Headline text={beat.title} /></div> : null}
 
     </AbsoluteFill>
 
@@ -320,7 +331,7 @@ const MapPoint: React.FC<{pt: any; j: number}> = ({pt, j}) => {
 
   const {settled} = useContext(MotionCtx);
 
-  const delay = 1.0 + 0.55 * j;
+  const delay = 0.2 + 0.25 * j;
 
   const p = useSpring(delay, 'bouncy');
 
@@ -332,7 +343,8 @@ const MapPoint: React.FC<{pt: any; j: number}> = ({pt, j}) => {
 
   const ph = settled ? 0.4 : (((frame / fps - delay - 0.4) * 0.9) % 1 + 1) % 1;
 
-  const ly = dot && kind === 'pin' ? pt.y - 118 : pt.ly;
+  // إذا كانت النقطة قريبة من شريط العنوان العلوي (pt.y < 560)، نضع التسمية أسفل الدبوس لتفادي الاصطدام
+  const ly = dot && kind === 'pin' ? (pt.y < 560 ? pt.y + 70 : pt.y - 118) : pt.ly;
 
   return (
 
@@ -344,11 +356,11 @@ const MapPoint: React.FC<{pt: any; j: number}> = ({pt, j}) => {
 
           {kind !== 'pin' && p > 0.98 && (
 
-            <div style={{position: 'absolute', left: 70 - (18 + 46 * ph), top: 70 - (18 + 46 * ph), width: 2 * (18 + 46 * ph), height: 2 * (18 + 46 * ph), borderRadius: '50%', border: `5px solid ${rgba(th.p.accent, 0.85 * (1 - ph))}`}} />
+            <div style={{position: 'absolute', left: 70 - (18 + 46 * ph), top: -(18 + 46 * ph) + 70, width: 2 * (18 + 46 * ph), height: 2 * (18 + 46 * ph), borderRadius: '50%', border: `5px solid ${rgba(th.p.accent, 0.85 * (1 - ph))}`}} />
 
           )}
 
-          <div style={{position: 'absolute', left: 0, top: kind === 'pin' ? 20 : 0}}>
+          <div style={{position: 'absolute', left: 0, top: kind === 'pin' ? BEAT_ZONE.pin_offset : BEAT_ZONE.zero}}>
 
             <Marker kind={kind} col={th.p.accent} ring={th.p.text} p={p} />
 
@@ -404,7 +416,7 @@ const SmallMagnifier: React.FC<{h: any; ctx: string}> = ({h, ctx}) => {
 
       </svg>
 
-      <div style={{position: 'absolute', bottom: 8, left: 0, right: 0, textAlign: 'center', color: rgba(th.p.text), fontSize: 20, fontWeight: 700}}>×{Math.round(260 / vz)}z</div>
+      <div style={{position: 'absolute', bottom: BEAT_ZONE.magnifier_bottom, left: 0, right: 0, textAlign: 'center', color: rgba(th.p.text), fontSize: 20, fontWeight: 700}}>×{Math.round(260 / vz)}z</div>
 
     </div>
 
@@ -595,7 +607,7 @@ const StatBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
           <div style={{position: 'absolute', left: 140, right: 140, top: cy + 20, height: 34, borderRadius: 17, background: rgba(th.p.text, 0.16)}}>
 
-            <div style={{position: 'absolute', right: 0, top: 0, bottom: 0, width: `${p * 100}%`, borderRadius: 17, background: `linear-gradient(270deg, ${rgba(th.p.accent)}, ${rgba(th.p.accent2)})`}} />
+            <div style={{position: 'absolute', right: 0, top: BEAT_ZONE.zero, bottom: BEAT_ZONE.zero, width: `${p * 100}%`, borderRadius: 17, background: `linear-gradient(270deg, ${rgba(th.p.accent)}, ${rgba(th.p.accent2)})`}} />
 
           </div>
 
@@ -771,9 +783,9 @@ const BarRow: React.FC<{item: any; i: number; max: number; top: number}> = ({ite
 
       <div style={{position: 'relative', height: 54, borderRadius: 27, background: rgba(th.p.text, 0.12)}}>
 
-        <div style={{position: 'absolute', right: 0, top: 0, bottom: 0, width: `${Math.max(2, (v / max) * 100 * grow)}%`, borderRadius: 27, background: `linear-gradient(270deg, ${rgba(col)}, ${rgba(col, 0.7)})`}} />
+        <div style={{position: 'absolute', right: 0, top: BEAT_ZONE.zero, bottom: BEAT_ZONE.zero, width: `${Math.max(2, (v / max) * 100 * grow)}%`, borderRadius: 27, background: `linear-gradient(270deg, ${rgba(col)}, ${rgba(col, 0.7)})`}} />
 
-        <div style={{...font, position: 'absolute', left: 22, top: 0, bottom: 0, display: 'flex', alignItems: 'center', fontSize: 48, direction: 'ltr', color: rgba(th.p.text), textShadow: th.shadow}}>{shown}</div>
+        <div style={{...font, position: 'absolute', left: 22, top: BEAT_ZONE.zero, bottom: BEAT_ZONE.zero, display: 'flex', alignItems: 'center', fontSize: 48, direction: 'ltr', color: rgba(th.p.text), textShadow: th.shadow}}>{shown}</div>
 
       </div>
 
@@ -997,7 +1009,7 @@ const ListBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
   const n = Math.max(items.length, 1);
 
-  const topBound = th.st.headline.pos === 'top' ? 440 : 340;
+  const topBound = th.st.headline.pos === 'top' ? BEAT_ZONE.list_top_with_headline : BEAT_ZONE.list_top_no_headline;
 
   const bottomBound = th.capY - 140;
 
@@ -1145,7 +1157,28 @@ const CanvasEl: React.FC<{el: any; idx: number}> = ({el, idx}) => {
 
   if (el.type === 'text') {
 
-    return wrap(<div dir="rtl" style={{...font, fontSize: size, lineHeight: 1.25, color: c, textShadow: th.shadow, whiteSpace: 'pre', textAlign: 'center', fontWeight: Number(el.weight) || th.weight}}>{String(el.text ?? '')}</div>);
+    const txtStr = String(el.text ?? '');
+    const effSize = txtStr.length > 26 ? Math.min(size, 56) : size;
+    return wrap(
+      <div
+        dir="rtl"
+        style={{
+          ...font,
+          fontSize: effSize,
+          lineHeight: 1.3,
+          color: c,
+          textShadow: th.shadow,
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          maxWidth: 900,
+          width: 'max-content',
+          textAlign: 'center',
+          fontWeight: Number(el.weight) || th.weight,
+        }}
+      >
+        {txtStr}
+      </div>
+    );
 
   }
 
@@ -1321,7 +1354,7 @@ const TickerBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
       <div style={{position: 'absolute', top: th.zoneCy - 50, left: 0, right: 0, height: 156, overflow: 'hidden', borderTop: `3px solid ${rgba(th.p.accent, 0.5)}`, borderBottom: `3px solid ${rgba(th.p.accent, 0.5)}`}}>
 
-        <div style={{position: 'absolute', top: 0, bottom: 0, display: 'flex', alignItems: 'center', gap: 32, transform: `translateX(-${offset}px)`}}>
+        <div style={{position: 'absolute', top: BEAT_ZONE.zero, bottom: BEAT_ZONE.zero, display: 'flex', alignItems: 'center', gap: 32, transform: `translateX(-${offset}px)`}}>
 
           {[...items, ...items, ...items].map((it, i) => (
 
@@ -1337,9 +1370,9 @@ const TickerBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
         </div>
 
-        <div style={{position: 'absolute', top: 0, bottom: 0, left: 0, width: 70, background: `linear-gradient(90deg, ${rgba(th.p.c1)}, transparent)`}} />
+        <div style={{position: 'absolute', top: BEAT_ZONE.zero, bottom: BEAT_ZONE.zero, left: 0, width: 70, background: `linear-gradient(90deg, ${rgba(th.p.c1)}, transparent)`}} />
 
-        <div style={{position: 'absolute', top: 0, bottom: 0, right: 0, width: 70, background: `linear-gradient(270deg, ${rgba(th.p.c1)}, transparent)`}} />
+        <div style={{position: 'absolute', top: BEAT_ZONE.zero, bottom: BEAT_ZONE.zero, right: 0, width: 70, background: `linear-gradient(270deg, ${rgba(th.p.c1)}, transparent)`}} />
 
       </div>
 
@@ -1448,7 +1481,7 @@ const MapPinBeat: React.FC<{beat: Beat}> = ({beat}) => {
       <FireSparks n={20} />
 
       {beat.title && (
-        <div style={{position: 'absolute', left: 60, right: 60, top: 240, textAlign: 'center', zIndex: 10}}>
+        <div style={{position: 'absolute', left: 60, right: 60, top: BEAT_ZONE.title_top, textAlign: 'center', zIndex: 10}}>
           <GlowText fontSize={beat.title.length > 22 ? 58 : 68} gold>{beat.title}</GlowText>
         </div>
       )}
@@ -1548,7 +1581,7 @@ const TimelineCardBeat: React.FC<{beat: Beat}> = ({beat}) => {
       <FireSparks n={18} />
 
       {beat.title && (
-        <div style={{position: 'absolute', left: 60, right: 60, top: 220, textAlign: 'center', zIndex: 10}}>
+        <div style={{position: 'absolute', left: 60, right: 60, top: BEAT_ZONE.sub_title_top, textAlign: 'center', zIndex: 10}}>
           <GlowText fontSize={62} gold>{beat.title}</GlowText>
         </div>
       )}
@@ -1791,13 +1824,13 @@ const StatRingV2Beat: React.FC<{beat: Beat}> = ({beat}) => {
 
 // ------------------------------------------------------------------ مخطط الارتفاع (جبل فوق سطح البحر)
 
-const ElevationProfileBeat: React.FC<{beat: Beat}> = ({beat}) => {
+export const ElevationProfileBeat: React.FC<{beat: Beat}> = ({beat}) => {
   const th = useTheme();
   const font = useFont();
   const uid = useId().replace(/:/g, '');
 
-  const SEA_Y = 1480;
-  const PEAK_Y = 420;
+  const SEA_Y = BEAT_ZONE.sea_y;
+  const PEAK_Y = BEAT_ZONE.peak_y;
   const CX = 540;
 
   const mountainProg = useProgress(0, 0.65);
@@ -1965,7 +1998,7 @@ const LineChartBeat: React.FC<{beat: Beat}> = ({beat}) => {
       {/* Title */}
       {beat.title && (
         <div style={{
-          position: 'absolute', left: 80, right: 80, top: 420,
+          position: 'absolute', left: BEAT_ZONE.left, right: BEAT_ZONE.right, top: BEAT_ZONE.chart_title_top,
           textAlign: 'center', ...font, fontSize: 58, fontWeight: 900,
           color: textC, textShadow: th.shadow, direction: 'rtl',
           ...enterStyle(titleProg, 'rise', 40),
@@ -2094,7 +2127,7 @@ const PieChartBeat: React.FC<{beat: Beat}> = ({beat}) => {
       {/* Title */}
       {beat.title && (
         <div style={{
-          position: 'absolute', left: 80, right: 80, top: 420,
+          position: 'absolute', left: BEAT_ZONE.left, right: BEAT_ZONE.right, top: BEAT_ZONE.chart_title_top,
           textAlign: 'center', ...font, fontSize: 58, fontWeight: 900,
           color: textC, textShadow: th.shadow, direction: 'rtl',
           ...enterStyle(titleProg, 'rise', 40),
@@ -2163,11 +2196,24 @@ export const BeatView: React.FC<{beat: Beat}> = ({beat}) => {
   let body: React.ReactNode;
 
   switch (beat.kind) {
-    case 'icon_scene': body = <IconSceneBeat beat={beat} />; break;
     case 'map_pin': body = <MapPinBeat beat={beat} />; break;
     case 'timeline_card': body = <TimelineCardBeat beat={beat} />; break;
     case 'stat_ring_v2': body = <StatRingV2Beat beat={beat} />; break;
     case 'elevation_profile': body = <ElevationProfileBeat beat={beat} />; break;
+    case 'versus_battle': body = <VersusBattleBeat beat={beat} />; break;
+    case 'animated_route': body = <AnimatedRouteBeat beat={beat} />; break;
+    case 'balance_meter': body = <BalanceMeterBeat beat={beat} />; break;
+    case 'deep_time_slider': body = <DeepTimeSliderBeat beat={beat} />; break;
+    case 'stack_pyramid': body = <StackPyramidBeat beat={beat} />; break;
+    case 'macro_zoom_globe': body = <MacroZoomGlobeBeat beat={beat} />; break;
+    case 'subsurface_mine': body = <SubsurfaceMineBeat beat={beat} />; break;
+    case 'dot_matrix_population': body = <DotMatrixPopulationBeat beat={beat} />; break;
+    case 'money_waterfall': body = <MoneyWaterfallBeat beat={beat} />; break;
+    case 'frontline_clash': body = <FrontlineClashBeat beat={beat} />; break;
+    case 'generative_canvas': body = <GenerativeCanvasBeat beat={beat} />; break;
+    case 'chart': body = beat.spec ? <AbsoluteFill style={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}><ChartVisual spec={beat.spec} /></AbsoluteFill> : <BarsBeat beat={beat} />; break;
+    case 'typography': body = beat.spec ? <AbsoluteFill style={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}><TypographyVisual spec={beat.spec} /></AbsoluteFill> : <BigTextBeat beat={beat} />; break;
+    case 'visuals': body = <SceneVisualsLayer visuals={beat.visuals} />; break;
     case 'line_chart': body = <LineChartBeat beat={beat} />; break;
     case 'pie_chart': body = <PieChartBeat beat={beat} />; break;
 
@@ -2199,7 +2245,14 @@ export const BeatView: React.FC<{beat: Beat}> = ({beat}) => {
 
   }
 
-  return <BeatShell beat={beat}>{body}</BeatShell>;
+  return (
+    <BeatShell beat={beat}>
+      {body}
+      {beat.kind !== 'visuals' && beat.visuals && beat.visuals.length > 0 ? (
+        <SceneVisualsLayer visuals={beat.visuals} />
+      ) : null}
+    </BeatShell>
+  );
 
 };
 

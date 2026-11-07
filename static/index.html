@@ -1,331 +1,1010 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>استوديو Shorts</title>
-<style>
-:root{--bg:#0b1220;--card:#131c2e;--line:#243049;--tx:#e8eefc;--mu:#8fa0c0;--gold:#ffd678;--ok:#3fb27f;--bad:#e5645f;--warn:#e8a94a}
-@media (prefers-color-scheme:light){:root{--bg:#f3f5fa;--card:#fff;--line:#d9dfec;--tx:#14203a;--mu:#5b6b8c;--gold:#b8801a}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--tx);font-family:"Noto Kufi Arabic","Segoe UI",Tahoma,sans-serif;line-height:1.7}
-.wrap{max-width:900px;margin:0 auto;padding:20px 16px 80px}
-h1{font-size:24px;margin:8px 0 4px}h2{font-size:17px;margin:0 0 10px}
-.sub{color:var(--mu);margin:0 0 16px;font-size:14px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:14px 0}
-textarea,input,select{width:100%;background:transparent;color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font:inherit;font-size:14px}
-textarea{resize:vertical;min-height:70px}
-label{display:block;font-size:12px;color:var(--mu);margin:8px 0 3px}
-button{font:inherit;font-size:14px;border:0;border-radius:10px;padding:9px 16px;cursor:pointer;background:var(--gold);color:#1b1400;font-weight:700}
-button.sec{background:transparent;color:var(--tx);border:1px solid var(--line);font-weight:500}
-button:disabled{opacity:.5;cursor:wait}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.chip{font-size:12px;padding:2px 10px;border-radius:99px;border:1px solid var(--line);color:var(--mu)}
-.chip.on{color:var(--ok);border-color:var(--ok)}
-.chip.err{color:var(--bad);border-color:var(--bad)}
-.tag{font-size:11px;font-weight:700;padding:2px 9px;border-radius:6px;background:#2b3a5c;color:#cfe}
-.cnt{font-size:12px;color:var(--mu)}
-.iss{font-size:13px;padding:5px 10px;border-radius:8px;margin:4px 0;border-inline-start:3px solid}
-.iss.error{border-color:var(--bad);background:#e5645f1a}.iss.warn{border-color:var(--warn);background:#e8a94a1a}
-.ok{color:var(--ok)}.bad{color:var(--bad)}
-.bar{height:10px;background:var(--line);border-radius:9px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:var(--gold);transition:width .4s}
-video{width:100%;max-width:340px;border-radius:14px;background:#000;display:block;margin:10px auto}
-pre{white-space:pre-wrap;font-size:12px;color:var(--mu);max-height:150px;overflow:auto;margin:8px 0 0}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:640px){.grid2{grid-template-columns:1fr}}
-.fix{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:6px 0;font-size:13px}
-code{direction:ltr;unicode-bidi:plaintext;font-size:12px}
-.vis{font-family:ui-monospace,Consolas,monospace;direction:ltr;text-align:left;font-size:12px;min-height:60px}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>استوديو Shorts</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --card: #131c2e;
+      --line: #243049;
+      --tx: #e8eefc;
+      --mu: #8fa0c0;
+      --gold: #ffd678;
+      --ok: #3fb27f;
+      --bad: #e5645f;
+      --warn: #e8a94a
+    }
+
+    @media (prefers-color-scheme:light) {
+      :root {
+        --bg: #f3f5fa;
+        --card: #fff;
+        --line: #d9dfec;
+        --tx: #14203a;
+        --mu: #5b6b8c;
+        --gold: #b8801a
+      }
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--tx);
+      font-family: "Noto Kufi Arabic", "Segoe UI", Tahoma, sans-serif;
+      line-height: 1.7
+    }
+
+    .wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px 16px 80px
+    }
+
+    h1 {
+      font-size: 24px;
+      margin: 8px 0 4px
+    }
+
+    h2 {
+      font-size: 17px;
+      margin: 0 0 10px
+    }
+
+    .sub {
+      color: var(--mu);
+      margin: 0 0 16px;
+      font-size: 14px
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      margin: 14px 0
+    }
+
+    textarea,
+    input,
+    select {
+      width: 100%;
+      background: transparent;
+      color: var(--tx);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px 11px;
+      font: inherit;
+      font-size: 14px
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 70px
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--mu);
+      margin: 8px 0 3px
+    }
+
+    button {
+      font: inherit;
+      font-size: 14px;
+      border: 0;
+      border-radius: 10px;
+      padding: 9px 16px;
+      cursor: pointer;
+      background: var(--gold);
+      color: #1b1400;
+      font-weight: 700
+    }
+
+    button.sec {
+      background: transparent;
+      color: var(--tx);
+      border: 1px solid var(--line);
+      font-weight: 500
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: wait
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center
+    }
+
+    .chip {
+      font-size: 12px;
+      padding: 2px 10px;
+      border-radius: 99px;
+      border: 1px solid var(--line);
+      color: var(--mu)
+    }
+
+    .chip.on {
+      color: var(--ok);
+      border-color: var(--ok)
+    }
+
+    .chip.err {
+      color: var(--bad);
+      border-color: var(--bad)
+    }
+
+    .tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 9px;
+      border-radius: 6px;
+      background: #2b3a5c;
+      color: #cfe
+    }
+
+    .cnt {
+      font-size: 12px;
+      color: var(--mu)
+    }
+
+    .iss {
+      font-size: 13px;
+      padding: 5px 10px;
+      border-radius: 8px;
+      margin: 4px 0;
+      border-inline-start: 3px solid
+    }
+
+    .iss.error {
+      border-color: var(--bad);
+      background: #e5645f1a
+    }
+
+    .iss.warn {
+      border-color: var(--warn);
+      background: #e8a94a1a
+    }
+
+    .ok {
+      color: var(--ok)
+    }
+
+    .bad {
+      color: var(--bad)
+    }
+
+    .bar {
+      height: 10px;
+      background: var(--line);
+      border-radius: 9px;
+      overflow: hidden
+    }
+
+    .bar i {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: var(--gold);
+      transition: width .4s
+    }
+
+    video {
+      width: 100%;
+      max-width: 340px;
+      border-radius: 14px;
+      background: #000;
+      display: block;
+      margin: 10px auto
+    }
+
+    pre {
+      white-space: pre-wrap;
+      font-size: 12px;
+      color: var(--mu);
+      max-height: 150px;
+      overflow: auto;
+      margin: 8px 0 0
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px
+    }
+
+    @media(max-width:640px) {
+      .grid2 {
+        grid-template-columns: 1fr
+      }
+    }
+
+    .fix {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 10px;
+      margin: 6px 0;
+      font-size: 13px
+    }
+
+    code {
+      direction: ltr;
+      unicode-bidi: plaintext;
+      font-size: 12px
+    }
+
+    .vis {
+      font-family: ui-monospace, Consolas, monospace;
+      direction: ltr;
+      text-align: left;
+      font-size: 12px;
+      min-height: 60px
+    }
+  </style>
 </head>
+
 <body>
-<div class="wrap">
-  <h1>استوديو Shorts</h1>
-  <p class="sub">فكرة ← سكربت (HOOK / BODY / LOOP) ← مراجعتك ← فحص حقائق ← فيديو عمودي جاهز.</p>
-  <div class="row" id="chips"></div>
+  <div class="wrap">
+    <h1>استوديو Shorts</h1>
+    <p class="sub">فكرة ← سكربت (HOOK / BODY / LOOP) ← مراجعتك ← فحص حقائق ← فيديو عمودي جاهز.</p>
+    <div class="row" id="chips"></div>
 
-  <div class="card">
-    <h2>١. الفكرة</h2>
-    <textarea id="idea" placeholder="مثال: لماذا لبوليفيا عاصمتان؟"></textarea>
-    <div class="row" style="margin-top:10px">
-      <button id="bGen">اكتب السكربت (Gemini)</button>
-      <button class="sec" id="bSample">حمّل سكربتاً تجريبياً</button>
-      <span class="cnt" id="genMsg"></span>
-    </div>
-  </div>
-
-  <div id="editor" hidden>
-    <div class="card">
-      <h2>٢. السكربت — عدّله كما تشاء</h2>
-      <div class="row" style="justify-content:space-between"><span class="cnt" id="est"></span>
-        <button class="sec" id="bVal">تحقق من الشروط</button></div>
-      <div id="issues"></div>
-      <div id="scenes"></div>
-      <div class="row" style="display:none"><button class="sec" id="bAdd">+ مقطع</button></div>
-    </div>
-
-    <div class="card">
-      <h2>التعبئة (عنوان / وصف / وسوم)</h2>
-      <label>العنوان <span class="cnt" id="tc"></span></label><input id="title">
-      <label>الوصف</label><textarea id="desc"></textarea>
-      <label>الوسوم (بفواصل)</label><input id="tags">
-    </div>
-
-    <div class="card">
-      <h2>٣. المخرج البصري — مشهد حركي لكل جملة</h2>
-      <p class="sub">عند نطق كل جملة يظهر مشهد خاص بها مرسوم بالكود في Remotion: خريطة، رقم، مقارنة، خط زمني، قائمة، أيقونات، أو كانفس حر بعناصر وأسهم. DeepSeek يصمّمها من نص الجملة، وبلا مفتاح تُبنى مقاطع بسيطة آمنة. يمكنك تعديل JSON أي مقطع في بطاقات السكربت أعلاه.</p>
-      <div class="row"><button id="bDir">ارسم مشهداً لكل جملة (DeepSeek)</button><button class="sec" id="bDirAuto">مقاطع بسيطة بلا نموذج</button><span class="cnt" id="dirMsg"></span></div>
-    </div>
-
-    <div class="card">
-      <h2>٤. الستايل البصري — يختلف مع كل فيديو</h2>
-      <p class="sub">لا قوالب ثابتة: «المدير الفني» (DeepSeek) يصمّم الألوان والخط والخلفية والحركة وشكل الترجمة والخريطة والأرقام لهذا الفيديو. تُولَّد ستايلات عشوائية تلقائياً عند كل سكربت جديد.</p>
-      <div class="row"><button id="bArt">صمّم ستايلاً (مدير فني)</button><button class="sec" id="bRand">ستايل عشوائي جديد</button><span class="cnt" id="stMsg"></span></div>
-      <div id="stInfo" style="margin:10px 0"></div>
-      <label>تفاصيل الستايل (JSON قابل للتعديل)</label><textarea class="vis" id="stJson" style="min-height:140px"></textarea>
-      <div class="row" style="margin-top:10px"><select id="pvScene" style="width:auto"></select>
-        <input id="pvBeat" type="number" min="0" value="0" title="رقم المقطع داخل المشهد" style="width:70px"><button class="sec" id="bPrev">معاينة إطار</button><span class="cnt" id="pvMsg"></span></div>
-      <img id="pvImg" alt="" style="display:none;width:100%;max-width:300px;border-radius:12px;margin:10px auto 0">
-    </div>
-
-    <div class="card">
-      <h2>٥. فحص الحقائق (Gemini)</h2>
-      <p class="sub">الذكاء الاصطناعي قد يخطئ في الحقائق. افحص قبل الإنتاج، وراجع بنفسك المصادر الحساسة.</p>
-      <button id="bFact">افحص الحقائق</button> <span class="cnt" id="factMsg"></span>
-      <div id="factOut"></div>
-    </div>
-
-    <div class="card">
-      <h2>٦. الإنتاج</h2>
-      <div class="grid2">
-        <div><label>الصوت (ElevenLabs)</label><select id="voice"></select></div>
-        <div><label>محرّك الرسم</label><select id="engine"><option value="">تلقائي (Remotion إن توفّر)</option><option value="remotion">Remotion</option><option value="pil">PIL (احتياطي)</option></select></div>
-        <div><label>&nbsp;</label><label style="display:flex;gap:8px;align-items:center;color:var(--tx);font-size:14px;margin:0;padding:9px 0">
-          <input type="checkbox" id="photos" checked style="width:auto"> صور حقيقية مرخّصة من الإنترنت (Wikimedia / Pexels)</label></div>
+    <!-- LLM Providers & Model Management Panel -->
+    <div class="card" id="llmManagerCard">
+      <div class="row" style="justify-content:space-between;margin-bottom:6px">
+        <h2 style="margin:0">🧠 مزوّدو الذكاء الاصطناعي وإدارة النماذج (LLM Engine)</h2>
+        <div class="row">
+          <button class="sec" id="bLlmHealth" style="padding:5px 12px;font-size:12px">🩺 فحص الاتصال</button>
+          <button class="sec" id="bToggleLlmLogs" style="padding:5px 12px;font-size:12px">📜 سجل التوجيه</button>
+          <button class="sec" id="bToggleLlmSettings" style="padding:5px 12px;font-size:12px">⚙️ تخصيص الأدوار</button>
+        </div>
       </div>
-      <div class="row" style="margin-top:12px"><button id="bRender">أنشئ الفيديو</button><span class="cnt" id="rMsg"></span></div>
-      <div class="bar" style="margin-top:12px"><i id="prog"></i></div>
-      <pre id="log"></pre>
-      <div id="result"></div>
+      <p class="sub" style="margin-bottom:10px">
+        يدعم النظام <b>FreeLLMAPI</b> (Auto Mode مجاني ذكي)، <b>Gemini</b>، <b>DeepSeek</b>، ومزوّدي <b>OpenAI</b>.
+        يمكنك اختيار المزوّد والنموذج لكل مهمة بشكل مستقل، مع نظام Fallback تلقائي وسجلات التوجيه الفعلي.
+      </p>
+
+      <div class="row" id="llmProviderChips" style="gap:8px;margin-bottom:10px"></div>
+
+      <div id="llmSettingsBox"
+        style="display:none;background:rgba(0,0,0,0.18);padding:14px;border-radius:12px;border:1px solid var(--line);margin-bottom:10px">
+        <div style="font-weight:bold;font-size:13px;margin-bottom:10px">⚙️ تخصيص المزوّد والنموذج لكل دور مستقل:</div>
+        <div id="llmRolesContainer" style="display:flex;flex-direction:column;gap:12px"></div>
+        <div class="row" style="margin-top:14px">
+          <button id="bSaveLlmConfig">حفظ التخصيص</button>
+          <button class="sec" id="bResetLlmConfig">الوضع التلقائي الموصى به</button>
+          <span class="cnt" id="llmConfigMsg"></span>
+        </div>
+      </div>
+
+      <div id="llmLogsBox"
+        style="display:none;background:rgba(0,0,0,0.22);padding:12px;border-radius:12px;border:1px solid var(--line);margin-bottom:10px">
+        <div class="row" style="justify-content:space-between;margin-bottom:8px">
+          <div style="font-weight:bold;font-size:13px">📜 سجل الاستدعاءات الأخير والمزوّد الفعلي المستخدم
+            (x-routed-via):</div>
+          <button class="sec" id="bRefreshLlmLogs" style="padding:4px 10px;font-size:11px">تحديث السجل</button>
+        </div>
+        <div id="llmLogsContent" style="max-height:240px;overflow-y:auto;font-size:12px"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>١. الفكرة</h2>
+      <textarea id="idea" placeholder="مثال: لماذا لبوليفيا عاصمتان؟"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button id="bGen">اكتب السكربت (Gemini)</button>
+        <button class="sec" id="bSample">حمّل سكربتاً تجريبياً</button>
+        <span class="cnt" id="genMsg"></span>
+      </div>
+    </div>
+
+    <div id="editor" hidden>
+      <div class="card">
+        <h2>٢. السكربت — عدّله كما تشاء</h2>
+        <div class="row" style="justify-content:space-between"><span class="cnt" id="est"></span>
+          <button class="sec" id="bVal">تحقق من الشروط</button>
+        </div>
+        <div id="issues"></div>
+        <div id="scenes"></div>
+        <div class="row" style="display:none"><button class="sec" id="bAdd">+ مقطع</button></div>
+      </div>
+
+      <div class="card">
+        <h2>التعبئة (عنوان / وصف / وسوم)</h2>
+        <label>العنوان <span class="cnt" id="tc"></span></label><input id="title">
+        <label>الوصف</label><textarea id="desc"></textarea>
+        <label>الوسوم (بفواصل)</label><input id="tags">
+      </div>
+
+      <div class="card">
+        <h2>٣. المخرج البصري — مشهد حركي لكل جملة</h2>
+        <p class="sub">عند نطق كل جملة يظهر مشهد خاص بها مرسوم بالكود في Remotion: خريطة، رقم، مقارنة، خط زمني، قائمة،
+          أيقونات، أو كانفس حر بعناصر وأسهم. DeepSeek يصمّمها من نص الجملة، وبلا مفتاح تُبنى مقاطع بسيطة آمنة. يمكنك
+          تعديل JSON أي مقطع في بطاقات السكربت أعلاه.</p>
+        <div class="row"><button id="bDir">ارسم مشهداً لكل جملة (DeepSeek)</button><button class="sec"
+            id="bDirAuto">مقاطع بسيطة بلا نموذج</button><span class="cnt" id="dirMsg"></span></div>
+      </div>
+
+      <div class="card" id="visualLibCard">
+        <h2>٣-ب. مكتبة العناصر البصرية والرسوم المتحركة (Visual Elements Library)</h2>
+        <p class="sub">أيقونات Iconify محلية (Lucide / Phosphor / Tabler)، إيموجي SVG مدمجة، أعلام الدول، رسوم Lottie،
+          مخططات D3 المتحركة، ومكوّنات التيبوغرافيا — تعمل 100% دون إنترنت وقت الرندر.</p>
+        <div class="grid2" style="margin-bottom:10px">
+          <div>
+            <label>بحث في المكتبة (عربي / English — مثال: هرم، pyramid, مصر, بوليفيا, اقتصاد)</label>
+            <div class="row">
+              <input id="vlQuery" placeholder="ابحث عن أيقونة، إيموجي، علم، أو لوتي..." style="flex:1">
+              <select id="vlSet" style="width:130px">
+                <option value="">كل المجموعات</option>
+                <option value="lucide">Lucide</option>
+                <option value="ph">Phosphor</option>
+                <option value="tabler">Tabler</option>
+              </select>
+              <button class="sec" id="bVlSearch">بحث</button>
+            </div>
+          </div>
+          <div>
+            <label>تعديل بصري فوري بالمحادثة (Chat Visual Edit)</label>
+            <div class="row">
+              <select id="chatScene" style="width:140px"></select>
+              <input id="chatInstr" placeholder="مثال: change the icon to a pyramid أو use a bar chart here"
+                style="flex:1">
+              <button id="bChatEdit">طبّق التعديل</button>
+            </div>
+            <span class="cnt" id="chatEditMsg"></span>
+          </div>
+        </div>
+        <div id="vlPreviews"
+          style="display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:8px;max-height:260px;overflow:auto;padding:4px">
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>٤. الستايل البصري — يختلف مع كل فيديو</h2>
+        <p class="sub">لا قوالب ثابتة: «المدير الفني» (DeepSeek) يصمّم الألوان والخط والخلفية والحركة وشكل الترجمة
+          والخريطة والأرقام لهذا الفيديو. تُولَّد ستايلات عشوائية تلقائياً عند كل سكربت جديد.</p>
+        <div class="row"><button id="bArt">صمّم ستايلاً (مدير فني)</button><button class="sec" id="bRand">ستايل عشوائي
+            جديد</button><span class="cnt" id="stMsg"></span></div>
+        <div id="stInfo" style="margin:10px 0"></div>
+        <label>تفاصيل الستايل (JSON قابل للتعديل)</label><textarea class="vis" id="stJson"
+          style="min-height:140px"></textarea>
+        <div class="row" style="margin-top:10px"><select id="pvScene" style="width:auto"></select>
+          <input id="pvBeat" type="number" min="0" value="0" title="رقم المقطع داخل المشهد" style="width:70px"><button
+            class="sec" id="bPrev">معاينة إطار</button><span class="cnt" id="pvMsg"></span>
+        </div>
+        <img id="pvImg" alt="" style="display:none;width:100%;max-width:300px;border-radius:12px;margin:10px auto 0">
+      </div>
+
+      <div class="card">
+        <h2>٥. فحص الحقائق (Gemini)</h2>
+        <p class="sub">الذكاء الاصطناعي قد يخطئ في الحقائق. افحص قبل الإنتاج، وراجع بنفسك المصادر الحساسة.</p>
+        <button id="bFact">افحص الحقائق</button> <span class="cnt" id="factMsg"></span>
+        <div id="factOut"></div>
+      </div>
+
+      <div class="card">
+        <h2>٦. الإنتاج</h2>
+        <div class="grid2">
+          <div><label>الصوت (ElevenLabs)</label><select id="voice"></select></div>
+          <div><label>محرّك الرسم</label><select id="engine">
+              <option value="">تلقائي (Remotion إن توفّر)</option>
+              <option value="remotion">Remotion</option>
+              <option value="pil">PIL (احتياطي)</option>
+            </select></div>
+          <div><label>&nbsp;</label><label
+              style="display:flex;gap:8px;align-items:center;color:var(--tx);font-size:14px;margin:0;padding:9px 0">
+              <input type="checkbox" id="photos" checked style="width:auto"> صور حقيقية مرخّصة من الإنترنت (Wikimedia /
+              Pexels)</label></div>
+        </div>
+        <div class="row" style="margin-top:12px;align-items:center;flex-wrap:wrap;gap:10px">
+          <button id="bRender">أنشئ الفيديو</button>
+          <span id="factsChip" class="chip on" style="display:none;background:var(--card,#1e293b);color:var(--tx,#f8fafc);border:1px solid var(--accent,#38bdf8);font-size:13px;padding:4px 10px;border-radius:20px;">📚 <span id="factsCount">0</span> حقيقة من الويب</span>
+          <span class="cnt" id="rMsg"></span>
+        </div>
+        <div class="bar" style="margin-top:12px"><i id="prog"></i></div>
+        <pre id="log"></pre>
+        <div id="result"></div>
+      </div>
     </div>
   </div>
-</div>
-<script>
-const $=s=>document.querySelector(s);
-let S=null, voicesLoaded=false;
-const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-async function api(p,b){
-  const r=await fetch(p,b!==undefined?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}:{});
-  const j=await r.json().catch(()=>({}));
-  if(!r.ok) throw new Error(j.error||('خطأ '+r.status));
-  return j;
-}
-const words=s=>(s||'').trim().split(/\s+/).filter(Boolean).length;
-function get(path){return path.split('.').reduce((o,k)=>o?.[k],S)}
-function set(path,v){const ks=path.split('.');const l=ks.pop();ks.reduce((o,k)=>o[k],S)[l]=v}
+  <script>
+    const $ = s => document.querySelector(s);
+    let S = null, voicesLoaded = false;
+    const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    async function api(p, b) {
+      const r = await fetch(p, b !== undefined ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) } : {});
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || ('خطأ ' + r.status));
+      return j;
+    }
+    const words = s => (s || '').trim().split(/\s+/).filter(Boolean).length;
+    function get(path) { return path.split('.').reduce((o, k) => o?.[k], S) }
+    function set(path, v) { const ks = path.split('.'); const l = ks.pop(); ks.reduce((o, k) => o[k], S)[l] = v }
 
-async function status(){
-  const s=await api('/api/status');
-  $('#chips').innerHTML=[['Gemini (السكربت)',s.gemini],['DeepSeek (المخرج البصري)',s.deepseek],['ElevenLabs (الصوت)',s.elevenlabs]]
-    .map(([n,on])=>`<span class="chip ${on?'on':'err'}">${n}: ${on?'جاهز':'مفتاح ناقص ⚠'}</span>`).join('')+
-    `<span class="chip ${s.photos?'on':''}">الصور: Wikimedia${s.pexels?' + Pexels':''}${s.rembg?' + قصّ الخلفية':''}</span>`;
-}
-async function loadVoices(){
-  if(voicesLoaded) return; voicesLoaded=true;
-  const v=await api('/api/voices');
-  $('#voice').innerHTML=v.voices.map(x=>`<option value="${esc(x.id)}" ${x.id===v.default?'selected':''}>${esc(x.name)}</option>`).join('')||'<option value="">— لا أصوات —</option>';
-}
+    async function status() {
+      const s = await api('/api/status');
+      $('#chips').innerHTML = [['Gemini (السكربت)', s.gemini], ['DeepSeek (المخرج البصري)', s.deepseek], ['ElevenLabs (الصوت)', s.elevenlabs]]
+        .map(([n, on]) => `<span class="chip ${on ? 'on' : 'err'}">${n}: ${on ? 'جاهز' : 'مفتاح ناقص ⚠'}</span>`).join('') +
+        `<span class="chip ${s.photos ? 'on' : ''}">الصور: Wikimedia${s.pexels ? ' + Pexels' : ''}${s.rembg ? ' + قصّ الخلفية' : ''}</span>`;
+    }
+    async function loadVoices() {
+      if (voicesLoaded) return; voicesLoaded = true;
+      const v = await api('/api/voices');
+      $('#voice').innerHTML = v.voices.map(x => `<option value="${esc(x.id)}" ${x.id === v.default ? 'selected' : ''}>${esc(x.name)}</option>`).join('') || '<option value="">— لا أصوات —</option>';
+    }
 
-const sentCount=t=>{const g=(t||'').trim().split(/\s+/).filter(Boolean);let n=0,c=0,m=[];g.forEach((w,i)=>{c++;if(/[.!؟?؛:…]+$/.test(w.replace(/[»«"')(""'']/g,''))){m.push(c);c=0}});if(c)m.push(c);const mm=[];m.forEach(x=>{if(mm.length&&mm[mm.length-1]<3)mm[mm.length-1]+=x;else mm.push(x)});if(mm.length>1&&mm[mm.length-1]<3){const l=mm.pop();mm[mm.length-1]+=l}while(mm.length>3){const l=mm.pop();mm[mm.length-1]+=l}return mm.length||0};
-const PARTS = [
-  {id: 'hook', title: '1. HOOK — الخطاف (أول 3 ثوانٍ)', lim: 15},
-  {id: 'lead', title: '2. LEAD — المقدمة والوعد والسياق', lim: 22},
-  {id: 'body1', title: '3. BODY 1 — الحقيقة الأولى أو الخطوة', lim: 28},
-  {id: 'open_loop1', title: '4. OPEN LOOP 1 — حلقة التشويق الأولى', lim: 14, openLoop: true},
-  {id: 'body2', title: '5. BODY 2 — الحقيقة الثانية ومفاجأة', lim: 28},
-  {id: 'open_loop2', title: '6. OPEN LOOP 2 — حلقة التشويق الكبرى', lim: 14, openLoop: true},
-  {id: 'body3', title: '7. BODY 3 — الذروة والإجابة الكبرى', lim: 28},
-  {id: 'cta', title: '8. CTA — الدعوة والخاتمة الدائرية', lim: 14, cta: true}
-];
+    const sentCount = t => { const g = (t || '').trim().split(/\s+/).filter(Boolean); let n = 0, c = 0, m = []; g.forEach((w, i) => { c++; if (/[.!؟?؛:…]+$/.test(w.replace(/[»«"')(""'']/g, ''))) { m.push(c); c = 0 } }); if (c) m.push(c); const mm = []; m.forEach(x => { if (mm.length && mm[mm.length - 1] < 3) mm[mm.length - 1] += x; else mm.push(x) }); if (mm.length > 1 && mm[mm.length - 1] < 3) { const l = mm.pop(); mm[mm.length - 1] += l } while (mm.length > 3) { const l = mm.pop(); mm[mm.length - 1] += l } return mm.length || 0 };
+    const PARTS = [
+      { id: 'hook', title: '1. HOOK — الخطاف (أول 3 ثوانٍ)', lim: 15 },
+      { id: 'lead', title: '2. LEAD — المقدمة والوعد والسياق', lim: 22 },
+      { id: 'body1', title: '3. BODY 1 — الحقيقة الأولى أو الخطوة', lim: 28 },
+      { id: 'open_loop1', title: '4. OPEN LOOP 1 — حلقة التشويق الأولى', lim: 14, openLoop: true },
+      { id: 'body2', title: '5. BODY 2 — الحقيقة الثانية ومفاجأة', lim: 28 },
+      { id: 'open_loop2', title: '6. OPEN LOOP 2 — حلقة التشويق الكبرى', lim: 14, openLoop: true },
+      { id: 'body3', title: '7. BODY 3 — الذروة والإجابة الكبرى', lim: 28 },
+      { id: 'cta', title: '8. CTA — الدعوة والخاتمة الدائرية', lim: 14, cta: true }
+    ];
 
-function sceneHTML(key,title,o,opts={}){
-  const n=words(o?.narration), lim=opts.lim;
-  const isOver=lim && n>lim;
-  return `<div class="card" style="margin:10px 0;${opts.openLoop?'border-right:4px solid var(--accent);background:rgba(255,214,120,0.03)':''}" data-k="${key}">
+    function sceneHTML(key, title, o, opts = {}) {
+      const n = words(o?.narration), lim = opts.lim;
+      const isOver = lim && n > lim;
+      return `<div class="card" style="margin:10px 0;${opts.openLoop ? 'border-right:4px solid var(--accent);background:rgba(255,214,120,0.03)' : ''}" data-k="${key}">
     <div class="row" style="justify-content:space-between">
       <div>
         <span class="tag">${title}</span>
-        ${opts.openLoop?'<span class="chip on" style="font-size:11px;margin-right:6px">⚡ مشهد تشويق (Tension)</span>':''}
-        ${opts.cta?'<span class="chip" style="font-size:11px;margin-right:6px">🔄 متصل بـ HOOK</span>':''}
+        ${opts.openLoop ? '<span class="chip on" style="font-size:11px;margin-right:6px">⚡ مشهد تشويق (Tension)</span>' : ''}
+        ${opts.cta ? '<span class="chip" style="font-size:11px;margin-right:6px">🔄 متصل بـ HOOK</span>' : ''}
       </div>
-      <span class="cnt"><span data-cnt="${key}" style="${isOver?'color:var(--bad);font-weight:bold':''}">${n}</span> كلمة${lim?` / ${lim}`:''}</span>
+      <span class="cnt"><span data-cnt="${key}" style="${isOver ? 'color:var(--bad);font-weight:bold' : ''}">${n}</span> كلمة${lim ? ` / ${lim}` : ''}</span>
     </div>
-    <label>السرد (ما سيُنطق)</label><textarea data-p="${key}.narration">${esc(o?.narration||'')}</textarea>
+    <label>السرد (ما سيُنطق)</label><textarea data-p="${key}.narration">${esc(o?.narration || '')}</textarea>
     <div class="grid2">
-      <div><label>نص الشاشة (≤ 6 كلمات)</label><input data-p="${key}.on_screen" value="${esc(o?.on_screen||'')}"></div>
-      <div><label>بصري احتياطي (JSON)</label><textarea class="vis" data-v="${key}.visual">${esc(JSON.stringify(o?.visual||{"type":"text"},null,1))}</textarea></div>
+      <div><label>نص الشاشة (≤ 6 كلمات)</label><input data-p="${key}.on_screen" value="${esc(o?.on_screen || '')}"></div>
+      <div><label>بصري احتياطي (JSON)</label><textarea class="vis" data-v="${key}.visual">${esc(JSON.stringify(o?.visual || { "type": "text" }, null, 1))}</textarea></div>
     </div>
-    <label>المشاهد الحركية (Beats): مشهد يُرسم بالكود لكل جملة (${sentCount(o?.narration||'')} جملة)</label>
-    <textarea class="vis" style="min-height:90px" data-v="${key}.beats">${esc(JSON.stringify(o?.beats||[],null,1))}</textarea>
+    <label>المشاهد الحركية (Beats): مشهد يُرسم بالكود لكل جملة (${sentCount(o?.narration || '')} جملة)</label>
+    <textarea class="vis" style="min-height:90px" data-v="${key}.beats">${esc(JSON.stringify(o?.beats || [], null, 1))}</textarea>
+    <label>العناصر البصرية الإضافية للمشهد (Visuals: icon | emoji | flag | lottie | chart | component)</label>
+    <textarea class="vis" style="min-height:70px" data-v="${key}.visuals">${esc(JSON.stringify(o?.visuals || [], null, 1))}</textarea>
   </div>`;
-}
+    }
 
-function renderEditor(){
-  $('#editor').hidden=false;if(typeof fillPvScenes==='function'&&S)fillPvScenes();
-  let h='';
-  PARTS.forEach(p=>{
-    const o=S[p.id]||{narration:'',on_screen:'',visual:{type:'text'}};
-    h+=sceneHTML(p.id,p.title,o,{lim:p.lim,openLoop:p.openLoop,cta:p.cta});
-  });
-  $('#scenes').innerHTML=h;
-  $('#title').value=S.title||'';$('#desc').value=S.description||'';$('#tags').value=(S.tags||[]).join('، ');
-  bind();count();
-}
+    function renderEditor() {
+      $('#editor').hidden = false; if (typeof fillPvScenes === 'function' && S) fillPvScenes();
+      let h = '';
+      PARTS.forEach(p => {
+        const o = S[p.id] || { narration: '', on_screen: '', visual: { type: 'text' } };
+        h += sceneHTML(p.id, p.title, o, { lim: p.lim, openLoop: p.openLoop, cta: p.cta });
+      });
+      $('#scenes').innerHTML = h;
+      $('#title').value = S.title || ''; $('#desc').value = S.description || ''; $('#tags').value = (S.tags || []).join('، ');
+      bind(); count();
+    }
 
-function bind(){
-  document.querySelectorAll('[data-p]').forEach(el=>el.oninput=()=>{set(el.dataset.p,el.value);count()});
-  document.querySelectorAll('[data-v]').forEach(el=>el.oninput=()=>{
-    try{set(el.dataset.v,JSON.parse(el.value));el.style.borderColor=''}catch{el.style.borderColor='var(--bad)'}});
-}
+    function bind() {
+      document.querySelectorAll('[data-p]').forEach(el => el.oninput = () => { set(el.dataset.p, el.value); count() });
+      document.querySelectorAll('[data-v]').forEach(el => el.oninput = () => {
+        try { set(el.dataset.v, JSON.parse(el.value)); el.style.borderColor = '' } catch { el.style.borderColor = 'var(--bad)' }
+      });
+    }
 
-function count(){
-  document.querySelectorAll('[data-cnt]').forEach(el=>{
-    const k=el.dataset.cnt;
-    const nw=words(get(k+'.narration'));
-    el.textContent=nw;
-    const pdef=PARTS.find(p=>p.id===k);
-    if(pdef && nw>pdef.lim) el.style.color='var(--bad)';
-    else el.style.color='';
-  });
-  const w=PARTS.reduce((acc,p)=>acc+words(S[p.id]?.narration),0);
-  $('#est').textContent=`${w} كلمة ≈ ${(w/2.6).toFixed(0)} ثانية (المطلوب 100–140 كلمة)`;
-  if(w<100||w>140) $('#est').style.color='var(--bad)';
-  else $('#est').style.color='var(--accent)';
-  $('#tc').textContent=`${(S.title||'').length}/55`;
-}
-['title','desc','tags'].forEach(id=>document.addEventListener('input',e=>{
-  if(!S||e.target.id!==id) return;
-  if(id==='title')S.title=e.target.value; if(id==='desc')S.description=e.target.value;
-  if(id==='tags')S.tags=e.target.value.split(/[,،]/).map(x=>x.trim()).filter(Boolean); count();}));
+    function count() {
+      document.querySelectorAll('[data-cnt]').forEach(el => {
+        const k = el.dataset.cnt;
+        const nw = words(get(k + '.narration'));
+        el.textContent = nw;
+        const pdef = PARTS.find(p => p.id === k);
+        if (pdef && nw > pdef.lim) el.style.color = 'var(--bad)';
+        else el.style.color = '';
+      });
+      const w = PARTS.reduce((acc, p) => acc + words(S[p.id]?.narration), 0);
+      $('#est').textContent = `${w} كلمة ≈ ${(w / 2.6).toFixed(0)} ثانية (المطلوب 100–140 كلمة)`;
+      if (w < 100 || w > 140) $('#est').style.color = 'var(--bad)';
+      else $('#est').style.color = 'var(--accent)';
+      $('#tc').textContent = `${(S.title || '').length}/55`;
+    }
+    ['title', 'desc', 'tags'].forEach(id => document.addEventListener('input', e => {
+      if (!S || e.target.id !== id) return;
+      if (id === 'title') S.title = e.target.value; if (id === 'desc') S.description = e.target.value;
+      if (id === 'tags') S.tags = e.target.value.split(/[,،]/).map(x => x.trim()).filter(Boolean); count();
+    }));
 
-function showIssues(list){
-  $('#issues').innerHTML=list.length?list.map(i=>`<div class="iss ${i.level}">${i.level==='error'?'⛔':'⚠️'} ${esc(i.msg)}</div>`).join(''):'<div class="ok" style="font-size:13px">✓ كل الشروط متحققة.</div>';
-}
-async function validate(){const r=await api('/api/validate',{script:S});showIssues(r.issues);return r}
-async function runDirect(auto){
-  $('#dirMsg').textContent='جارٍ التصميم…';
-  try{const r=await api('/api/direct',{script:S,style:ST,auto,photos:$('#photos').checked});S=r.script;renderEditor();showIssues(r.issues);
-    $('#dirMsg').textContent=(r.by==='deepseek'?'صمّمها DeepSeek.':'مقاطع بسيطة.')+(r.warning?' (تعذّر DeepSeek: '+r.warning+')':'')}
-  catch(e){$('#dirMsg').textContent='⛔ '+e.message}
-}
-async function take(r,auto=true){S=r.script;renderEditor();showIssues(r.issues);fillPvScenes();await newStyle(true);await runDirect(auto)}
-$('#bDir').onclick=()=>runDirect(false);
-$('#bDirAuto').onclick=()=>runDirect(true);
+    function showIssues(list) {
+      $('#issues').innerHTML = list.length ? list.map(i => `<div class="iss ${i.level}">${i.level === 'error' ? '⛔' : '⚠️'} ${esc(i.msg)}</div>`).join('') : '<div class="ok" style="font-size:13px">✓ كل الشروط متحققة.</div>';
+    }
+    async function validate() { const r = await api('/api/validate', { script: S }); showIssues(r.issues); return r }
+    async function runDirect(auto) {
+      $('#dirMsg').textContent = 'جارٍ التصميم…';
+      try {
+        const r = await api('/api/direct', { script: S, style: ST, auto, photos: $('#photos').checked }); S = r.script; renderEditor(); showIssues(r.issues);
+        $('#dirMsg').textContent = (r.by === 'deepseek' ? 'صمّمها DeepSeek.' : 'مقاطع بسيطة.') + (r.warning ? ' (تعذّر DeepSeek: ' + r.warning + ')' : '')
+      }
+      catch (e) { $('#dirMsg').textContent = '⛔ ' + e.message }
+    }
+    async function take(r, auto = true) { S = r.script; renderEditor(); showIssues(r.issues); fillPvScenes(); await newStyle(true); await runDirect(auto) }
+    $('#bDir').onclick = () => runDirect(false);
+    $('#bDirAuto').onclick = () => runDirect(true);
 
-$('#bGen').onclick=async()=>{
-  $('#bGen').disabled=true;$('#genMsg').textContent='جارٍ الكتابة بواسطة Gemini…';
-  try{
-    const r=await api('/api/script',{idea:$('#idea').value});
-    await take(r,false);
-    $('#genMsg').textContent=(r.by==='deepseek'?'تمّت الكتابة بواسطة DeepSeek (احتياطي).':'تمّت الكتابة بواسطة Gemini.')+' راجع السكربت والمشاهد وعدّلها.';
-  }
-  catch(e){$('#genMsg').textContent='⛔ '+e.message}
-  $('#bGen').disabled=false;
-};
-$('#bSample').onclick=async()=>{
-  const raw=await api('/api/sample');
-  S=raw;
-  await take(await api('/api/validate',{script:S}),true);
-};
-$('#bVal').onclick=validate;
-$('#bAdd').onclick=()=>{S.body.push({narration:'',on_screen:'',visual:{type:'text',text:''}});renderEditor()};
+    $('#bGen').onclick = async () => {
+      $('#bGen').disabled = true; $('#genMsg').textContent = 'جارٍ البحث عن الحقائق في الويب ثم كتابة السكربت…';
+      try {
+        const r = await api('/api/script', { idea: $('#idea').value });
+        await take(r, false);
+        if (r.facts_count) {
+          $('#factsChip').style.display = 'inline-flex';
+          $('#factsCount').textContent = r.facts_count;
+        }
+        $('#genMsg').textContent = (r.by === 'deepseek' ? 'تمّت الكتابة بواسطة DeepSeek (احتياطي).' : 'تمّت الكتابة بواسطة الذكاء الاصطناعي.') + (r.facts_count ? ` (تم توثيق ${r.facts_count} حقيقة من الويب).` : '') + ' راجع السكربت والمشاهد وعدّلها.';
+      }
+      catch (e) { $('#genMsg').textContent = '⛔ ' + e.message }
+      $('#bGen').disabled = false;
+    };
+    $('#bSample').onclick = async () => {
+      const raw = await api('/api/sample');
+      S = raw;
+      await take(await api('/api/validate', { script: S }), true);
+    };
+    $('#bVal').onclick = validate;
+    $('#bAdd').onclick = () => { S.body.push({ narration: '', on_screen: '', visual: { type: 'text', text: '' } }); renderEditor() };
 
-$('#bFact').onclick=async()=>{
-  $('#bFact').disabled=true;$('#factMsg').textContent='جارٍ الفحص…';$('#factOut').innerHTML='';
-  try{
-    const r=await api('/api/factcheck',{script:S});
-    const col={correct:'ok',incorrect:'bad',uncertain:''};
-    let h=`<p><b>النتيجة العامة: ${esc(r.overall)}</b></p>`;
-    (r.items||[]).forEach(i=>h+=`<div class="fix"><span class="${col[i.status]||''}">${esc(i.status)}</span> — ${esc(i.claim)}<br><span class="cnt">${esc(i.note)}${i.fix?' | المقترح: '+esc(i.fix):''}</span></div>`);
-    (r.narration_fixes||[]).forEach((f,k)=>h+=`<div class="fix">تصحيح مقترح لـ <code>${esc(f.scene)}</code>:<br>${esc(f.narration)}<br><button class="sec" data-fx="${k}" style="margin-top:6px">طبّق التصحيح</button></div>`);
-    if(r.packaging) h+=`<div class="fix">تعبئة مقترحة: <b>${esc(r.packaging.title)}</b><br><button class="sec" id="applyPack" style="margin-top:6px">طبّق العنوان والوصف والوسوم</button></div>`;
-    $('#factOut').innerHTML=h;$('#factMsg').textContent='';
-    document.querySelectorAll('[data-fx]').forEach(b=>b.onclick=()=>{const f=r.narration_fixes[+b.dataset.fx];
-      if(get(f.scene)){set(f.scene+'.narration',f.narration);renderEditor();b.textContent='طُبّق ✓';}});
-    const ap=$('#applyPack'); if(ap) ap.onclick=()=>{S.title=r.packaging.title||S.title;S.description=r.packaging.description||S.description;
-      if(r.packaging.tags) S.tags=r.packaging.tags;renderEditor();ap.textContent='طُبّق ✓'};
-  }catch(e){$('#factMsg').textContent='⛔ '+e.message}
-  $('#bFact').disabled=false;
-};
+    $('#bFact').onclick = async () => {
+      $('#bFact').disabled = true; $('#factMsg').textContent = 'جارٍ الفحص…'; $('#factOut').innerHTML = '';
+      try {
+        const r = await api('/api/factcheck', { script: S });
+        const col = { correct: 'ok', incorrect: 'bad', uncertain: '' };
+        let h = `<p><b>النتيجة العامة: ${esc(r.overall)}</b></p>`;
+        (r.items || []).forEach(i => h += `<div class="fix"><span class="${col[i.status] || ''}">${esc(i.status)}</span> — ${esc(i.claim)}<br><span class="cnt">${esc(i.note)}${i.fix ? ' | المقترح: ' + esc(i.fix) : ''}</span></div>`);
+        (r.narration_fixes || []).forEach((f, k) => h += `<div class="fix">تصحيح مقترح لـ <code>${esc(f.scene)}</code>:<br>${esc(f.narration)}<br><button class="sec" data-fx="${k}" style="margin-top:6px">طبّق التصحيح</button></div>`);
+        if (r.packaging) h += `<div class="fix">تعبئة مقترحة: <b>${esc(r.packaging.title)}</b><br><button class="sec" id="applyPack" style="margin-top:6px">طبّق العنوان والوصف والوسوم</button></div>`;
+        $('#factOut').innerHTML = h; $('#factMsg').textContent = '';
+        document.querySelectorAll('[data-fx]').forEach(b => b.onclick = () => {
+          const f = r.narration_fixes[+b.dataset.fx];
+          if (get(f.scene)) { set(f.scene + '.narration', f.narration); renderEditor(); b.textContent = 'طُبّق ✓'; }
+        });
+        const ap = $('#applyPack'); if (ap) ap.onclick = () => {
+          S.title = r.packaging.title || S.title; S.description = r.packaging.description || S.description;
+          if (r.packaging.tags) S.tags = r.packaging.tags; renderEditor(); ap.textContent = 'طُبّق ✓'
+        };
+      } catch (e) { $('#factMsg').textContent = '⛔ ' + e.message }
+      $('#bFact').disabled = false;
+    };
 
-$('#bRender').onclick=async()=>{
-  $('#rMsg').textContent='';$('#result').innerHTML='';$('#log').textContent='';$('#prog').style.width='0';
-  const v=await validate();
-  if(v.issues.some(i=>i.level==='error')){$('#rMsg').textContent='⛔ أصلح الأخطاء أولاً.';return}
-  $('#bRender').disabled=true;
-  try{
-    const {job}=await api('/api/render',{script:S,style:ST,voice_id:$('#voice').value,engine:$('#engine').value,photos:$('#photos').checked});
-    for(;;){
-      await new Promise(r=>setTimeout(r,1500));
-      const j=await api('/api/job/'+job);
-      $('#prog').style.width=Math.round(j.progress*100)+'%';$('#log').textContent=j.log.join('\n');
-      if(j.state==='done'){const r=j.result;
-        let mrH = '';
-        if (r.media_report && r.media_report.length) {
-          mrH = `<div class="card" style="margin-top:14px"><h3 style="margin:0 0 8px;font-size:15px">📸 تقرير الوسائط والصور لكل جملة</h3>` +
-            r.media_report.map((rep, idx) => `
+    $('#bRender').onclick = async () => {
+      $('#rMsg').textContent = ''; $('#result').innerHTML = ''; $('#log').textContent = ''; $('#prog').style.width = '0';
+      const v = await validate();
+      if (v.issues.some(i => i.level === 'error')) { $('#rMsg').textContent = '⛔ أصلح الأخطاء أولاً.'; return }
+      $('#bRender').disabled = true;
+      try {
+        const { job } = await api('/api/render', { script: S, style: ST, voice_id: $('#voice').value, engine: $('#engine').value, photos: $('#photos').checked });
+        for (; ;) {
+          await new Promise(r => setTimeout(r, 1500));
+          const j = await api('/api/job/' + job);
+          $('#prog').style.width = Math.round(j.progress * 100) + '%'; $('#log').textContent = j.log.join('\n');
+          if (j.facts_count) {
+            $('#factsChip').style.display = 'inline-flex';
+            $('#factsCount').textContent = j.facts_count;
+          }
+          if (j.state === 'done') {
+            const r = j.result;
+            if (r.facts_count) {
+              $('#factsChip').style.display = 'inline-flex';
+              $('#factsCount').textContent = r.facts_count;
+            }
+            let mrH = '';
+            if (r.media_report && r.media_report.length) {
+              mrH = `<div class="card" style="margin-top:14px"><h3 style="margin:0 0 8px;font-size:15px">📸 تقرير الوسائط والصور لكل جملة</h3>` +
+                r.media_report.map((rep, idx) => `
               <div class="fix">
-                <b>${idx+1}. «${esc(rep.sentence)}»</b><br>
+                <b>${idx + 1}. «${esc(rep.sentence)}»</b><br>
                 <span class="cnt">الاستعلامات: <code>${esc((rep.queries_tried || [rep.query]).join(', '))}</code> | المرشحات: ${rep.candidates_count || 0}</span><br>
                 ${rep.status === 'accepted'
-                  ? `<span class="ok">✓ اعتُمدت صورة</span> (التقييم: ${rep.score}/10) — ${esc(rep.reason || '')}`
-                  : `<span class="bad">⚠ بديل: ${esc(rep.fallback || 'text')}</span> — السبب: ${esc(rep.reason || 'تعذر العثور على صورة مناسبة')}`}
+                    ? `<span class="ok">✓ اعتُمدت صورة</span> (التقييم: ${rep.score}/10) — ${esc(rep.reason || '')}`
+                    : `<span class="bad">⚠ بديل: ${esc(rep.fallback || 'text')}</span> — السبب: ${esc(rep.reason || 'تعذر العثور على صورة مناسبة')}`}
               </div>`).join('') + `</div>`;
-        }
-        $('#result').innerHTML=`<video src="${r.url}" controls playsinline></video>
+            }
+            $('#result').innerHTML = `<video src="${r.url}" controls playsinline></video>
           <div class="row" style="justify-content:center"><a href="${r.url}" download="short.mp4"><button>تنزيل MP4</button></a></div>
           <p class="cnt" style="text-align:center">المدة ${r.duration} ث</p>
           ${mrH}
-          ${r.credits?`<p class="cnt">مصادر الصور (أُضيفت إلى الوصف):</p><pre style="white-space:pre-wrap;direction:ltr;font-size:12px">${esc(r.credits)}</pre>`:''}`;
-        break}
-      if(j.state==='error'){$('#rMsg').innerHTML='⛔ '+esc(j.error)+' <button id="bRetry">أعد المحاولة</button>';$('#bRetry').onclick=()=>$('#bRender').click();break}
-    }
-  }catch(e){$('#rMsg').innerHTML='⛔ '+esc(e.message)+' <button id="bRetry">أعد المحاولة</button>';$('#bRetry').onclick=()=>$('#bRender').click();}
-  $('#bRender').disabled=false;
-};
+          ${r.credits ? `<p class="cnt">مصادر الصور (أُضيفت إلى الوصف):</p><pre style="white-space:pre-wrap;direction:ltr;font-size:12px">${esc(r.credits)}</pre>` : ''}
+          ${r.sources && r.sources.length ? `<p class="cnt" style="margin-top:8px">مصادر الحقائق الموثقة (أُضيفت إلى الوصف):</p><pre style="white-space:pre-wrap;direction:ltr;font-size:12px">${esc(r.sources.join('\n'))}</pre>` : ''}`;
+            break
+          }
+          if (j.state === 'error') { $('#rMsg').innerHTML = '⛔ ' + esc(j.error) + ' <button id="bRetry">أعد المحاولة</button>'; $('#bRetry').onclick = () => $('#bRender').click(); break }
+        }
+      } catch (e) { $('#rMsg').innerHTML = '⛔ ' + esc(e.message) + ' <button id="bRetry">أعد المحاولة</button>'; $('#bRetry').onclick = () => $('#bRender').click(); }
+      $('#bRender').disabled = false;
+    };
 
-let ST=null;
-const sw=c=>`<span style="display:inline-block;width:26px;height:26px;border-radius:7px;border:1px solid var(--line);background:rgb(${c.join(',')})"></span>`;
-function showStyle(by){
-  const p=ST.palette;
-  $('#stInfo').innerHTML=`<div class="row"><b>${esc(ST.name)}</b> ${[p.c1,p.c2,p.accent,p.accent2,p.text].map(sw).join('')}
+    let ST = null;
+    const sw = c => `<span style="display:inline-block;width:26px;height:26px;border-radius:7px;border:1px solid var(--line);background:rgb(${c.join(',')})"></span>`;
+    function showStyle(by) {
+      const p = ST.palette;
+      $('#stInfo').innerHTML = `<div class="row"><b>${esc(ST.name)}</b> ${[p.c1, p.c2, p.accent, p.accent2, p.text].map(sw).join('')}
     <span class="chip">خط: ${ST.font}</span><span class="chip">خلفية: ${ST.bg.type}</span><span class="chip">عنوان: ${ST.headline.pos}/${ST.headline.box}</span>
     <span class="chip">ترجمة: ${ST.caption.mode}</span><span class="chip">أرقام: ${ST.stat.layout}</span><span class="chip">نص: ${ST.text.layout}</span>
-    ${by?`<span class="chip on">${by==='deepseek'?'صمّمه DeepSeek':'عشوائي'}</span>`:''}</div>`;
-  $('#stJson').value=JSON.stringify(ST,null,1);
-}
-async function newStyle(rand){
-  $('#stMsg').textContent='…';
-  try{const r=await api('/api/style',{script:S,random:rand});ST=r.style;showStyle(r.by);$('#stMsg').textContent=''}
-  catch(e){$('#stMsg').textContent='⛔ '+e.message}
-}
-function fillPvScenes(){
-  const o=PARTS.map((p,i)=>`<option value="${i}">${p.title}</option>`);
-  $('#pvScene').innerHTML=o.join('');
-}
-$('#stJson').oninput=e=>{try{ST=JSON.parse(e.target.value);e.target.style.borderColor=''}catch{e.target.style.borderColor='var(--bad)'}};
-$('#bArt').onclick=()=>newStyle(false);
-$('#bRand').onclick=()=>newStyle(true);
-$('#bPrev').onclick=async()=>{
-  $('#pvMsg').textContent='جارٍ الرسم…';$('#bPrev').disabled=true;
-  try{
-    const r=await fetch('/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({script:S,style:ST,scene:+$('#pvScene').value,beat:+$('#pvBeat').value,t:2.0})});
-    if(!r.ok) throw new Error((await r.json().catch(()=>({}))).error||('خطأ '+r.status));
-    const im=$('#pvImg');im.src=URL.createObjectURL(await r.blob());im.style.display='block';$('#pvMsg').textContent='';
-  }catch(e){$('#pvMsg').textContent='⛔ '+e.message}
-  $('#bPrev').disabled=false;
-};
-status().catch(()=>{});
-loadVoices().catch(()=>{});
-</script>
+    ${by ? `<span class="chip on">${by === 'deepseek' ? 'صمّمه DeepSeek' : 'عشوائي'}</span>` : ''}</div>`;
+      $('#stJson').value = JSON.stringify(ST, null, 1);
+    }
+    async function newStyle(rand) {
+      $('#stMsg').textContent = '…';
+      try { const r = await api('/api/style', { script: S, random: rand }); ST = r.style; showStyle(r.by); $('#stMsg').textContent = '' }
+      catch (e) { $('#stMsg').textContent = '⛔ ' + e.message }
+    }
+    function fillPvScenes() {
+      const o = PARTS.map((p, i) => `<option value="${i}">${p.title}</option>`);
+      $('#pvScene').innerHTML = o.join('');
+      const co = PARTS.map(p => `<option value="${p.id}">${p.title}</option>`);
+      if ($('#chatScene')) $('#chatScene').innerHTML = co.join('');
+    }
+
+    async function loadVisualLibrary() {
+      if (!$('#vlPreviews')) return;
+      try {
+        const r = await api('/api/visual-library', { query: $('#vlQuery').value, set: $('#vlSet').value });
+        const cards = [];
+        (r.icons || []).slice(0, 6).forEach(ic => {
+          cards.push(`<div class="fix" style="text-align:center;cursor:pointer" data-ins="change the icon to ${esc(ic.id)}">
+        <svg viewBox="${esc(ic.viewBox || '0 0 24 24')}" width="34" height="34" style="color:var(--gold);stroke:currentColor;fill:none;stroke-width:2">${ic.body || ''}</svg>
+        <div style="font-size:11px;margin-top:4px"><code>${esc(ic.id)}</code></div>
+        <div class="cnt" style="font-size:10px">Icon (${esc(ic.license)})</div>
+      </div>`);
+        });
+        (r.emojis || []).slice(0, 4).forEach(em => {
+          cards.push(`<div class="fix" style="text-align:center;cursor:pointer" data-ins="add emoji ${esc(em.char)}">
+        <img src="/assets/${esc(em.file)}" width="34" height="34" alt="${esc(em.char)}">
+        <div style="font-size:11px;margin-top:4px">${esc(em.name_ar)}</div>
+        <div class="cnt" style="font-size:10px">Emoji SVG</div>
+      </div>`);
+        });
+        (r.flags || []).slice(0, 4).forEach(fl => {
+          cards.push(`<div class="fix" style="text-align:center;cursor:pointer" data-ins="add flag ${esc(fl.code)}">
+        <img src="/assets/${esc(fl.file)}" width="42" height="32" style="border-radius:4px;border:1px solid var(--line)" alt="${esc(fl.code)}">
+        <div style="font-size:11px;margin-top:4px"><code>Flag: ${esc(fl.code)}</code></div>
+        <div class="cnt" style="font-size:10px">flag-icons</div>
+      </div>`);
+        });
+        (r.lottie || []).slice(0, 3).forEach(lt => {
+          cards.push(`<div class="fix" style="text-align:center;cursor:pointer" data-ins="add lottie ${esc(lt.id)}">
+        <div style="font-size:22px;color:var(--gold)">✦</div>
+        <div style="font-size:11px;margin-top:2px"><code>${esc(lt.id)}</code></div>
+        <div class="cnt" style="font-size:10px">Lottie (${esc(lt.name_ar)})</div>
+      </div>`);
+        });
+        (r.charts || []).slice(0, 3).forEach(ch => {
+          cards.push(`<div class="fix" style="text-align:center;cursor:pointer" data-ins="use a ${esc(ch.type)} chart here">
+        <div style="font-size:20px;color:var(--ok)">📊</div>
+        <div style="font-size:11px;margin-top:2px">${esc(ch.name)}</div>
+        <div class="cnt" style="font-size:10px">D3 Pure SVG</div>
+      </div>`);
+        });
+        $('#vlPreviews').innerHTML = cards.join('');
+        document.querySelectorAll('[data-ins]').forEach(el => el.onclick = () => {
+          $('#chatInstr').value = el.dataset.ins;
+          $('#bChatEdit').click();
+        });
+      } catch (e) { }
+    }
+    if ($('#bVlSearch')) $('#bVlSearch').onclick = loadVisualLibrary;
+    if ($('#bChatEdit')) $('#bChatEdit').onclick = async () => {
+      if (!S) return;
+      $('#chatEditMsg').textContent = 'جارٍ تطبيق التعديل…';
+      try {
+        const r = await api('/api/chat-edit-visual', { script: S, scene: $('#chatScene').value, instruction: $('#chatInstr').value });
+        S = r.script; renderEditor(); showIssues(r.issues);
+        $('#chatEditMsg').textContent = `✓ طُبّق (${r.action}) على ${r.scene}`;
+      } catch (e) { $('#chatEditMsg').textContent = '⛔ ' + e.message }
+    };
+    loadVisualLibrary();
+    $('#stJson').oninput = e => { try { ST = JSON.parse(e.target.value); e.target.style.borderColor = '' } catch { e.target.style.borderColor = 'var(--bad)' } };
+    $('#bArt').onclick = () => newStyle(false);
+    $('#bRand').onclick = () => newStyle(true);
+    $('#bPrev').onclick = async () => {
+      $('#pvMsg').textContent = 'جارٍ الرسم…'; $('#bPrev').disabled = true;
+      try {
+        const r = await fetch('/api/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ script: S, style: ST, scene: +$('#pvScene').value, beat: +$('#pvBeat').value, t: 2.0 }) });
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || ('خطأ ' + r.status));
+        const im = $('#pvImg'); im.src = URL.createObjectURL(await r.blob()); im.style.display = 'block'; $('#pvMsg').textContent = '';
+      } catch (e) { $('#pvMsg').textContent = '⛔ ' + e.message }
+      $('#bPrev').disabled = false;
+    };
+    // --- LLM Providers & Management System ---
+    let llmProviders = {}, llmConfig = null;
+    const ROLE_NAMES = {
+      script: { title: '✍️ كتابة السكربت (Script)', desc: 'توليد سكريبت Short ثلاثي المراحل مع الحلقات المشوقة' },
+      director: { title: '🎬 المخرج البصري (Director)', desc: 'تفكيك الجمل لمشاهد بصرية ورسم الكود' },
+      style: { title: '🎨 المدير الفني (Style)', desc: 'تصميم لوحة الألوان والخط والخلفية وتوزيع النص' },
+      factcheck: { title: '🔍 فحص الحقائق (Fact Check)', desc: 'التحقق من صحة الادعاءات والمصادر الحساسة' },
+      chat_edit: { title: '💬 التعديل البصري (Chat Edit)', desc: 'تعديل عناصر المشاهد تفاعلياً بالأوامر' }
+    };
+
+    async function loadLlmProviders() {
+      try {
+        llmProviders = await api('/api/llm/providers');
+        renderLlmProviderChips();
+      } catch (e) {
+        console.error('Failed to load LLM providers:', e);
+      }
+    }
+
+    function renderLlmProviderChips(healthData = null) {
+      const chips = [];
+      for (const [pid, p] of Object.entries(llmProviders)) {
+        const h = healthData ? healthData[pid] : null;
+        let label = p.name;
+        let stateClass = p.configured ? 'on' : 'err';
+        let extra = '';
+        if (p.supports_auto_mode) {
+          extra = ' ⚡ Auto Router';
+        }
+        if (h) {
+          if (h.healthy) {
+            stateClass = 'on';
+            extra += ` (${h.latency_ms}ms ✓)`;
+          } else {
+            stateClass = 'err';
+            extra += ` (خطأ: ${esc(h.error || 'غير متصل')})`;
+          }
+        } else if (p.configured && p.models && p.models.length) {
+          extra += ` (${p.models.length} نموذج)`;
+        }
+        chips.push(`<span class="chip ${stateClass}" style="font-size:12px;padding:3px 10px">${esc(label)}: ${p.configured ? 'متصل' : 'غير مضبوط'}${extra}</span>`);
+      }
+      $('#llmProviderChips').innerHTML = chips.join('');
+    }
+
+    async function loadLlmConfig() {
+      try {
+        const res = await api('/api/llm/config');
+        llmConfig = res.roles || {};
+        renderLlmRolesEditor();
+      } catch (e) {
+        console.error('Failed to load LLM config:', e);
+      }
+    }
+
+    function renderLlmRolesEditor() {
+      const container = $('#llmRolesContainer');
+      if (!container || !llmConfig) return;
+      const roles = Object.keys(llmConfig);
+      let html = '';
+
+      roles.forEach(role => {
+        const rc = llmConfig[role] || {};
+        const meta = ROLE_NAMES[role] || { title: role, desc: '' };
+        const curProv = rc.provider || 'freellmapi';
+        const curModel = rc.model || 'auto';
+        const isAutoProv = (curProv === 'freellmapi');
+
+        // Build provider options
+        let provOpts = '';
+        for (const [pid, p] of Object.entries(llmProviders)) {
+          provOpts += `<option value="${esc(pid)}" ${pid === curProv ? 'selected' : ''}>${esc(p.name)}${p.supports_auto_mode ? ' (Auto Mode)' : ''}</option>`;
+        }
+
+        // Build model options for non-auto providers
+        const provObj = llmProviders[curProv] || {};
+        const models = provObj.models || [];
+        let modelOpts = '';
+        if (models.length) {
+          models.forEach(m => {
+            const mid = typeof m === 'object' ? (m.id || m.name) : m;
+            const mname = typeof m === 'object' ? (m.name || m.id) : m;
+            modelOpts += `<option value="${esc(mid)}" ${mid === curModel ? 'selected' : ''}>${esc(mname)}</option>`;
+          });
+        } else {
+          modelOpts = `<option value="${esc(curModel)}">${esc(curModel)}</option>`;
+        }
+
+        html += `
+      <div class="fix" style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.02)">
+        <div class="row" style="justify-content:space-between;margin-bottom:6px">
+          <div>
+            <b>${meta.title}</b>
+            <span class="cnt" style="margin-inline-start:8px;font-size:11px">${esc(meta.desc)}</span>
+          </div>
+          <span class="tag" style="background:#1b263b">دور: ${esc(role)}</span>
+        </div>
+        <div class="grid2">
+          <div>
+            <label style="margin:2px 0">المزوّد (Provider)</label>
+            <select class="role-prov-sel" data-role="${esc(role)}">${provOpts}</select>
+          </div>
+          <div class="role-model-col" data-role="${esc(role)}">
+            <label style="margin:2px 0">النموذج (Model)</label>
+            <div class="role-auto-badge" data-role="${esc(role)}" style="${isAutoProv ? 'display:flex' : 'display:none'};align-items:center;gap:6px;padding:8px 10px;border-radius:8px;background:rgba(255,214,120,0.08);border:1px solid var(--gold);color:var(--gold);font-size:12px">
+              <span>⚡</span>
+              <span><b>Auto Mode مفعّل:</b> الراوتر الذكي يختار أفضل نموذج مجاني متاح (Balanced / Smart) تلقائياً</span>
+            </div>
+            <select class="role-model-sel" data-role="${esc(role)}" style="${isAutoProv ? 'display:none' : 'block'}">${modelOpts}</select>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--mu);margin-top:6px">
+          🔄 مسار البدائل التلقائي (Fallback Chain): <code>${(rc.fallback_chain || []).join(' ← ')}</code>
+        </div>
+      </div>
+    `;
+      });
+
+      container.innerHTML = html;
+
+      // Bind change events for provider dropdowns
+      container.querySelectorAll('.role-prov-sel').forEach(sel => {
+        sel.addEventListener('change', e => {
+          const role = e.target.dataset.role;
+          const provId = e.target.value;
+          const isAuto = (provId === 'freellmapi');
+          const badge = container.querySelector(`.role-auto-badge[data-role="${role}"]`);
+          const modelSel = container.querySelector(`.role-model-sel[data-role="${role}"]`);
+
+          if (isAuto) {
+            if (badge) badge.style.display = 'flex';
+            if (modelSel) modelSel.style.display = 'none';
+          } else {
+            if (badge) badge.style.display = 'none';
+            if (modelSel) {
+              modelSel.style.display = 'block';
+              const p = llmProviders[provId] || {};
+              const mList = p.models || [];
+              if (mList.length) {
+                modelSel.innerHTML = mList.map(m => {
+                  const mid = typeof m === 'object' ? (m.id || m.name) : m;
+                  const mname = typeof m === 'object' ? (m.name || m.id) : m;
+                  return `<option value="${esc(mid)}">${esc(mname)}</option>`;
+                }).join('');
+              } else {
+                modelSel.innerHTML = `<option value="">— لا نماذج مسترجعة —</option>`;
+              }
+            }
+          }
+        });
+      });
+    }
+
+    async function saveLlmConfig() {
+      const btn = $('#bSaveLlmConfig');
+      const msg = $('#llmConfigMsg');
+      btn.disabled = true;
+      msg.textContent = 'جارٍ الحفظ…';
+      try {
+        const newRoles = {};
+        const container = $('#llmRolesContainer');
+        container.querySelectorAll('.role-prov-sel').forEach(sel => {
+          const role = sel.dataset.role;
+          const provider = sel.value;
+          let model = 'auto';
+          if (provider !== 'freellmapi') {
+            const modelSel = container.querySelector(`.role-model-sel[data-role="${role}"]`);
+            model = modelSel ? modelSel.value : 'auto';
+          }
+          newRoles[role] = {
+            provider,
+            model
+          };
+        });
+        const res = await api('/api/llm/config', { roles: newRoles });
+        llmConfig = res.roles || {};
+        msg.textContent = '✓ تم حفظ التخصيص بنجاح!';
+        setTimeout(() => { msg.textContent = ''; }, 3500);
+      } catch (e) {
+        msg.textContent = '⛔ خطأ: ' + e.message;
+      }
+      btn.disabled = false;
+    }
+
+    async function checkLlmHealth() {
+      const btn = $('#bLlmHealth');
+      btn.disabled = true;
+      btn.textContent = 'جارٍ الفحص…';
+      try {
+        const h = await api('/api/llm/health');
+        renderLlmProviderChips(h);
+        let summary = [];
+        for (const [pid, res] of Object.entries(h)) {
+          if (res.healthy) summary.push(`${pid}: ${res.latency_ms}ms ✓`);
+          else summary.push(`${pid}: ⚠ ${res.error || res.status}`);
+        }
+        alert('🩺 نتيجة فحص اتصال المزوّدين:\n\n' + summary.join('\n'));
+      } catch (e) {
+        alert('⛔ تعذر فحص الاتصال: ' + e.message);
+      }
+      btn.disabled = false;
+      btn.textContent = '🩺 فحص الاتصال';
+    }
+
+    async function renderLlmLogs() {
+      const box = $('#llmLogsContent');
+      box.innerHTML = 'جارٍ التحميل…';
+      try {
+        const res = await api('/api/llm/logs?limit=30');
+        const logs = res.logs || [];
+        if (!logs.length) {
+          box.innerHTML = '<div class="cnt">لا توجد استدعاءات مسجلة بعد.</div>';
+          return;
+        }
+        let html = '';
+        logs.forEach(l => {
+          const time = l.timestamp ? new Date(l.timestamp).toLocaleTimeString() : '';
+          const isErr = !!l.error;
+          const routed = l.routed_via ? `<span class="tag" style="background:#1d3557;color:#a8dadc">⚡ X-Routed-Via: ${esc(l.routed_via)}</span>` : '';
+          const fallbackBadge = l.fallback_used ? '<span class="tag" style="background:#e63946;color:#fff">⚠ Fallback</span>' : '';
+          const usage = l.usage ? `Tokens: ${l.usage.total_tokens || 0} (${l.usage.prompt_tokens || 0} in / ${l.usage.completion_tokens || 0} out)` : '';
+
+          html += `
+        <div class="fix" style="margin:4px 0;padding:6px 10px;font-size:11px;border-left:3px solid ${isErr ? 'var(--bad)' : 'var(--ok)'}">
+          <div class="row" style="justify-content:space-between">
+            <div>
+              <b>[${esc(l.role || 'general')}]</b> 
+              <span>المزوّد: <b>${esc(l.provider)}</b></span> / 
+              <span>النموذج: <code>${esc(l.model)}</code></span>
+              ${routed} ${fallbackBadge}
+            </div>
+            <span class="cnt">${time} | ${l.latency_ms}ms</span>
+          </div>
+          <div class="row" style="justify-content:space-between;margin-top:2px;color:var(--mu)">
+            <span>${usage}</span>
+            <span>${isErr ? '<span class="bad">⛔ ' + esc(l.error) + '</span>' : '<span class="ok">✓ ناجح</span>'}</span>
+          </div>
+        </div>
+      `;
+        });
+        box.innerHTML = html;
+      } catch (e) {
+        box.innerHTML = '<div class="bad">⛔ خطأ: ' + esc(e.message) + '</div>';
+      }
+    }
+
+    // UI Event bindings for LLM Manager
+    if ($('#bToggleLlmSettings')) {
+      $('#bToggleLlmSettings').onclick = () => {
+        const box = $('#llmSettingsBox');
+        const isHidden = (box.style.display === 'none');
+        box.style.display = isHidden ? 'block' : 'none';
+      };
+    }
+    if ($('#bToggleLlmLogs')) {
+      $('#bToggleLlmLogs').onclick = () => {
+        const box = $('#llmLogsBox');
+        const isHidden = (box.style.display === 'none');
+        box.style.display = isHidden ? 'block' : 'none';
+        if (isHidden) renderLlmLogs();
+      };
+    }
+    if ($('#bLlmHealth')) $('#bLlmHealth').onclick = checkLlmHealth;
+    if ($('#bSaveLlmConfig')) $('#bSaveLlmConfig').onclick = saveLlmConfig;
+    if ($('#bRefreshLlmLogs')) $('#bRefreshLlmLogs').onclick = renderLlmLogs;
+    if ($('#bResetLlmConfig')) {
+      $('#bResetLlmConfig').onclick = async () => {
+        if (!confirm('هل تريد استعادة الإعدادات التلقائية الموصى بها؟')) return;
+        const defaultRoles = {
+          script: { provider: 'freellmapi', model: 'auto' },
+          director: { provider: 'freellmapi', model: 'auto' },
+          style: { provider: 'freellmapi', model: 'auto' },
+          factcheck: { provider: 'gemini', model: 'gemini-2.5-flash' },
+          chat_edit: { provider: 'freellmapi', model: 'auto' }
+        };
+        await api('/api/llm/config', { roles: defaultRoles });
+        await loadLlmConfig();
+      };
+    }
+
+    // Initialize LLM system on page load
+    loadLlmProviders().then(() => loadLlmConfig()).catch(() => { });
+
+    status().catch(() => { });
+    loadVoices().catch(() => { });
+  </script>
 </body>
+
 </html>

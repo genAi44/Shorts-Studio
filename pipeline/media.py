@@ -11,7 +11,7 @@ import requests
 from PIL import Image
 
 from . import direct, llm
-from .config import ROOT, cfg
+from .config import ROOT, cfg, record_fallback
 
 UA = {"User-Agent": cfg("WIKI_USER_AGENT", "ShortsStudioApp/1.0 (https://github.com/shorts-studio-ai/shorts-studio; contact@shorts-studio-ai.org)")}  # Wikimedia يحجب UA بعنوان example.com
 CACHE = ROOT / "cache"
@@ -113,6 +113,25 @@ def search_wikipedia_lead(subject, n=1):
 
 def find(query, log=print, wikipedia=True):
     cands = []
+    if wikipedia:
+        # محاولة البحث عن الصورة الرئيسية في ويكيبيديا للموضوع أو المدينة
+        sub_terms = [query]
+        words = query.split()
+        if len(words) >= 2:
+            sub_terms.append(" ".join(words[:2]))
+        if len(words) >= 1:
+            sub_terms.append(words[0])
+        for st in sub_terms:
+            if len(st) >= 3:
+                try:
+                    w_cands = search_wikipedia_lead(st)
+                    if w_cands:
+                        log(f"  Wikipedia lead: {w_cands[0]['title']}")
+                        cands += w_cands
+                        break
+                except Exception:
+                    pass
+
     for name, fn, n in (("wikimedia", search_wikimedia, 8), ("pexels", search_pexels, 5)):
         if name not in providers():
             continue
@@ -120,13 +139,6 @@ def find(query, log=print, wikipedia=True):
             cands += fn(query, n)[:4 if name == "wikimedia" else 3]
         except Exception as e:  # noqa
             log(f"  بحث {name} فشل: {str(e)[:80]}")
-    if wikipedia and not cands:
-        try:
-            cands += search_wikipedia_lead(query)
-            if cands:
-                log(f"  Wikipedia lead: {cands[0]['title']}")
-        except Exception:
-            pass
     return cands
 
 
@@ -173,9 +185,32 @@ def pick(cands, query, sentence, log=print, must_show="", avoid=""):
     """يعيد (المرشح المختار أو None، التقييم، السبب)."""
     if not cands:
         return None, 0, "لا توجد نتائج بحث"
+
+    # تصفية المرشحات وترتيبها حسب الصلة الجغرافية والموضوعية
+    target_terms = set(re.findall(r"\w+", f"{query} {must_show}".lower()))
+    def _cand_score(c):
+        title = (c.get("title") or "").lower()
+        score = 0
+        if c.get("source") == "Wikipedia":
+            score += 15
+        for term in target_terms:
+            if len(term) >= 3 and term in title:
+                score += 8
+        # معاقبة المواقع الجغرافية المناقضة تماماً
+        unrelated_geo = ["california", "san simeon", "ireland", "scotland", "mongolia", "china", "texas", "florida", "ohio"]
+        for u in unrelated_geo:
+            if u in title and u not in target_terms:
+                score -= 35
+        return score
+
+    cands = sorted(cands, key=_cand_score, reverse=True)
+    cands = [c for c in cands if _cand_score(c) >= -10]
+    if not cands:
+        return None, 0, "تم استبعاد النتائج غير المرتبطة جغرافياً"
+
     if not cfg("GEMINI_API_KEY"):
-        log("  مفتاح Gemini غير مضبوط — اعتماد أول نتيجة مرخصة")
-        return cands[0], 8, "تم اعتماد أول نتيجة (بدون مفتاح Gemini)"
+        log(f"  مفتاح Gemini غير مضبوط — اعتماد النتيجة الأكثر تطابقاً: «{cands[0].get('title')}»")
+        return cands[0], 8, f"تم الاعتماد بناء على التطابق الجغرافي ({cands[0].get('title')[:40]})"
     try:
         ims, keep = [], []
         for c in cands[:6]:
@@ -288,6 +323,7 @@ class Media:
                     break
 
         if not c:
+            reason_txt = reason or "لا توجد صور مرخصة مطابقة"
             rep = {
                 "sentence": sentence,
                 "query": q,
@@ -295,12 +331,14 @@ class Media:
                 "candidates_count": len(cands),
                 "score": score,
                 "status": "fallback",
-                "reason": reason or "لا توجد صور مرخصة مطابقة",
-                "fallback": "icon_scene"
+                "reason": reason_txt,
+                "fallback": "generative_canvas"
             }
             self.reports.append(rep)
-            self.log(f"  [تقرير الوسائط] تعذّرت الصورة: «{sentence[:40]}…» (استعلامات: {', '.join(queries_tried)} | نتائج: {len(cands)} | سبب: {rep['reason']}) ← icon_scene بديلاً")
-            return direct.photo_to_text(beat)
+            beat_id = str(beat.get("id") or beat.get("title") or q or "photo")
+            fb = direct.photo_to_text(beat, sentence)
+            record_fallback(reason_txt, beat_id=beat_id, beat=fb, log_fn=self.log)
+            return fb
 
         try:
             im = fetch_image(c["url"])
@@ -318,6 +356,8 @@ class Media:
             else:
                 im.convert("RGB").save(path, "JPEG", quality=90)
         except Exception as e:  # noqa
+            err_words = " ".join(str(e).split()[:10])
+            reason_txt = f"فشل التنزيل: {err_words}"
             rep = {
                 "sentence": sentence,
                 "query": q,
@@ -325,12 +365,14 @@ class Media:
                 "candidates_count": len(cands),
                 "score": score,
                 "status": "error",
-                "reason": f"فشل التنزيل: {str(e)[:60]}",
-                "fallback": "icon_scene"
+                "reason": reason_txt,
+                "fallback": "generative_canvas"
             }
             self.reports.append(rep)
-            self.log(f"  [تقرير الوسائط] تنزيل الصورة فشل: {str(e)[:80]} ← icon_scene بديلاً")
-            return direct.photo_to_text(beat)
+            beat_id = str(beat.get("id") or beat.get("title") or q or "photo")
+            fb = direct.photo_to_text(beat, sentence)
+            record_fallback(reason_txt, beat_id=beat_id, beat=fb, log_fn=self.log)
+            return fb
 
         self.used.add(c["url"])
         self.credits.append({k: c[k] for k in ("title", "credit", "license", "source", "page")})

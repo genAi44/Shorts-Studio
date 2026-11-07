@@ -18,3 +18,10 @@ build/
 
 # Logs
 *.log
+
+# Geodata
+data/geo_cache/
+data/geodata.db
+data/geodata.db-journal
+data/geodata.db-wal
+data/geodata.db-shm

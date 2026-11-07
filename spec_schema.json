@@ -1,0 +1,342 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ShortsStudioBeatSpecSchema",
+  "version": "1.0.0",
+  "common_fields": {
+    "kind": "string",
+    "id": "string",
+    "from": "number",
+    "dur": "number",
+    "title": "string",
+    "subtitle": "string",
+    "camera": "string",
+    "settled": "boolean",
+    "cues": "array",
+    "visuals": "array",
+    "_fallback": "boolean"
+  },
+  "beats": {
+    "generative_canvas": {
+      "required": ["kind", "elements"],
+      "fields": {
+        "background": "string",
+        "accent": "string",
+        "grid": "any",
+        "elements": "array"
+      }
+    },
+    "map": {
+      "required": ["kind"],
+      "fields": {
+        "countries": "array",
+        "highlight": "array",
+        "points": "array",
+        "view": "object",
+        "region": "string"
+      }
+    },
+    "map_pin": {
+      "required": ["kind", "points"],
+      "fields": {
+        "region": "string",
+        "points": "array",
+        "view": "object"
+      }
+    },
+    "photo": {
+      "required": ["kind", "query"],
+      "fields": {
+        "query": "string",
+        "text": "string",
+        "cutout": "boolean",
+        "number": "string",
+        "must_show": "string",
+        "avoid": "string",
+        "alt_queries": "array",
+        "img": "string",
+        "cut": "boolean"
+      }
+    },
+    "stat": {
+      "required": ["kind", "number"],
+      "fields": {
+        "number": "string",
+        "label": "string",
+        "layout": "string"
+      }
+    },
+    "stat_ring_v2": {
+      "required": ["kind", "number"],
+      "fields": {
+        "number": "string",
+        "label": "string",
+        "icon": "string",
+        "hero_icon": "string"
+      }
+    },
+    "bigtext": {
+      "required": ["kind", "text"],
+      "fields": {
+        "text": "string",
+        "sub": "string",
+        "layout": "string"
+      }
+    },
+    "bars": {
+      "required": ["kind", "items"],
+      "fields": {
+        "items": "array"
+      }
+    },
+    "timeline": {
+      "required": ["kind", "items"],
+      "fields": {
+        "items": "array"
+      }
+    },
+    "timeline_card": {
+      "required": ["kind", "items"],
+      "fields": {
+        "items": "array"
+      }
+    },
+    "versus": {
+      "required": ["kind", "left", "right"],
+      "fields": {
+        "left": "object",
+        "right": "object"
+      }
+    },
+    "split": {
+      "required": ["kind", "left", "right"],
+      "fields": {
+        "left": "object",
+        "right": "object"
+      }
+    },
+    "list": {
+      "required": ["kind", "items"],
+      "fields": {
+        "items": "array"
+      }
+    },
+    "icons": {
+      "required": ["kind", "items"],
+      "fields": {
+        "items": "array",
+        "badges": "array",
+        "hero_icon": "string",
+        "center_label": "string",
+        "icon": "string",
+        "text": "string",
+        "sub": "string"
+      }
+    },
+    "canvas": {
+      "required": ["kind", "elements"],
+      "fields": {
+        "elements": "array"
+      }
+    },
+    "ticker": {
+      "required": ["kind", "items"],
+      "fields": {
+        "items": "array"
+      }
+    },
+    "cardstack": {
+      "required": ["kind", "items"],
+      "fields": {
+        "items": "array"
+      }
+    },
+    "elevation_profile": {
+      "required": ["kind", "height"],
+      "fields": {
+        "capital": "string",
+        "height": "string",
+        "unit": "string",
+        "sea_label": "string",
+        "country": "string",
+        "peak_name": "string"
+      }
+    },
+    "line_chart": {
+      "required": ["kind", "points"],
+      "fields": {
+        "points": "array",
+        "y_label": "string",
+        "unit": "string"
+      }
+    },
+    "pie_chart": {
+      "required": ["kind", "items"],
+      "fields": {
+        "items": "array"
+      }
+    },
+    "versus_battle": {
+      "required": ["kind"],
+      "fields": {
+        "right": "object",
+        "left": "object",
+        "result_badge": "string",
+        "sub": "string"
+      }
+    },
+    "animated_route": {
+      "required": ["kind"],
+      "fields": {
+        "from_city": "string",
+        "to_city": "string",
+        "distance": "string",
+        "duration_label": "string",
+        "terrain": "string",
+        "sub": "string",
+        "points": "array"
+      }
+    },
+    "balance_meter": {
+      "required": ["kind"],
+      "fields": {
+        "right_label": "string",
+        "left_label": "string",
+        "right_weight": "number",
+        "left_weight": "number",
+        "verdict": "string",
+        "sub": "string",
+        "left": "object",
+        "right": "object"
+      }
+    },
+    "deep_time_slider": {
+      "required": ["kind"],
+      "fields": {
+        "from_year": "string",
+        "to_year": "string",
+        "era_label": "string",
+        "milestone": "string",
+        "span_years": "string",
+        "sub": "string",
+        "items": "array"
+      }
+    },
+    "stack_pyramid": {
+      "required": ["kind"],
+      "fields": {
+        "tiers": "array",
+        "items": "array",
+        "sub": "string"
+      }
+    },
+    "macro_zoom_globe": {
+      "required": ["kind"],
+      "fields": {
+        "region_label": "string",
+        "city_label": "string",
+        "coords": "string",
+        "stat_badge": "string",
+        "sub": "string",
+        "countries": "array",
+        "points": "array"
+      }
+    },
+    "subsurface_mine": {
+      "required": ["kind"],
+      "fields": {
+        "depth": "string",
+        "mineral": "string",
+        "layers": "array",
+        "temp": "string",
+        "sub": "string"
+      }
+    },
+    "dot_matrix_population": {
+      "required": ["kind"],
+      "fields": {
+        "total_dots": "number",
+        "highlighted_dots": "number",
+        "ratio_label": "string",
+        "group_a": "string",
+        "group_b": "string",
+        "sub": "string",
+        "number": "string",
+        "label": "string"
+      }
+    },
+    "money_waterfall": {
+      "required": ["kind"],
+      "fields": {
+        "amount": "string",
+        "direction": "string",
+        "cause": "string",
+        "impact_pct": "string",
+        "sub": "string",
+        "number": "string",
+        "label": "string"
+      }
+    },
+    "frontline_clash": {
+      "required": ["kind"],
+      "fields": {
+        "side_a": "string",
+        "side_b": "string",
+        "location": "string",
+        "year": "string",
+        "outcome": "string",
+        "sub": "string",
+        "left": "object",
+        "right": "object"
+      }
+    },
+    "chart": {
+      "required": ["kind"],
+      "fields": {
+        "spec": "object",
+        "items": "array"
+      }
+    },
+    "typography": {
+      "required": ["kind"],
+      "fields": {
+        "spec": "object",
+        "text": "string",
+        "sub": "string"
+      }
+    },
+    "visuals": {
+      "required": ["kind", "visuals"],
+      "fields": {
+        "visuals": "array"
+      }
+    },
+    "city_skyline": {
+      "required": ["kind"],
+      "fields": {
+        "title": "string",
+        "subtitle": "string",
+        "text": "string",
+        "seed": "number"
+      }
+    },
+    "architecture": {
+      "required": ["kind"],
+      "fields": {
+        "title": "string",
+        "subtitle": "string",
+        "era": "string",
+        "seed": "number"
+      }
+    },
+    "mystery_scene": {
+      "required": ["kind"],
+      "fields": {
+        "question": "string",
+        "text": "string",
+        "subtitle": "string",
+        "variant": "number",
+        "seed": "number"
+      }
+    }
+  }
+}
