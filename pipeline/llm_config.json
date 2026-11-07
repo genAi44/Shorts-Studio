@@ -1,0 +1,52 @@
+{
+  "script": {
+    "provider": "freellmapi",
+    "model": "auto",
+    "fallback_chain": [
+      "freellmapi",
+      "gemini",
+      "deepseek"
+    ],
+    "temperature": 0.4
+  },
+  "director": {
+    "provider": "freellmapi",
+    "model": "auto",
+    "fallback_chain": [
+      "freellmapi",
+      "deepseek",
+      "gemini"
+    ],
+    "temperature": 0.7
+  },
+  "style": {
+    "provider": "deepseek",
+    "model": "deepseek-flash",
+    "fallback_chain": [
+      "freellmapi",
+      "deepseek",
+      "gemini"
+    ],
+    "temperature": 0.8
+  },
+  "factcheck": {
+    "provider": "gemini",
+    "model": "gemini-2.5-flash",
+    "fallback_chain": [
+      "gemini",
+      "freellmapi",
+      "deepseek"
+    ],
+    "temperature": 0.2
+  },
+  "chat_edit": {
+    "provider": "freellmapi",
+    "model": "auto",
+    "fallback_chain": [
+      "freellmapi",
+      "deepseek",
+      "gemini"
+    ],
+    "temperature": 0.5
+  }
+}

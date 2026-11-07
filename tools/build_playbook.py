@@ -1,71 +1,116 @@
-"""يُعيد توليد pipeline/playbook.md من ملفات المهارات في ~/.claude/skills/.
+"""يُعيد توليد pipeline/playbook.md من ملفات مهارات Remotion الرسمية (remotion-dev/skills).
 الاستخدام: python tools/build_playbook.py"""
 import pathlib
 import textwrap
 
-SKILLS_DIR = pathlib.Path.home() / ".claude" / "skills"
-OUT = pathlib.Path(__file__).parent.parent / "pipeline" / "playbook.md"
+ROOT = pathlib.Path(__file__).parent.parent
+WORKSPACE_SKILLS = ROOT / ".agents" / "skills"
+CONFIG_SKILLS = pathlib.Path.home() / ".gemini" / "config" / "skills"
+CLAUDE_SKILLS = pathlib.Path.home() / ".claude" / "skills"
+OUT = ROOT / "pipeline" / "playbook.md"
 
 SKILL_NAMES = [
     "remotion-best-practices",
     "remotion-markup",
+    "remotion-maps",
     "remotion-captions",
+    "remotion-interactivity",
+    "remotion-multimedia",
+    "remotion-create",
+    "remotion-render",
+    "remotion-studio",
+    "remotion-saas",
+    "remotion-docs",
+    "remotion-upgrade",
+    "remotion-license",
 ]
 
-# القواعد الأساسية المُقطَّرة يدوياً (محدِّثها: هذا السكربت).
 PLAYBOOK = textwrap.dedent("""\
-    # دليل الحركة — Motion Playbook
+    # دليل الحركة وإخراج المشاهد — Remotion Official Motion Playbook
+    # مستند إلى توجيهات ومهارات Remotion الرسمية الـ 13 (remotion-dev/skills v4.0.541)
 
-    ## الإيقاع والتوقيت
-    - مقاطع سريعة: 0.8–1.5 ث. متوسطة: 1.5–3 ث. نقطة توقف: 3–4 ث.
-    - الخروج أسرع من الدخول (0.26 ث خروج / 0.4 ث دخول).
-    - لا إطار ساكن أكثر من 1.2 ث؛ شيء دائماً يتحرك.
-    - تأخير التتابع بين عناصر المشهد: 3–6 إطارات (0.1–0.2 ث).
-    - تقاطع انتباه كل 5–7 مقاطع: غيّر تخطيطاً أو منظور كاميرا أو لوناً.
+    ## 1. قواعد التحريك والتوقيت (remotion-best-practices & remotion-create)
+    - التحريك دالة نقية ومحددة زمنياً في الإطارات (Deterministic `useCurrentFrame()`).
+    - أبعاد الفيديو الرأسي: 1080×1920، بمعدل 30 إطاراً في الثانية (fps=30).
+    - ممنوع الإطارات الثابتة الميتة؛ الحركة مستمرة طوال المقطع (لا سكون يتجاوز 1.0 ثانية).
+    - التوقيت الإيقاعي:
+      - مقاطع خاطفة (Hook / Punch): 0.8–1.5 ثانية.
+      - مقاطع السرد والشرح: 1.5–3.0 ثانية.
+      - نقاط التركيز والتأمل: 3.0–4.0 ثانية.
+    - خروج العناصر أسرع دائماً من دخولها (0.22 ثانية خروج / 0.38 ثانية دخول).
+    - تأخير التتابع (Stagger): إزاحة 3–6 إطارات بين عناصر المشهد الواحد لإعطاء عمق وتدفق بصري طبيعي.
 
-    ## التيسير (Easing — Remotion)
-    - دخول: ease-out `bezier(0.16, 1, 0.3, 1)` أو `spring({damping:22})`.
-    - خروج: ease-in `bezier(0.7, 0, 0.84, 0)`.
-    - انبثاق (pop/badge): `spring({damping:200})` — بلا ارتداد.
-    - كل `interpolate()` يُكتب مضمّناً في style مباشرة (قابل للتحرير في Studio).
+    ## 2. فيزياء الحركة وتيسير الانتقالات (remotion-markup)
+    - الظهور المفاجئ والبطاقات والشارات (Badges): استخدام `spring({damping: 200, mass: 0.8})` لمنع الاهتزاز الزائد.
+    - الحركات الحية المنسابة (Scale & Pop): `spring({damping: 22, mass: 0.5})`.
+    - الدخول السلس: `Easing.bezier(0.16, 1, 0.3, 1)`.
+    - الخروج السريع: `Easing.bezier(0.7, 0, 0.84, 0)`.
+    - استخدام خواص التحويل الحديثة `scale`, `translate`, `rotate` مباشرة داخل الـ style بدلاً من سلاسل CSS transform المعقدة.
+    - احترام مناطق الأمان (Keep-out Zones): الحفاظ على وضوح منطقة العنوان العلوي ومنطقة الترجمة السفلية.
 
-    ## الكاميرا لكل مقطع (beat.camera)
-    - `push-in`: تكبير تدريجي 100%→107% طوال المقطع — للتأكيد والـ hook.
-    - `pan`: انزلاق أفقي 0→–40px — للقوائم والتسلسل والجداول الزمنية.
-    - `parallax`: طبقات بسرعات مختلفة — للصور والخرائط.
-    - `static`: بلا حركة كاميرا (افتراضي).
+    ## 3. الوسائط والمؤثرات الصوتية (remotion-multimedia & remotion-render)
+    - الصور الحقيقية: معالجة كاميرا سينمائية (Ken Burns Pan/Zoom) بألوان طبيعية مشبعة وتباين عالي (ممنوع الفلاتر الرمادية الباهتة).
+    - المؤثرات الصوتية (SFX): تُستخدم بحذر وعند اللحظات الحاسمة أو الصدمات فقط؛ ممنوع تكرار نفس المؤثر الصوتي (مثل whoosh) في كل مشهد.
+    - التوافق مع الرندر الأوفلاين: جميع الأصول والخطوط تُحمّل محلياً لضمان الثبات التام.
 
-    ## اختيار النوع
-    - `bigtext` center: للتأكيد المنفرد. stack: للقوائم. diag: للحيوية. left: للتركيز الأيمن.
-    - `stat` ring: رقم واحد بدائرة. bar: مقارنة. plain: بساطة.
-    - `canvas`: ابدأ بالعنصر الرئيسي (delay=0) ثم المساندة (delay=0.2–0.6).
-    - `photo` push-in: للوجوه/المباني. parallax: للمناظر. static: للأحداث التاريخية.
+    ## 4. الخرائط والمسارات الجغرافية (remotion-maps)
+    - استخدام دبابيس الخرائط المتحركة (`map_pin`) والمسارات التفاعلية (`animated_route`).
+    - مسارات متصلة بانحناءات ناعمة وحركات انتقال سلسة بين المدن والمواقع.
+    - تجنب وضع خرائط متتالية بدون فاصل مشهدي غني.
 
-    ## التتابع
-    - لا مقطعان متتاليان من نفس النوع.
-    - hook: إيقاع سريع + push-in.
-    - body: تنوّع الأنواع مع المستويات الثلاثة.
-    - loop: يعكس بصريات الـ hook بصرياً.
+    ## 5. النصوص والترجمة التفاعلية (remotion-captions)
+    - تزامن الكلمات كلمة بكلمة بدقة عالية.
+    - توهج ولون مميز للكلمة النشطة لشد انتباه المشاهد.
+    - تجنب وضع أي عناصر بصرية عشوائية تغطي الترجمة أو تتداخل معها.
 
-    ## الصور (photo beats)
-    - `query`: اسم صريح — مكان + بلد + سنة إن وجدت.
-    - `alt_queries`: استعلامان احتياطيان أوسع تدريجياً.
-    - `must_show`: الشيء الواجب تصويره (يُرفض أي صورة لا تُظهره).
-    - `avoid`: ما يُستبعد (watermark text collage).
-    - `cutout=true` للأجسام المفردة الواضحة فقط.
+    ## 6. توجيه حركة الكاميرا السينمائية (Camera Motion)
+    - `zoom-in` / `push-in`: تقريب عدسة سينمائي متدرج (100%→112%) — أساسي في الـ hook، الصور الواقعية، والحقائق البارزة.
+    - `zoom-out`: كشف بانورامي واسع (114%→100%) — ممتاز للخرائط والمخططات الهرمية والشبكات.
+    - `pan-left` / `pan-right`: انزلاق أفقي سينمائي — للمقارنات المتوازية (versus)، خطوط السير، والخطوط الزمنية.
+    - `tilt-up` / `tilt-down`: مسح رأسي — للمباني التاريخية الشاهقة، القمم، والهرميات.
+    - `parallax`: طبقات حركة متعددة السرعات ثلاثية الأبعاد للصور والخرائط.
+    - تنويع حركة الكاميرا إلزامي بين كل مقطع والمقطع الذي يليه (ممنوع تكرار نفس حركة الكاميرا).
+
+    ## 7. بنية المشاهد التفاعلية وقوالب السرد (remotion-interactivity & remotion-saas)
+    - `generative_canvas`: أولوية قصوى عند تمثيل المفاهيم، العمليات التفاعلية، الشبكات، والتدفقات الحركية باستخدام الأشكال والشارات والروابط المتحركة والعدادات.
+    - `versus_battle`: مقارنة ملحمية بين طرفين أو قوتين متصارعتين مع شارة VS مركزية.
+    - `stack_pyramid`: هرم طبقي أو ترتيب هرمي تصاعدي من القمة للقاعدة.
+    - `balance_meter`: ميزان فيزيائي يتأرجح بين قيمتين أو وزنين.
+    - `animated_route`: مسار انتقال أو رحلة بين محطات متعددة بخط تقدم متحرك.
+    - `deep_time_slider`: خط زمني للمحطات التاريخية والعصور المتعاقبة.
+    - `elevation_profile`: قطاع رأسي متحرك لارتفاع قمة أو جبل بالمتر فوق سطح البحر.
+    - `stat_ring_v2`: حلقة إحصائية ثلاثية الأبعاد برقم ذهبي وأيقونة بطلة في المركز.
+    - `bars`: أعمدة بيانية لمقارنة كميات أو نسب مئوية.
+    - `photo`: صور حقيقية عالية الدقة بدون أي فلتر رمادي باهت وبإطار عصري زجاجي أنيق.
+    - `map_pin` / `map`: خرائط إقليمية ودبابيس دقيقة للمواقع والمدن.
+
+    ## 8. ضوابط الجودة الصارمة
+    - ممنوع استخدام نوع `icons` نهائياً (الدوائر التي تحتوي على نجوم مكررة محظورة).
+    - ممنوع تكرار `bigtext` أو الاعتماد عليه كبديل سهل؛ يُسمح به مرة واحدة فقط كحد أقصى في الافتتاحية (Hook) إن لزم.
+    - تنويع صارم: لا مقطعان متتاليان من نفس النوع أبداً في الفيديو.
+    - عدم إدخال أو اختراع أي أرقام أو وقائع لم ترد صراحة في facts والسكربت.
 """)
 
 
-def _read_skill(name: str) -> str:
-    p = SKILLS_DIR / name / "SKILL.md"
-    return p.read_text(encoding="utf-8") if p.exists() else ""
+def _find_skill_file(name: str) -> pathlib.Path:
+    for base in [WORKSPACE_SKILLS, CONFIG_SKILLS, CLAUDE_SKILLS]:
+        candidate = base / name / "SKILL.md"
+        if candidate.exists():
+            return candidate
+    return pathlib.Path("")
 
 
 def main():
-    present = [n for n in SKILL_NAMES if (_read_skill(n))]
-    note = f"\n<!-- مولَّد من المهارات: {', '.join(present) or 'none'} -->\n" if present else ""
+    found = []
+    for name in SKILL_NAMES:
+        f = _find_skill_file(name)
+        if f.exists():
+            found.append(f"{name} ({f.parent})")
+
+    note = f"\n<!-- تم البناء والتحقق من مهارات Remotion الرسمية: {', '.join(found)} -->\n"
     OUT.write_text(PLAYBOOK + note, encoding="utf-8")
-    print(f"✓ {OUT}")
+    print(f"✓ Playbook generated successfully at: {OUT}")
+    print(f"✓ Sourced from: {len(found)} Remotion official skills")
 
 
 if __name__ == "__main__":

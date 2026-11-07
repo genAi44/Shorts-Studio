@@ -6,9 +6,8 @@ import {SafeImg} from './SafeImg';
 import {clamp01, enterStyle, useIdle, useProgress, useSpring} from './hooks';
 
 import {MotionCtx, rgba, useTheme} from './theme';
-
+import {BEAT_ZONE} from './layout';
 import {Beat, RGB} from './types';
-import {IconSceneBeat} from './iconScene';
 import {FireSparks, FloatBadge, MapOverlay} from './fx';
 
 
@@ -79,7 +78,7 @@ const MixWord: React.FC<{w: string; i: number; n: number; size: number; hero: bo
 
 export const MixedText: React.FC<{text: string; size: number; delay?: number; style?: CSSProperties}> = ({text, size, delay = 0.1, style}) => {
 
-  const words = String(text || '').split(/\s+/).filter(Boolean).slice(0, 8);
+  const words = String(text || '').split(/\s+/).filter(Boolean).slice(0, 4);
 
   const th = useTheme();
 
@@ -375,15 +374,11 @@ const Framed: React.FC<{beat: Beat; w: number; h: number; style?: CSSProperties}
 
   const ty = ken === 'in' ? (t - 0.5) * -30 : 0;
 
-  const duo = th.st.edit.duo;
-
   return (
 
     <div style={{width: w, height: h, overflow: 'hidden', position: 'relative', isolation: 'isolate', ...style}}>
 
-      <Pic beat={beat} fit="cover" style={{position: 'absolute', inset: 0, width: '100%', height: '100%', scale: sc, translate: `${tx}px ${ty}px`, filter: duo ? 'grayscale(1) contrast(1.08)' : undefined}} />
-
-      {duo ? <Duo /> : null}
+      <Pic beat={beat} fit="cover" style={{position: 'absolute', inset: 0, width: '100%', height: '100%', scale: sc, translate: `${tx}px ${ty}px`, filter: 'contrast(1.06) saturate(1.12)'}} />
 
     </div>
 
@@ -481,13 +476,15 @@ export const PhotoBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
   } else if (ed.photo === 'polaroid') {
 
-    const w = hasNum ? 520 : 600;
+    const w = hasNum ? 760 : 860;
+
+    const h = hasNum ? 560 : 640;
 
     media = (
 
-      <div style={{position: 'absolute', left: 540 - w / 2 - 28, top: cy - (w + 150) / 2 + idle * 0.5, padding: '28px 28px 122px', background: 'rgb(250,248,242)', borderRadius: 10, boxShadow: '0 30px 50px rgba(0,0,0,0.38)', rotate: `${-5 + 5 * (1 - pop)}deg`, ...enterStyle(pop, 'drop', 90)}}>
+      <div style={{position: 'absolute', left: 540 - w / 2, top: cy - h / 2 + idle * 0.5, padding: 10, background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 28, boxShadow: '0 30px 60px rgba(0,0,0,0.45)', ...enterStyle(pop, 'rise', 60)}}>
 
-        <Framed beat={beat} w={w} h={w} />
+        <Framed beat={beat} w={w} h={h} style={{borderRadius: 20}} />
 
       </div>
 
@@ -553,11 +550,11 @@ export const PhotoBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
       {hasNum ? <CountNum text={String(beat.number)} size={150} y={textY - 20} /> : null}
 
-      {beat.text ? (
+      {beat.text && beat.text.trim().length > 0 ? (
 
         <div style={{
 
-          position: 'absolute', left: 60, right: 60, top: hasNum ? textY + 140 : textY,
+          position: 'absolute', left: 60, right: 60, top: Math.min(hasNum ? textY + 120 : textY, BEAT_ZONE.bottom - 180),
 
           padding: '16px 28px', borderRadius: 28,
 

@@ -7,26 +7,7 @@ import {FireSparks} from './fx';
 
 const mixc = (a: RGB, b: RGB, t: number): RGB => [0, 1, 2].map((i) => Math.round(a[i] + (b[i] - a[i]) * t)) as RGB;
 
-const detectMapRegion = (spec?: Spec): string => {
-  if (!spec) return 'middle_east';
-  const allText = (spec.scenes || [])
-    .map((s) => (s.words || []).map((w) => w.t).join(' '))
-    .join(' ')
-    .toLowerCase();
-
-  if (allText.includes('سعودية') || allText.includes('رياض') || allText.includes('جدة') || allText.includes('مكة') || allText.includes('درعية')) {
-    return 'saudi_arabia';
-  }
-  if (allText.includes('مصر') || allText.includes('قاهرة') || allText.includes('إسكندرية') || allText.includes('نيل') || allText.includes('أهرام')) {
-    return 'egypt';
-  }
-  if (allText.includes('بوليفيا') || allText.includes('سوكري') || allText.includes('لاباز') || allText.includes('أويوني')) {
-    return 'bolivia';
-  }
-  return 'middle_east';
-};
-
-// الطبقة 1: خلفية سينمائية ثلاثية الأبعاد مع خريطة متجهة وشرارات لهب متصاعدة وتظليل سينمائي
+// الطبقة 1: خلفية سينمائية مع إضاءة محيطية وتظليل داكن للأطراف وشرارات صاعدة
 export const Background: React.FC<{spec?: Spec}> = ({spec}) => {
   const th = useTheme();
   const frame = useCurrentFrame();
@@ -34,15 +15,6 @@ export const Background: React.FC<{spec?: Spec}> = ({spec}) => {
   const {palette: p, bg} = th.st;
   const s = bg.motion ? frame / fps : 0;
   const k = bg.intensity;
-
-  // اختيار الخريطة الإقليمية المناسبة
-  const region = useMemo(() => detectMapRegion(spec), [spec]);
-  const mapSrc = staticFile(`maps/${region}.svg`);
-
-  // حركة كاميرا انسيابية بطيئة على نسيج الخريطة (Ken Burns)
-  const mapScale = 1.06 + 0.04 * Math.sin(s * 0.12);
-  const mapX = Math.sin(s * 0.08) * 22;
-  const mapY = Math.cos(s * 0.1) * 16;
 
   const darkBase = 'linear-gradient(180deg, #090e17 0%, #030508 55%, #010204 100%)';
   const base = th.dark ? darkBase : `linear-gradient(${bg.angle}deg, ${rgba(p.c1)}, ${rgba(p.c2)})`;
@@ -61,24 +33,7 @@ export const Background: React.FC<{spec?: Spec}> = ({spec}) => {
         />
       )}
 
-      {/* 2. طبقة نسيج الخريطة الإقليمية المرجعية */}
-      {th.dark && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: -90,
-            opacity: 0.24,
-            transform: `scale(${mapScale}) translate(${mapX}px, ${mapY}px)`,
-            filter: 'contrast(1.35) brightness(0.68) drop-shadow(0 0 24px rgba(212, 175, 55, 0.3))',
-            pointerEvents: 'none',
-            mixBlendMode: 'screen',
-          }}
-        >
-          <SafeImg src={mapSrc} fallbackSrc={staticFile('maps/middle_east.svg')} style={{width: '100%', height: '100%', objectFit: 'contain'}} />
-        </div>
-      )}
-
-      {/* 3. شبكة إحداثيات خطية خافتة للعمق البصري */}
+      {/* 2. شبكة إحداثيات خطية خافتة للعمق البصري */}
       {th.dark && (
         <div
           style={{

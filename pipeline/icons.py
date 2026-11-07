@@ -4,8 +4,11 @@ SVG icons from the local bundle in remotion/public/icons/.
 """
 from __future__ import annotations
 import os
+import re
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Optional
+
+from .config import cfg, record_fallback
 
 ROOT = Path(__file__).resolve().parent.parent
 ICONS_DIR = ROOT / "remotion" / "public" / "icons"
@@ -80,19 +83,47 @@ ICON_ALIASES: Dict[str, str] = {
     "lightbulb": "icons/science/bulb.svg",
     "person": "icons/person/profile.svg",
     "people": "icons/person/people.svg",
+    "citizen": "icons/person/user-round.svg",
+    "senate": "icons/building/parliament.svg",
+    "colosseum": "icons/history/temple.svg",
+    "aqueduct": "icons/monument/bridge.svg",
+    "road": "icons/map/route.svg",
+    "broken_wall": "icons/history/ruins.svg",
+    "chip": "icons/science/gear.svg",
+    "snowflake": "icons/fire/spark.svg",
+    "world_map": "icons/map/globe.svg",
+    "numbers": "icons/number/ranking.svg",
+    "number": "icons/number/hash.svg",
+    "bar_chart": "icons/chart/chart-bar.svg",
+    "arrow_right": "icons/arrow/arrow-right.svg",
+    "arrow_left": "icons/arrow/arrow-left.svg",
+    "arrow_up": "icons/arrow/arrow-up.svg",
+    "arrow_down": "icons/arrow/arrow-down.svg",
     "warning": "icons/arrow/target.svg",
     "check": "icons/star/badge.svg",
+    "question": "icons/science/bulb.svg",
 }
+
+
+def _has_whole_word(text: str, word: str) -> bool:
+    """Checks whole-word match in Arabic/English using Unicode non-word boundaries or space splitting."""
+    w = word.strip().lower()
+    if not w or not text:
+        return False
+    pattern = rf"(?<![\w\u0600-\u06FF])(?:ال)?{re.escape(w)}(?![\w\u0600-\u06FF])"
+    return bool(re.search(pattern, text.lower()))
+
 
 def _clean_key(name: str) -> str:
     s = name.lower().replace("\\", "/").strip()
     if s.endswith(".svg"):
-        s = s[:-4]
+        s = s.rsplit(".svg", 1)[0]
     if "/" in s:
         s = s.split("/")[-1]
     return s
 
-def _find_icon(name: str) -> str:
+
+def _find_icon(name: str, beat_id: str = "unknown", beat: Optional[dict] = None) -> str:
     clean = _clean_key(name)
     if clean in ICON_ALIASES:
         target = ICON_ALIASES[clean]
@@ -105,33 +136,40 @@ def _find_icon(name: str) -> str:
     if f"{clean}.svg" in _AVAILABLE_ICONS:
         return _AVAILABLE_ICONS[f"{clean}.svg"]
 
-    # Partial match on filename
+    # Whole-word token match on filename parts (no arbitrary substring matching)
+    clean_tokens = set(re.split(r"[-_\s]+", clean))
     for k, v in _AVAILABLE_ICONS.items():
-        if clean in k or k in clean:
+        k_tokens = set(re.split(r"[-_\s.]+", k))
+        if clean_tokens and (clean_tokens <= k_tokens or k_tokens <= clean_tokens):
             return v
 
+    record_fallback(f"unknown_icon:{name}", beat_id=beat_id, beat=beat)
     return "icons/history/monument.svg"
 
-def resolve_icon(icon_path: str) -> str:
+
+def resolve_icon(icon_path: str, beat_id: str = "unknown", beat: Optional[dict] = None) -> str:
     """Ensures any icon path requested by director/LLM exists on disk in remotion/public/."""
     if not icon_path:
+        record_fallback("empty_icon_path", beat_id=beat_id, beat=beat)
         return "icons/history/monument.svg"
     clean = icon_path.strip().replace("\\", "/")
     if clean.startswith("public/"):
-        clean = clean[7:]
+        clean = " ".join(clean.split())[len("public/"):]
     if clean.startswith("/"):
-        clean = clean[1:]
+        clean = clean.lstrip("/")
 
     # If it directly exists on disk in remotion/public
     if (ROOT / "remotion" / "public" / clean).exists():
         return clean
 
-    # Resolve through alias or fuzzy match
-    resolved = _find_icon(clean)
+    # Resolve through alias or token match
+    resolved = _find_icon(clean, beat_id=beat_id, beat=beat)
     if (ROOT / "remotion" / "public" / resolved).exists():
         return resolved
 
+    record_fallback(f"missing_icon_file:{icon_path}", beat_id=beat_id, beat=beat)
     return "icons/history/monument.svg"
+
 
 def sanitize_spec_assets(spec: dict) -> dict:
     """Walks the entire Remotion spec and validates/sanitizes all icon and map paths."""
@@ -143,14 +181,17 @@ def sanitize_spec_assets(spec: dict) -> dict:
     available_maps = {f.stem.lower() for f in maps_dir.glob("*.svg")} if maps_dir.exists() else set()
 
     for scene in spec.get("scenes", []):
-        for beat in scene.get("beats", []):
+        sc_id = scene.get("id", "scene")
+        for bi, beat in enumerate(scene.get("beats", [])):
+            beat_id = str(beat.get("id") or f"{sc_id}:{beat.get('kind', 'beat')}:{bi}")
             # 1. Map beats & region
             if beat.get("kind") in ("map_pin", "map"):
                 r = (beat.get("region") or "").lower()
                 if r and r not in available_maps:
-                    # For Arab/Middle-East regions use middle_east; for everything else use world
+                    record_fallback(f"unknown_map_region:{r}", beat_id=beat_id, beat=beat)
                     arab_regions = {"arab", "arabia", "middle_east", "gcc", "levant", "egypt", "saudi", "iraq", "syria", "jordan", "uae", "gulf"}
-                    is_arab = any(a in r for a in arab_regions)
+                    r_tokens = set(re.split(r"[-_\s]+", r))
+                    is_arab = bool(r_tokens & arab_regions)
                     if is_arab and "middle_east" in available_maps:
                         beat["region"] = "middle_east"
                     elif "world" in available_maps:
@@ -158,35 +199,66 @@ def sanitize_spec_assets(spec: dict) -> dict:
 
             # 2. Hero icon & main icon
             if "hero_icon" in beat:
-                beat["hero_icon"] = resolve_icon(beat["hero_icon"])
+                beat["hero_icon"] = resolve_icon(beat["hero_icon"], beat_id=beat_id, beat=beat)
             if "icon" in beat:
-                beat["icon"] = resolve_icon(beat["icon"])
+                beat["icon"] = resolve_icon(beat["icon"], beat_id=beat_id, beat=beat)
 
-            # 3. Badges array
+            # 3. Badges array — resolve and deduplicate icons within the same beat so hero + badges never repeat the same SVG
             if "badges" in beat and isinstance(beat["badges"], list):
+                used_icons = {beat.get("hero_icon")} if beat.get("hero_icon") else set()
+                diverse_pool = [
+                    "icons/star/star.svg",
+                    "icons/map/compass.svg",
+                    "icons/science/bulb.svg",
+                    "icons/crown/trophy.svg",
+                    "icons/chart/trend-up.svg",
+                    "icons/history/shield.svg",
+                    "icons/world/globe-2.svg",
+                    "icons/building/landmark.svg",
+                ]
                 for b in beat["badges"]:
                     if isinstance(b, dict) and "icon" in b:
-                        b["icon"] = resolve_icon(b["icon"])
+                        resolved_ic = resolve_icon(b["icon"], beat_id=beat_id, beat=beat)
+                        if resolved_ic in used_icons:
+                            for alt_ic in diverse_pool:
+                                if alt_ic not in used_icons and (ROOT / "remotion" / "public" / alt_ic).exists():
+                                    resolved_ic = alt_ic
+                                    break
+                        b["icon"] = resolved_ic
+                        used_icons.add(resolved_ic)
 
             # 4. Items array
             if "items" in beat and isinstance(beat["items"], list):
                 for it in beat["items"]:
                     if isinstance(it, dict) and "icon" in it:
-                        it["icon"] = resolve_icon(it["icon"])
+                        it["icon"] = resolve_icon(it["icon"], beat_id=beat_id, beat=beat)
 
             # 5. Points array (in map_pin)
             if "points" in beat and isinstance(beat["points"], list):
                 for pt in beat["points"]:
                     if isinstance(pt, dict) and "icon" in pt:
-                        pt["icon"] = resolve_icon(pt["icon"])
+                        pt["icon"] = resolve_icon(pt["icon"], beat_id=beat_id, beat=beat)
 
             # 6. Canvas elements
             if "elements" in beat and isinstance(beat["elements"], list):
                 for el in beat["elements"]:
                     if isinstance(el, dict) and el.get("type") == "icon" and "name" in el:
-                        # el["name"] is often an icon identifier
-                        resolved = resolve_icon(el["name"])
-                        el["name"] = _clean_key(resolved)
+                        raw_icon_name = str(el["name"] or "").strip()
+                        if ":" in raw_icon_name or raw_icon_name.lower() in (
+                            "question", "help", "help-circle", "sparkles", "star", "shield",
+                            "fire", "flame", "crown", "coin", "coins", "globe", "clock",
+                            "hourglass", "pin", "map-pin", "map", "compass", "book", "scale",
+                            "mountain", "wave", "sun", "lock", "user", "users", "trophy",
+                            "medal", "eye", "warning", "sword", "swords", "ship", "scroll",
+                            "plane", "oil", "wheat", "factory", "anchor", "gavel", "key",
+                            "bulb", "lightbulb", "atom", "dna", "chart", "mosque", "monument",
+                            "landmark", "building", "city", "rocket", "brain", "heart", "bolt", "zap",
+                            "info", "history"
+                        ):
+                            el["name"] = raw_icon_name
+                        else:
+                            resolved = resolve_icon(raw_icon_name, beat_id=beat_id, beat=beat)
+                            el["name"] = _clean_key(resolved)
 
     return spec
 
@@ -295,7 +367,15 @@ KEYWORD_MAP: Dict[str, str] = {
     "شرارة": "spark",
 }
 
-# Category defaults
+# Closed list of exactly 20 icon categories for LLM classification
+CLOSED_ICON_CATEGORIES: List[str] = [
+    "history", "monument", "map", "person", "science",
+    "number", "arrow", "fire", "star", "building",
+    "chart", "time", "world", "book", "sword",
+    "crown", "coin", "ship", "tree", "question",
+]
+
+# Category defaults (20 categories)
 CATEGORY_DEFAULTS: Dict[str, str] = {
     "history": "icons/history/monument.svg",
     "monument": "icons/monument/monument.svg",
@@ -316,28 +396,65 @@ CATEGORY_DEFAULTS: Dict[str, str] = {
     "coin": "icons/coin/gold_bars.svg",
     "ship": "icons/ship/ship.svg",
     "tree": "icons/tree/tree.svg",
+    "question": "icons/science/bulb.svg",
 }
 
-def pick_icons_for_beat(text: str = "", query: str = "", category: str = "", n: int = 3) -> List[str]:
+
+def pick_icon_category_llm(text: str = "", query: str = "", use_llm: bool = False) -> Optional[str]:
+    """Uses a single cheap LLM call to pick an icon category from the closed 20-word list."""
+    prompt_txt = " ".join(f"{text} {query}".split()[:30]).strip()
+    if not prompt_txt:
+        return None
+    if use_llm or cfg("ICON_LLM_PICKER", "0") == "1":
+        try:
+            from . import llm
+            sys_prompt = (
+                "You are an icon classifier. Pickanges ONLY ONE word from this exact closed list of 20 categories:\n"
+                + ", ".join(CLOSED_ICON_CATEGORIES)
+                + "\nReply with JSON: {\"category\": \"<one_of_the_20_words>\"}"
+            )
+            res = llm.call_llm_json("director", sys_prompt, prompt_txt, temperature=0.0)
+            cat = str((res or {}).get("category") or "").strip().lower()
+            if cat in CLOSED_ICON_CATEGORIES:
+                return cat
+        except Exception:
+            pass
+    return None
+
+
+def pick_icons_for_beat(
+    text: str = "",
+    query: str = "",
+    category: str = "",
+    n: int = 3,
+    use_llm: bool = False,
+    beat_id: str = "unknown",
+    beat: Optional[dict] = None,
+) -> List[str]:
     combined = f"{text} {query}".lower()
     selected: List[str] = []
 
-    # 1. Direct keyword match
+    # 1. LLM closed-list category picker (if requested/enabled)
+    llm_cat = category if category in CATEGORY_DEFAULTS else pick_icon_category_llm(text, query, use_llm=use_llm)
+    if llm_cat and llm_cat in CATEGORY_DEFAULTS:
+        cpath = _find_icon(CATEGORY_DEFAULTS[llm_cat], beat_id=beat_id, beat=beat)
+        if cpath and cpath not in selected:
+            selected.append(cpath)
+        if len(selected) >= n:
+            return selected[:n]
+
+    # 2. Whole-word Arabic/English keyword match (no substring matching)
     for kw, icon_name in KEYWORD_MAP.items():
-        if kw in combined:
-            path = _find_icon(icon_name)
+        if _has_whole_word(combined, kw):
+            path = _find_icon(icon_name, beat_id=beat_id, beat=beat)
             if path and path not in selected:
                 selected.append(path)
             if len(selected) >= n:
-                return selected
-
-    # 2. Check category requested
-    if category and category in CATEGORY_DEFAULTS:
-        cpath = _find_icon(CATEGORY_DEFAULTS[category])
-        if cpath not in selected:
-            selected.append(cpath)
+                return selected[:n]
 
     # 3. Fallback pool
+    if not selected:
+        record_fallback("no_keyword_icon_match", beat_id=beat_id, beat=beat)
     pool = [
         "icons/history/pyramid.svg",
         "icons/building/city.svg",
@@ -354,6 +471,7 @@ def pick_icons_for_beat(text: str = "", query: str = "", category: str = "", n: 
             break
 
     return selected[:n]
+
 
 def get_icon_path(category: str, name: str) -> str:
     return _find_icon(name)

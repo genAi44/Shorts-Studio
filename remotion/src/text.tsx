@@ -2,6 +2,7 @@ import React, {useMemo} from 'react';
 import {spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {EnterKind, Pop, PRESETS, useFont, useSpring} from './hooks';
 import {CaptionScrim} from './fx';
+import {CAPTION_ZONE, HEADLINE_ZONE} from './layout';
 import {on, rgba, useTheme} from './theme';
 import {Word} from './types';
 
@@ -22,8 +23,9 @@ export const Headline: React.FC<{text: string}> = ({text}) => {
   if (h.box === 'pill') { box = {background: rgba(p.accent), borderRadius: 999, padding: '14px 52px'}; color = on(p.accent); shadow = false; }
   else if (h.box === 'tag') { box = {background: rgba(p.accent2), borderRadius: 16, padding: '12px 42px'}; color = on(p.accent2); shadow = false; }
   else if (h.box === 'bar') { box = {borderRight: `14px solid ${rgba(p.accent)}`, paddingRight: 30}; }
+  const headTop = Math.max(HEADLINE_ZONE.top, th.headY - 62);
   return (
-    <div style={{position: 'absolute', left: 80, right: 80, top: th.headY - 62, display: 'flex', justifyContent: right ? 'flex-start' : 'center', clipPath: wipe ? `inset(0 0 0 ${(1 - Math.min(1, prog)) * 100}%)` : undefined}}>
+    <div style={{position: 'absolute', left: HEADLINE_ZONE.left, right: HEADLINE_ZONE.right, top: headTop, display: 'flex', justifyContent: right ? 'flex-start' : 'center', clipPath: wipe ? `inset(0 0 0 ${(1 - Math.min(1, prog)) * 100}%)` : undefined}}>
       <div style={{position: 'relative', ...box}}>
         <div dir="rtl" lang="ar" style={{...font, display: 'flex', flexWrap: 'wrap', justifyContent: right ? 'flex-start' : 'center', columnGap: 18, fontSize: h.size, lineHeight: 1.3, color, textShadow: shadow ? th.shadow : undefined, textAlign: right ? 'right' : 'center'}}>
           {words.map((w, i) => (
@@ -93,7 +95,7 @@ export const Captions: React.FC<{words: Word[]}> = ({words}) => {
       })}
     </div>
   );
-  const captionTop = th.capY - c.size * 1.1;
+  const captionTop = Math.max(CAPTION_ZONE.top, th.capY - c.size * 1.1);
   if (mode === 'bar') {
     return (
       <>
@@ -105,7 +107,7 @@ export const Captions: React.FC<{words: Word[]}> = ({words}) => {
   return (
     <>
       <CaptionScrim captionY={captionTop - 80} />
-      <div style={{position: 'absolute', left: 40, right: 40, top: captionTop, height: c.size * 2.2, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20}}>{inner}</div>
+      <div style={{position: 'absolute', left: CAPTION_ZONE.left, right: CAPTION_ZONE.right, top: captionTop, height: c.size * 2.2, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20}}>{inner}</div>
     </>
   );
 };

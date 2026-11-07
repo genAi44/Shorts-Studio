@@ -366,30 +366,31 @@ export const FloatBadge: React.FC<{
           src={iconSrc}
           fallbackSrc={staticFile('icons/history/monument.svg')}
           style={{
-            width: size * 0.6,
-            height: size * 0.6,
+            width: size * 0.56,
+            height: size * 0.56,
             objectFit: 'contain',
-            filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.6))',
+            filter: 'brightness(0) invert(1) drop-shadow(0 2px 8px rgba(212,175,55,0.65))',
           }}
         />
       </div>
 
       {/* Label Capsule Below */}
-      {label && (
+      {label && label.trim() !== '' && (
         <div
+          dir="rtl"
           style={{
             marginTop: 8,
-            padding: '4px 14px',
+            padding: '5px 18px',
             borderRadius: 16,
-            background: 'rgba(10, 15, 25, 0.85)',
-            border: '1px solid rgba(212, 175, 55, 0.5)',
+            background: 'rgba(10, 15, 25, 0.92)',
+            border: `1.5px solid ${borderColor}88`,
             fontFamily: theme.family,
-            fontSize: 22,
+            fontSize: 25,
             fontWeight: 800,
             color: '#FFFFFF',
             whiteSpace: 'nowrap',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-            letterSpacing: '0.02em',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.65)',
+            letterSpacing: '0.01em',
           }}
         >
           {label}

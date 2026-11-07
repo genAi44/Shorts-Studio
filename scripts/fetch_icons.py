@@ -210,13 +210,29 @@ ICONS_SPEC = [
 
 
 def make_fallback_svg(name, symbol):
-    """Generates a clean vector fallback SVG in case of offline execution."""
-    return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-  <rect x="4" y="4" width="40" height="40" rx="8" stroke="currentColor" stroke-dasharray="3 3" opacity="0.3"/>
-  <circle cx="24" cy="24" r="14" fill="currentColor" fill-opacity="0.15"/>
-  <path d="M16 24h16M24 16v16" stroke="currentColor"/>
-  <text x="24" y="42" font-size="7" font-family="sans-serif" text-anchor="middle" fill="currentColor" opacity="0.6">{symbol[:8]}</text>
-</svg>'''
+    """Generates a clean semantic vector SVG (no dashed boxes, no '+' crosshairs, no English text)."""
+    sym = (symbol or name).lower().replace(".svg", "")
+    if any(k in sym for k in ("coin", "gold", "money", "treasure")):
+        body = '<circle cx="24" cy="24" r="17" stroke="currentColor" stroke-width="3"/><circle cx="24" cy="24" r="11" stroke="currentColor" stroke-width="2"/><path d="M24 16v16M20 20h6a2.5 2.5 0 0 1 0 5h-4a2.5 2.5 0 0 0 0 5h6" stroke="currentColor" stroke-width="2.5"/>'
+    elif any(k in sym for k in ("crown", "royal", "throne")):
+        body = '<path d="M6 36h36M8 31l-2-15 10 7 8-11 8 11 10-7-2 15H8z" stroke="currentColor" stroke-width="3" fill="currentColor" fill-opacity="0.2"/>'
+    elif any(k in sym for k in ("column", "pillar", "arch", "obelisk")):
+        body = '<path d="M8 10h32M10 14h28M14 14v22M24 14v22M34 14v22M10 36h28M6 40h36" stroke="currentColor" stroke-width="3"/>'
+    elif any(k in sym for k in ("book", "document", "scroll", "constitution", "feather")):
+        body = '<path d="M10 8h22a6 6 0 0 1 6 6v26H14a4 4 0 0 1-4-4V8z" stroke="currentColor" stroke-width="3"/><path d="M16 16h14M16 23h14M16 30h10" stroke="currentColor" stroke-width="2.5"/>'
+    elif any(k in sym for k in ("sword", "bow", "cannon", "helmet", "shield")):
+        body = '<path d="M38 10L18 30M13 25l10 10M10 38l6-6M32 10h6v6" stroke="currentColor" stroke-width="3"/><path d="M10 10l28 28" stroke="currentColor" stroke-width="2.5" opacity="0.7"/>'
+    elif any(k in sym for k in ("ship", "sail", "anchor", "wave")):
+        body = '<path d="M24 8v22M14 18h20M10 30l6 8h16l6-8H10zM6 42c4-3 8-3 12 0s8 3 12 0 8-3 12 0" stroke="currentColor" stroke-width="3"/>'
+    elif any(k in sym for k in ("tree", "palm", "forest", "leaf", "wheat", "oasis")):
+        body = '<path d="M24 10c-8 4-12 12-8 20 4 4 12 4 16 0 4-8 0-16-8-20zM24 22v18M18 34l6-4 6 4" stroke="currentColor" stroke-width="3" fill="currentColor" fill-opacity="0.2"/>'
+    elif any(k in sym for k in ("clock", "sand", "stopwatch", "timeline", "time")):
+        body = '<circle cx="24" cy="24" r="17" stroke="currentColor" stroke-width="3"/><path d="M24 14v10l7 5" stroke="currentColor" stroke-width="3"/>'
+    elif any(k in sym for k in ("world", "globe", "nation", "africa")):
+        body = '<circle cx="24" cy="24" r="17" stroke="currentColor" stroke-width="3"/><ellipse cx="24" cy="24" rx="8" ry="17" stroke="currentColor" stroke-width="2.5"/><path d="M7 24h34M10 16h28M10 32h28" stroke="currentColor" stroke-width="2"/>'
+    else:
+        body = '<circle cx="24" cy="24" r="16" stroke="currentColor" stroke-width="3"/><path d="M24 12l3.5 8 8.5 1-6.2 5.8 1.7 8.2L24 30.8 16.5 35l1.7-8.2L12 21l8.5-1L24 12z" stroke="currentColor" stroke-width="2.2" fill="currentColor" fill-opacity="0.25"/>'
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">{body}</svg>'''
 
 
 def fetch_all():
@@ -233,8 +249,10 @@ def fetch_all():
         file_path = cat_dir / filename
 
         if file_path.exists() and file_path.stat().st_size > 50:
-            count += 1
-            continue
+            existing_txt = file_path.read_text(encoding="utf-8", errors="ignore")
+            if 'stroke-dasharray="3 3"' not in existing_txt:
+                count += 1
+                continue
 
         # Try fetching from Iconify
         url = f"https://api.iconify.design/{prefix}/{icon_name}.svg"
