@@ -462,7 +462,7 @@ export const PhotoBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
   } else if (ed.photo === 'bleed') {
 
-    const H = hasNum ? 640 : 780;
+    const H = hasNum ? 1200 : 1400;
 
     media = (
 
