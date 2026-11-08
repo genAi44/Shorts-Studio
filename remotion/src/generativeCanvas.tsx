@@ -276,7 +276,7 @@ export const GenerativeElementView: React.FC<{
   const rawX = Number(el.x ?? 540);
   const rawY = Number(el.y ?? 960);
   const x = Number.isFinite(rawX) ? Math.max(200, Math.min(880, rawX)) : 540;
-  const y = Number.isFinite(rawY) ? Math.max(360, Math.min(1300, rawY)) : 960;
+  const y = Number.isFinite(rawY) ? Math.max(360, Math.min(1550, rawY)) : 960;
   const motionPreset = (el.motion as MotionPreset) || 'pop';
   const loopPreset = (el.loop as LoopPreset) || 'none';
   const {progress, opacity, transform, loopStyle} = usePrimitiveMotion(
