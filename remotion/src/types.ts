@@ -1,4 +1,5 @@
 import type {SceneTransitionSpec, VisualElement} from './schema';
+import type {MapOverlaySpec} from './mapOverlay';
 
 export type RGB = [number, number, number];
 export type Palette = {
@@ -27,6 +28,18 @@ export type Beat = {
   visuals?: VisualElement[];
   [k: string]: any;
 };
+export type EntitySpan = {
+  from: number;
+  to: number;
+  iso3: string;
+  iso2: string;
+  kind: string;
+  name_ar: string;
+  name_en?: string;
+  country_ar?: string;
+  lat?: number;
+  lon?: number;
+};
 export type SceneSpec = {
   id: string;
   role: 'hook' | 'lead' | 'body' | 'open_loop' | 'cta' | 'loop';
@@ -35,7 +48,12 @@ export type SceneSpec = {
   words: Word[];
   beats: Beat[];
   visuals?: VisualElement[];
+  entities?: EntitySpan[];
   transition?: SceneTransitionSpec;
+  map_overlay?: MapOverlaySpec | null;
+  visual_mode?: string | null;
+  is_historical?: boolean;
+  sfx_cue?: string | null;
 };
 export type Spec = {
   fps: number; width: number; height: number; total: number; audio: string | null; style: Style; scenes: SceneSpec[];

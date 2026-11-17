@@ -1,0 +1,101 @@
+{
+  "project": "shorts-studio",
+  "policy": "Assets requiring attribution (such as CC-BY 4.0 Twemoji graphics, Noto Animated Emoji, or Wikimedia Commons photos) are automatically recorded here and in each render job's credits.json.",
+  "collections": {
+    "lucide": {
+      "name": "Lucide Icons (@iconify-json/lucide)",
+      "license": "ISC",
+      "attributionRequired": false,
+      "url": "https://github.com/lucide-icons/lucide"
+    },
+    "ph": {
+      "name": "Phosphor Icons (@iconify-json/ph)",
+      "license": "MIT",
+      "attributionRequired": false,
+      "url": "https://github.com/phosphor-icons/core"
+    },
+    "tabler": {
+      "name": "Tabler Icons (@iconify-json/tabler)",
+      "license": "MIT",
+      "attributionRequired": false,
+      "url": "https://github.com/tabler/tabler-icons"
+    },
+    "noto-emoji": {
+      "name": "Google Noto Color Emoji",
+      "license": "Apache-2.0",
+      "attributionRequired": false,
+      "url": "https://github.com/googlefonts/noto-emoji"
+    },
+    "twemoji": {
+      "name": "Twemoji (@jdecked/twemoji)",
+      "license": "CC-BY 4.0",
+      "attributionRequired": true,
+      "creditText": "Twemoji graphics by Twitter, Inc and other contributors, licensed under CC-BY 4.0 (https://github.com/jdecked/twemoji)",
+      "url": "https://github.com/jdecked/twemoji"
+    },
+    "flag-icons": {
+      "name": "flag-icons by Lipis",
+      "license": "MIT",
+      "attributionRequired": false,
+      "url": "https://github.com/lipis/flag-icons"
+    },
+    "lottie-local": {
+      "name": "Shorts Studio Curated Offline Lottie Library",
+      "license": "CC0-1.0 / MIT",
+      "attributionRequired": false,
+      "url": "packages/assets/lottie/manifest.json"
+    }
+  },
+  "usedAssets": [
+    {
+      "kind": "icon",
+      "id": "lucide:globe",
+      "collection": "lucide",
+      "license": "ISC",
+      "attributionRequired": false
+    },
+    {
+      "kind": "flag",
+      "id": "KP",
+      "collection": "flag-icons",
+      "license": "MIT",
+      "attributionRequired": false
+    },
+    {
+      "kind": "flag",
+      "id": "CN",
+      "collection": "flag-icons",
+      "license": "MIT",
+      "attributionRequired": false
+    },
+    {
+      "kind": "icon",
+      "id": "lucide:help-circle",
+      "collection": "lucide",
+      "license": "ISC",
+      "attributionRequired": false
+    },
+    {
+      "kind": "flag",
+      "id": "SR",
+      "collection": "flag-icons",
+      "license": "MIT",
+      "attributionRequired": false
+    },
+    {
+      "kind": "icon",
+      "id": "lucide:landmark",
+      "collection": "lucide",
+      "license": "ISC",
+      "attributionRequired": false
+    },
+    {
+      "kind": "lottie",
+      "id": "checkmark",
+      "collection": "lottie-local",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://github.com/airbnb/lottie-web (Shorts Studio Procedural CC0 Bundle)",
+      "attributionRequired": false
+    }
+  ]
+}

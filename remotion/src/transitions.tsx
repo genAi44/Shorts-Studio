@@ -32,14 +32,16 @@ export const SFX_MAP: Record<string, string | null> = {
  */
 export const pickSceneTransitions = (
   sceneCount: number,
-  seed = 42
+  seed = 42,
+  sceneRoles: Array<string> = []
 ): SceneTransitionSpec[] => {
+  // Cinematographic transition pool - each type serves a narrative purpose
   const pool: Array<SceneTransitionSpec['type']> = [
-    'slide',
-    'wipe',
-    'clock-wipe',
-    'fade',
-    'flip',
+    'slide',        // directional, purposeful movement
+    'wipe',         // geographical/narrative boundary
+    'clock-wipe',   // dramatic revelation
+    'fade',         // tonal shift, time passage
+    'flip',         // perspective change, contrast
   ];
   const directions: Array<NonNullable<SceneTransitionSpec['direction']>> = [
     'from-right',
@@ -56,22 +58,79 @@ export const pickSceneTransitions = (
 
   const out: SceneTransitionSpec[] = [];
   let prevType: SceneTransitionSpec['type'] = 'none';
+  let prevDirection: string = 'from-right';
 
   for (let i = 0; i < sceneCount; i++) {
     if (i === 0) {
       out.push({type: 'none', durationInFrames: 12, sfx: 'none'});
       continue;
     }
-    let idx = (seed + i * 3) % pool.length;
-    if (pool[idx] === prevType) {
-      idx = (idx + 1) % pool.length;
+    
+    const role = sceneRoles[i] || 'body';
+    
+    // Role-based cinematographic transition selection
+    let preferredIndices: number[] = [];
+    
+    if (role === 'hook') {
+      // Hook transitions: dramatic, attention-grabbing
+      preferredIndices = [2, 4, 1]; // clock-wipe, flip, wipe
+    } else if (role === 'open_loop') {
+      // Open loop: suspenseful, lingering
+      preferredIndices = [3, 2, 0]; // fade, clock-wipe, slide
+    } else if (role === 'cta') {
+      // CTA: resolution, closure
+      preferredIndices = [3, 1, 0]; // fade, wipe, slide
+    } else if (role === 'lead') {
+      // Lead: establishing, setting context
+      preferredIndices = [0, 1, 3]; // slide, wipe, fade
+    } else {
+      // Body: varied but smooth
+      preferredIndices = [0, 1, 4, 3, 2];
     }
-    const chosenType = pool[idx];
+    
+    // Select from preferred indices, falling back if needed
+    let chosenType: SceneTransitionSpec['type'] = 'slide';
+    let typeIdx = -1;
+    
+    for (const prefIdx of preferredIndices) {
+      const candidateIdx = prefIdx % pool.length;
+      if (pool[candidateIdx] !== prevType) {
+        chosenType = pool[candidateIdx];
+        typeIdx = candidateIdx;
+        break;
+      }
+    }
+    
+    // If all preferred types match previous, pick any other
+    if (typeIdx === -1) {
+      for (let j = 0; j < pool.length; j++) {
+        if (pool[j] !== prevType) {
+          chosenType = pool[j];
+          typeIdx = j;
+          break;
+        }
+      }
+    }
+    
     prevType = chosenType;
+    
+    // Direction selection: avoid repeat direction for 2+ scenes
+    let chosenDir = directions[(seed + i) % directions.length];
+    if (chosenDir === prevDirection && i > 1) {
+      chosenDir = directions[(directions.length + (seed + i + 1) % directions.length) % directions.length];
+    }
+    prevDirection = chosenDir;
+    
+    // Duration varies by role for pacing
+    let dur = 14;
+    if (role === 'hook') dur = 18;
+    else if (role === 'open_loop') dur = 16;
+    else if (role === 'cta') dur = 12;
+    
     out.push({
       type: chosenType,
-      direction: directions[(seed + i) % directions.length],
-      durationInFrames: 14,
+      direction: chosenDir,
+      durationInFrames: dur,
       sfx: sfxCycle[(seed + i) % sfxCycle.length],
     });
   }

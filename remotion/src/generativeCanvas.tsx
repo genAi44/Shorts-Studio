@@ -1,12 +1,13 @@
 import React from 'react';
-import {AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
-import {evolvePath} from '@remotion/paths';
-import {Icon} from './icons';
-import {Emoji} from './emoji';
-import {Flag} from './flag';
-import {LottieVisual} from './lottie';
-import {useTheme, rgba} from './theme';
-import {useFont} from './hooks';
+import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { evolvePath } from '@remotion/paths';
+import { Icon } from './icons';
+import { Emoji } from './emoji';
+import { Flag } from './flag';
+import { LottieVisual } from './lottie';
+import { useTheme, rgba } from './theme';
+import { useFont } from './hooks';
+import { DYNAMIC_SCENE_REGISTRY } from './generated/DynamicScenes';
 
 export type MotionPreset =
   | 'pop'
@@ -184,10 +185,10 @@ const usePrimitiveMotion = (
   const spr = settled
     ? 1
     : spring({
-        frame: frame - startFrame,
-        fps,
-        config: {damping: 14, stiffness: 120, mass: 0.8},
-      });
+      frame: frame - startFrame,
+      fps,
+      config: { damping: 14, stiffness: 120, mass: 0.8 },
+    });
 
   const progress = Math.max(0, Math.min(1, spr));
   const t = (frame - startFrame) / fps;
@@ -239,22 +240,22 @@ const usePrimitiveMotion = (
   if (t > 0.4) {
     switch (loop) {
       case 'float':
-        loopStyle = {transform: `translateY(${Math.sin(t * 2.5) * 10}px)`};
+        loopStyle = { transform: `translateY(${Math.sin(t * 2.5) * 10}px)` };
         break;
       case 'pulse':
-        loopStyle = {transform: `scale(${1 + Math.sin(t * 3.5) * 0.05})`};
+        loopStyle = { transform: `scale(${1 + Math.sin(t * 3.5) * 0.05})` };
         break;
       case 'spin':
-        loopStyle = {transform: `rotate(${(t * 45) % 360}deg)`};
+        loopStyle = { transform: `rotate(${(t * 45) % 360}deg)` };
         break;
       case 'breathe':
-        loopStyle = {opacity: 0.82 + Math.sin(t * 2) * 0.18};
+        loopStyle = { opacity: 0.82 + Math.sin(t * 2) * 0.18 };
         break;
       case 'shake':
-        loopStyle = {transform: `translateX(${Math.sin(t * 18) * 4}px)`};
+        loopStyle = { transform: `translateX(${Math.sin(t * 18) * 4}px)` };
         break;
       case 'glow':
-        loopStyle = {filter: `drop-shadow(0 0 ${12 + Math.sin(t * 3) * 8}px currentColor)`};
+        loopStyle = { filter: `drop-shadow(0 0 ${12 + Math.sin(t * 3) * 8}px currentColor)` };
         break;
       case 'none':
       default:
@@ -262,7 +263,7 @@ const usePrimitiveMotion = (
     }
   }
 
-  return {progress, opacity, transform, loopStyle};
+  return { progress, opacity, transform, loopStyle };
 };
 
 // ------------------------------------------------------------------ Generative Element Renderer
@@ -272,14 +273,14 @@ export const GenerativeElementView: React.FC<{
   fps: number;
   accent: string;
   settled?: boolean;
-}> = ({el, frame, fps, accent, settled = false}) => {
+}> = ({ el, frame, fps, accent, settled = false }) => {
   const rawX = Number(el.x ?? 540);
   const rawY = Number(el.y ?? 960);
   const x = Number.isFinite(rawX) ? Math.max(200, Math.min(880, rawX)) : 540;
   const y = Number.isFinite(rawY) ? Math.max(360, Math.min(1550, rawY)) : 960;
   const motionPreset = (el.motion as MotionPreset) || 'pop';
   const loopPreset = (el.loop as LoopPreset) || 'none';
-  const {progress, opacity, transform, loopStyle} = usePrimitiveMotion(
+  const { progress, opacity, transform, loopStyle } = usePrimitiveMotion(
     frame,
     fps,
     el.delay ?? 0,
@@ -301,7 +302,7 @@ export const GenerativeElementView: React.FC<{
         ...extraStyle,
       }}
     >
-      <div style={{opacity, transform}}>
+      <div style={{ opacity, transform }}>
         <div style={loopStyle}>{content}</div>
       </div>
     </div>
@@ -319,7 +320,7 @@ export const GenerativeElementView: React.FC<{
 
       if (s.shape === 'triangle') {
         return wrap(
-          <svg width={w} height={h} viewBox="0 0 100 100" style={{overflow: 'visible'}}>
+          <svg width={w} height={h} viewBox="0 0 100 100" style={{ overflow: 'visible' }}>
             <polygon
               points="50,4 96,96 4,96"
               fill={fill}
@@ -333,7 +334,7 @@ export const GenerativeElementView: React.FC<{
 
       if (s.shape === 'shield') {
         return wrap(
-          <svg width={w} height={h} viewBox="0 0 100 120" style={{overflow: 'visible'}}>
+          <svg width={w} height={h} viewBox="0 0 100 120" style={{ overflow: 'visible' }}>
             <path
               d="M50 8 L88 24 C88 72 50 112 50 112 C50 112 12 72 12 24 Z"
               fill={fill}
@@ -347,7 +348,7 @@ export const GenerativeElementView: React.FC<{
 
       if (s.shape === 'star') {
         return wrap(
-          <svg width={w} height={h} viewBox="0 0 24 24" style={{overflow: 'visible'}}>
+          <svg width={w} height={h} viewBox="0 0 24 24" style={{ overflow: 'visible' }}>
             <polygon
               points="12,2 15,8.5 22,9.3 17,14 18.5,21 12,17.3 5.5,21 7,14 2,9.3 9,8.5"
               fill={fill}
@@ -409,7 +410,7 @@ export const GenerativeElementView: React.FC<{
       }
 
       // Animated stroke evolve
-      let evolved = {strokeDasharray: 'none', strokeDashoffset: 0};
+      let evolved = { strokeDasharray: 'none', strokeDashoffset: 0 };
       try {
         evolved = evolvePath(progress, pathD);
       } catch {
@@ -477,9 +478,9 @@ export const GenerativeElementView: React.FC<{
           {b.flag && <Flag code={b.flag} size={fSize + 6} shape="round" />}
           {b.emoji && <Emoji char={b.emoji} size={fSize + 4} animation="none" />}
           {b.icon && <Icon name={b.icon} size={fSize + 4} color={accent} animation="none" />}
-          <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center'}}>
-            <span style={{fontSize: fSize, fontWeight: 700, lineHeight: 1.3}}>{b.text}</span>
-            {b.sub && <span style={{fontSize: fSize * 0.75, opacity: 0.75}}>{b.sub}</span>}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+            <span style={{ fontSize: fSize, fontWeight: 700, lineHeight: 1.3 }}>{b.text}</span>
+            {b.sub && <span style={{ fontSize: fSize * 0.75, opacity: 0.75 }}>{b.sub}</span>}
           </div>
         </div>
       );
@@ -524,9 +525,9 @@ export const GenerativeElementView: React.FC<{
               gap: 8,
             }}
           >
-            {c.prefix && <span style={{fontSize: fSize * 0.6}}>{c.prefix}</span>}
-            <span>{currentVal.toLocaleString('en-US')}</span>
-            {c.unit && <span style={{fontSize: fSize * 0.55, opacity: 0.9}}>{c.unit}</span>}
+            {c.prefix && <span style={{ fontSize: fSize * 0.6 }}>{c.prefix}</span>}
+            <span>{(toVal >= 1000 && toVal <= 2100 && !c.unit) ? String(currentVal) : currentVal.toLocaleString('en-US')}</span>
+            {c.unit && <span style={{ fontSize: fSize * 0.55, opacity: 0.9 }}>{c.unit}</span>}
           </div>
           {c.label && (
             <span
@@ -566,7 +567,7 @@ export const GenerativeElementView: React.FC<{
               justifyContent: 'center',
             }}
           >
-            <svg width={160} height={160} style={{transform: 'rotate(-90deg)'}}>
+            <svg width={160} height={160} style={{ transform: 'rotate(-90deg)' }}>
               <circle cx={80} cy={80} r={radius} stroke={track} strokeWidth={12} fill="none" />
               <circle
                 cx={80}
@@ -578,7 +579,7 @@ export const GenerativeElementView: React.FC<{
                 strokeLinecap="round"
                 strokeDasharray={circ}
                 strokeDashoffset={dashOffset}
-                style={{filter: `drop-shadow(0 0 10px ${color}88)`}}
+                style={{ filter: `drop-shadow(0 0 10px ${color}88)` }}
               />
             </svg>
             <div
@@ -590,8 +591,8 @@ export const GenerativeElementView: React.FC<{
                 alignItems: 'center',
               }}
             >
-              <span style={{fontSize: 32, fontWeight: 800, color: '#ffffff'}}>{currentPct}%</span>
-              {g.label && <span style={{fontSize: 14, color: '#94a3b8'}}>{g.label}</span>}
+              <span style={{ fontSize: 32, fontWeight: 800, color: '#ffffff' }}>{currentPct}%</span>
+              {g.label && <span style={{ fontSize: 14, color: '#94a3b8' }}>{g.label}</span>}
             </div>
           </div>
         );
@@ -612,9 +613,9 @@ export const GenerativeElementView: React.FC<{
             border: '1px solid rgba(255,255,255,0.12)',
           }}
         >
-          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-            <span style={{fontSize: 22, fontWeight: 700, color: '#f1f5f9'}}>{g.label || ''}</span>
-            <span dir="ltr" style={{fontSize: 22, fontWeight: 800, color}}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 22, fontWeight: 700, color: '#f1f5f9' }}>{g.label || ''}</span>
+            <span dir="ltr" style={{ fontSize: 22, fontWeight: 800, color }}>
               {currentPct}
               {g.unit || '%'}
             </span>
@@ -688,7 +689,7 @@ export const GenerativeElementView: React.FC<{
               y={midY - 24}
               width={180}
               height={48}
-              style={{overflow: 'visible'}}
+              style={{ overflow: 'visible' }}
             >
               <div
                 dir="rtl"
@@ -775,67 +776,237 @@ export const GenerativeElementView: React.FC<{
   }
 };
 
-// ------------------------------------------------------------------ Background Grid / Mood Component
-const CanvasMoodBackground: React.FC<{mode?: boolean | 'dots' | 'lines' | 'radar'; accent: string}> = ({
-  mode,
-  accent,
-}) => {
-  if (!mode) return null;
+// ------------------------------------------------------------------ Atmospheric Environment & Custom SVG Construction Layers
+const CanvasMoodBackground: React.FC<{
+  mode?: boolean | string;
+  environment?: string;
+  accent: string;
+  secondaryAccent: string;
+  frame: number;
+  fps: number;
+}> = ({ mode, environment, accent, secondaryAccent, frame, fps }) => {
+  const t = frame / Math.max(1, fps);
+  const env = environment || (typeof mode === 'string' ? mode : 'topographic_contour');
 
-  if (mode === 'radar') {
-    return (
-      <svg
-        width={1080}
-        height={1920}
-        style={{position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.18}}
-      >
-        <circle cx={540} cy={960} r={180} stroke={accent} strokeWidth={1.5} fill="none" />
-        <circle cx={540} cy={960} r={360} stroke={accent} strokeWidth={1.5} fill="none" strokeDasharray="6 6" />
-        <circle cx={540} cy={960} r={540} stroke={accent} strokeWidth={1.5} fill="none" />
-        <line x1={540} y1={200} x2={540} y2={1720} stroke={accent} strokeWidth={1} strokeDasharray="4 4" />
-        <line x1={80} y1={960} x2={1000} y2={960} stroke={accent} strokeWidth={1} strokeDasharray="4 4" />
-      </svg>
-    );
-  }
-
-  if (mode === 'lines') {
-    return (
+  return (
+    <AbsoluteFill style={{ pointerEvents: 'none', overflow: 'hidden' }}>
+      {/* Ambient Radial Illumination & Rich Atmospheric Glow (Eliminates Dark Void) */}
       <div
         style={{
           position: 'absolute',
           inset: 0,
-          opacity: 0.12,
-          backgroundImage: `linear-gradient(${accent}33 1px, transparent 1px), linear-gradient(90deg, ${accent}33 1px, transparent 1px)`,
-          backgroundSize: '80px 80px',
-          pointerEvents: 'none',
+          background: `radial-gradient(ellipse 85% 60% at 50% 35%, ${accent}38 0%, ${secondaryAccent}22 48%, transparent 88%), radial-gradient(circle at 20% 78%, ${secondaryAccent}2e 0%, transparent 55%), radial-gradient(circle at 82% 22%, ${accent}2b 0%, transparent 50%)`,
         }}
       />
-    );
-  }
 
-  // Dots mode
+      <svg width={1080} height={1920} viewBox="0 0 1080 1920" style={{ position: 'absolute', inset: 0 }}>
+        <defs>
+          <linearGradient id="env_beam" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={accent} stopOpacity="0.24" />
+            <stop offset="50%" stopColor={secondaryAccent} stopOpacity="0.12" />
+            <stop offset="100%" stopColor={accent} stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+
+        {/* Topographic Contour / Wave Field */}
+        {(env === 'topographic_contour' || env === 'kinetic_wave_field' || env === 'chronicle_strata_layers') &&
+          Array.from({ length: 11 }).map((_, i) => {
+            const yBase = 180 + i * 155;
+            const shift = Math.sin(t * 1.4 + i * 0.7) * 28;
+            const d = `M -40 ${yBase} Q 270 ${yBase - 65 + shift}, 540 ${yBase + shift * 0.5} T 1120 ${yBase - shift}`;
+            return (
+              <path
+                key={i}
+                d={d}
+                fill="none"
+                stroke={i % 2 === 0 ? accent : secondaryAccent}
+                strokeWidth={i % 3 === 0 ? 2.2 : 1.2}
+                strokeOpacity={0.18 + (i % 4) * 0.04}
+              />
+            );
+          })}
+
+        {/* Isometric City / Perspective Horizon Grid */}
+        {(env === 'isometric_city_grid' || env === 'horizon_perspective_plane' || env === 'architectural_blueprint' || mode === 'lines') && (
+          <g opacity={0.22}>
+            {Array.from({ length: 14 }).map((_, i) => {
+              const x = i * 84;
+              return <line key={`v_${i}`} x1={x} y1={0} x2={x} y2={1920} stroke={accent} strokeWidth={1} strokeDasharray="8 12" />;
+            })}
+            {Array.from({ length: 22 }).map((_, i) => {
+              const y = ((i * 90 + t * 24) % 1920);
+              return <line key={`h_${i}`} x1={0} y1={y} x2={1080} y2={y} stroke={secondaryAccent} strokeWidth={1.2} opacity={0.65} />;
+            })}
+          </g>
+        )}
+
+        {/* Orbital Meridian / Radar / Hexagonal Matrix */}
+        {(env === 'orbital_meridian_sphere' || env === 'hexagonal_data_matrix' || env === 'celestial_constellation' || mode === 'radar') && (
+          <g transform={`translate(540, 880) rotate(${(t * 9).toFixed(2)})`} opacity={0.24}>
+            <circle cx={0} cy={0} r={220} stroke={accent} strokeWidth={1.6} fill="none" />
+            <circle cx={0} cy={0} r={380} stroke={secondaryAccent} strokeWidth={1.6} fill="none" strokeDasharray="10 8" />
+            <circle cx={0} cy={0} r={540} stroke={accent} strokeWidth={1.4} fill="none" />
+            <ellipse cx={0} cy={0} rx={520} ry={210} stroke={secondaryAccent} strokeWidth={1.4} fill="none" />
+            <ellipse cx={0} cy={0} rx={210} ry={520} stroke={accent} strokeWidth={1.4} fill="none" />
+            <line x1={-540} y1={0} x2={540} y2={0} stroke={accent} strokeWidth={1} strokeDasharray="5 7" />
+            <line x1={0} y1={-680} x2={0} y2={680} stroke={secondaryAccent} strokeWidth={1} strokeDasharray="5 7" />
+          </g>
+        )}
+
+        {/* Radial Light Cathedral Beams */}
+        <polygon points="0,0 420,0 1080,1250 1080,1650" fill="url(#env_beam)" opacity={0.45} />
+        <polygon points="1080,0 680,0 0,1320 0,1720" fill="url(#env_beam)" opacity={0.32} />
+      </svg>
+    </AbsoluteFill>
+  );
+};
+
+// ------------------------------------------------------------------ Custom SVG Vector Illustrations (Section C: SVG Construction)
+const CustomSvgIllustrationLayer: React.FC<{
+  layers?: any[];
+  frame: number;
+  fps: number;
+  accent: string;
+  secondaryAccent: string;
+}> = ({ layers, frame, fps, accent, secondaryAccent }) => {
+  if (!layers || !layers.length) return null;
+  const t = frame / Math.max(1, fps);
+  const intro = spring({ fps, frame, config: { damping: 16, stiffness: 95 } });
+
   return (
-    <div
-      style={{
-        position: 'absolute',
-        inset: 0,
-        opacity: 0.16,
-        backgroundImage: `radial-gradient(${accent} 1.5px, transparent 1.5px)`,
-        backgroundSize: '48px 48px',
-        pointerEvents: 'none',
-      }}
-    />
+    <svg
+      width={1080}
+      height={1920}
+      viewBox="0 0 1080 1920"
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 4 }}
+    >
+      {layers.map((layer, idx) => {
+        const kind = layer.kind || 'exploded_isometric_core';
+        const pCol = layer.primary || accent;
+        const sCol = layer.secondary || secondaryAccent;
+        const hCol = layer.highlight || '#fde047';
+        const cx = layer.x ?? 540;
+        const cy = layer.y ?? 880;
+
+        if (kind === 'metropolis_skyline') {
+          const buildings = [
+            { x: 150, w: 85, h: 310 },
+            { x: 245, w: 95, h: 440 },
+            { x: 350, w: 110, h: 520 },
+            { x: 470, w: 140, h: 640 },
+            { x: 620, w: 115, h: 490 },
+            { x: 745, w: 95, h: 390 },
+            { x: 850, w: 85, h: 290 },
+          ];
+          const baseLine = cy + 280;
+          return (
+            <g key={idx} opacity={0.48 * intro}>
+              <circle cx={cx} cy={cy - 40} r={340} fill="none" stroke={pCol} strokeWidth={2} strokeDasharray="10 8" />
+              {buildings.map((b, bi) => {
+                const bh = b.h * Math.min(1, intro * (0.85 + bi * 0.04));
+                const by = baseLine - bh;
+                return (
+                  <g key={bi}>
+                    <rect
+                      x={b.x}
+                      y={by}
+                      width={b.w}
+                      height={bh}
+                      rx={6}
+                      fill={`${pCol}22`}
+                      stroke={bi === 3 ? hCol : pCol}
+                      strokeWidth={bi === 3 ? 3 : 2}
+                    />
+                    {Array.from({ length: 6 }).map((_, wi) => (
+                      <rect
+                        key={wi}
+                        x={b.x + 16}
+                        y={by + 24 + wi * 42}
+                        width={b.w - 32}
+                        height={14}
+                        rx={3}
+                        fill={bi === 3 ? hCol : sCol}
+                        opacity={0.35 + 0.25 * Math.sin(t * 3 + bi + wi)}
+                      />
+                    ))}
+                  </g>
+                );
+              })}
+              <line x1={90} y1={baseLine} x2={990} y2={baseLine} stroke={hCol} strokeWidth={4} />
+            </g>
+          );
+        }
+
+        if (kind === 'orbital_cartography') {
+          return (
+            <g key={idx} transform={`translate(${cx}, ${cy}) scale(${(0.85 + 0.15 * intro).toFixed(3)})`} opacity={0.55}>
+              <circle cx={0} cy={0} r={310} fill={`${pCol}18`} stroke={pCol} strokeWidth={3} />
+              <ellipse cx={0} cy={0} rx={310} ry={130} fill="none" stroke={sCol} strokeWidth={2} strokeDasharray="8 6" />
+              <ellipse cx={0} cy={0} rx={140} ry={310} fill="none" stroke={sCol} strokeWidth={2} strokeDasharray="8 6" />
+              <g transform={`rotate(${(t * 22).toFixed(1)})`}>
+                <circle cx={0} cy={0} r={390} fill="none" stroke={hCol} strokeWidth={2} strokeDasharray="16 18" />
+                <circle cx={390} cy={0} r={12} fill={hCol} />
+                <circle cx={-390} cy={0} r={12} fill={pCol} />
+              </g>
+            </g>
+          );
+        }
+
+        if (kind === 'equilibrium_duel_stage') {
+          const tilt = Math.sin(t * 2.2) * 7;
+          return (
+            <g key={idx} transform={`translate(${cx}, ${cy})`} opacity={0.52 * intro}>
+              <polygon points="-70,220 70,220 0,80" fill={`${pCol}35`} stroke={hCol} strokeWidth={3} />
+              <g transform={`rotate(${tilt.toFixed(2)})`}>
+                <line x1={-360} y1={0} x2={360} y2={0} stroke={hCol} strokeWidth={6} strokeLinecap="round" />
+                <circle cx={-320} cy={0} r={78} fill={`${pCol}28`} stroke={pCol} strokeWidth={3} />
+                <circle cx={320} cy={0} r={78} fill={`${sCol}28`} stroke={sCol} strokeWidth={3} />
+              </g>
+            </g>
+          );
+        }
+
+        // Default: Exploded Isometric Core / Chronicle Conduit
+        return (
+          <g key={idx} transform={`translate(${cx}, ${cy})`} opacity={0.5 * intro}>
+            <g transform={`rotate(${(t * 15).toFixed(1)})`}>
+              <polygon
+                points="0,-290 250,-145 250,145 0,290 -250,145 -250,-145"
+                fill={`${pCol}16`}
+                stroke={pCol}
+                strokeWidth={2.5}
+              />
+            </g>
+            <g transform={`rotate(${(-t * 12).toFixed(1)})`}>
+              <polygon
+                points="0,-210 182,-105 182,105 0,210 -182,105 -182,-105"
+                fill={`${sCol}18`}
+                stroke={sCol}
+                strokeWidth={2}
+                strokeDasharray="10 6"
+              />
+            </g>
+          </g>
+        );
+      })}
+    </svg>
   );
 };
 
 // ------------------------------------------------------------------ Generative Canvas Beat Main
-export const GenerativeCanvasBeat: React.FC<{beat: any}> = ({beat}) => {
+export const GenerativeCanvasBeat: React.FC<{ beat: any }> = ({ beat }) => {
   const frame = useCurrentFrame();
-  const {fps} = useVideoConfig();
+  const { fps } = useVideoConfig();
   const th = useTheme();
   const font = useFont();
 
   const defaultAccent = th?.p?.accent ? rgba(th.p.accent) : '#f59e0b';
+  const defaultSec = th?.p?.accent2 ? rgba(th.p.accent2) : '#38bdf8';
+
+  const sceneSpec = (beat.scene_spec && typeof beat.scene_spec === 'object') ? beat.scene_spec : {};
+  const cinematicMode = sceneSpec.cinematic || (beat.kind === 'custom_scene' ? '' : '');
+  const cinematicLighting = sceneSpec.lighting || '';
+
   const spec: GenerativeCanvasSpec = {
     title: beat.title || '',
     subtitle: beat.subtitle || '',
@@ -846,16 +1017,41 @@ export const GenerativeCanvasBeat: React.FC<{beat: any}> = ({beat}) => {
   };
 
   const accentColor = spec.accent || defaultAccent;
+  const secondaryAccent = beat.secondary_accent || defaultSec;
+  const cinematicIntensity = cinematicMode ? 1 : 0;
+  const DynamicTsxComp = beat.tsx_id ? DYNAMIC_SCENE_REGISTRY[beat.tsx_id] : undefined;
 
   return (
     <AbsoluteFill
       style={{
         background:
-          spec.background || 'radial-gradient(circle at 50% 45%, #111827 0%, #030712 100%)',
+          spec.background ||
+          `radial-gradient(circle at 50% 38%, #132347 0%, #0b1938 55%, #050b1a 100%)`,
         overflow: 'hidden',
       }}
     >
-      <CanvasMoodBackground mode={spec.grid} accent={accentColor} />
+      <CanvasMoodBackground
+        mode={spec.grid}
+        environment={beat.environment}
+        accent={accentColor}
+        secondaryAccent={secondaryAccent}
+        frame={frame}
+        fps={fps}
+      />
+
+      {/* Custom SVG Vector Illustrations from Scene Specification (Section C) */}
+      <CustomSvgIllustrationLayer
+        layers={beat.svg_layers}
+        frame={frame}
+        fps={fps}
+        accent={accentColor}
+        secondaryAccent={secondaryAccent}
+      />
+
+      {/* Executable React/TSX Component generated specifically for this segment */}
+      {DynamicTsxComp ? (
+        <DynamicTsxComp frame={frame} fps={fps} dur={beat.dur || 90} />
+      ) : null}
 
       {/* Header title if specified */}
       {spec.title && (
@@ -863,12 +1059,12 @@ export const GenerativeCanvasBeat: React.FC<{beat: any}> = ({beat}) => {
           dir="rtl"
           style={{
             position: 'absolute',
-            top: 240,
+            top: 235,
             left: '50%',
             transform: 'translateX(-50%)',
             textAlign: 'center',
             zIndex: 30,
-            width: 900,
+            width: 920,
           }}
         >
           <div
@@ -877,7 +1073,7 @@ export const GenerativeCanvasBeat: React.FC<{beat: any}> = ({beat}) => {
               fontSize: 52,
               fontWeight: 800,
               color: '#ffffff',
-              textShadow: '0 4px 20px rgba(0,0,0,0.8)',
+              textShadow: `0 4px 24px rgba(0,0,0,0.85), 0 0 28px ${accentColor}55`,
               lineHeight: 1.25,
             }}
           >
@@ -886,10 +1082,11 @@ export const GenerativeCanvasBeat: React.FC<{beat: any}> = ({beat}) => {
           {spec.subtitle && (
             <div
               style={{
-                fontSize: 26,
+                fontSize: 27,
                 color: accentColor,
-                fontWeight: 600,
+                fontWeight: 700,
                 marginTop: 8,
+                textShadow: '0 2px 12px rgba(0,0,0,0.8)',
               }}
             >
               {spec.subtitle}
@@ -909,6 +1106,35 @@ export const GenerativeCanvasBeat: React.FC<{beat: any}> = ({beat}) => {
           settled={Boolean(beat.settled)}
         />
       ))}
+
+      {/* Cinematic lighting + vignette + grain layer driven from scene_spec.cinematic / lighting */}
+      {cinematicIntensity > 0 && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            background:
+              cinematicLighting === 'dramatic'
+                ? 'radial-gradient(ellipse 80% 60% at 50% 42%, rgba(244,63,94,0.34) 0%, rgba(0,0,0,0.55) 70%)'
+                : cinematicLighting === 'deep-space'
+                ? 'radial-gradient(ellipse 80% 60% at 50% 42%, rgba(56,189,248,0.22) 0%, rgba(8,12,30,0.7) 78%)'
+                : cinematicLighting === 'radial-core'
+                ? 'radial-gradient(ellipse 90% 70% at 50% 38%, rgba(251,191,36,0.32) 0%, rgba(12,8,30,0.68) 90%)'
+                : cinematicLighting === 'cool-flow'
+                ? 'radial-gradient(ellipse 80% 60% at 50% 42%, rgba(56,189,248,0.26) 0%, rgba(6,20,38,0.66) 80%)'
+                : cinematicLighting === 'earth-tones'
+                ? 'radial-gradient(ellipse 80% 60% at 50% 42%, rgba(180,120,60,0.28) 0%, rgba(20,14,8,0.72) 82%)'
+                : cinematicLighting === 'soft-top'
+                ? 'radial-gradient(ellipse 90% 50% at 50% 18%, rgba(233,244,255,0.28) 0%, rgba(8,12,22,0.66) 82%)'
+                : 'radial-gradient(ellipse 80% 60% at 50% 38%, rgba(212,175,55,0.26) 0%, rgba(6,8,18,0.7) 82%)',
+            boxShadow: 'inset 0 0 140px rgba(0,0,0,0.72)',
+            mixBlendMode: 'multiply',
+            opacity: 0.9 + 0.1 * Math.sin(frame / 3),
+          }}
+        />
+      )}
+
     </AbsoluteFill>
   );
 };

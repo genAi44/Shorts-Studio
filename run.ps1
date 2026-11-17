@@ -5,7 +5,7 @@ $py = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
 if (-not (Test-Path $py)) { Write-Host "Run setup.ps1 first."; exit 1 }
 if (-not (Test-Path ".env")) { Copy-Item ".env.example" ".env" }
 
-$port = 8000
+$port = 8742
 foreach ($line in Get-Content ".env") {
     if ($line -match '^\s*PORT\s*=\s*(\d+)') { $port = [int]$Matches[1] }
 }

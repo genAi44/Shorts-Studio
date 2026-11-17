@@ -9,6 +9,7 @@ import {AnimatedMetric} from './metrics';
 import {Icon} from './icons';
 import {Flag} from './flag';
 import {SceneVisualsLayer} from './visualLayer';
+import {SlotContainer} from './layoutEngine';
 import {ChartVisual} from './charts';
 import {TypographyVisual} from './typography';
 import {
@@ -24,6 +25,7 @@ import {
   VersusBattleBeat,
 } from './visualStoryBeats';
 import {GenerativeCanvasBeat} from './generativeCanvas';
+import {DYNAMIC_SCENE_REGISTRY} from './generated/DynamicScenes';
 
 import {clamp01, enterStyle, EnterKind, Pop, useFont, useIdle, useProgress, useSpring} from './hooks';
 
@@ -179,7 +181,7 @@ export const BeatShell: React.FC<{beat: Beat; children: React.ReactNode}> = ({be
 
       {/* إشارة بصرية حركية كإجراء ثانٍ عند المقطع الطويل */}
 
-      {isLong && frame >= secondActionStart ? (
+      {!beat.tsx_id && isLong && frame >= secondActionStart ? (
 
         <div style={{
 
@@ -207,8 +209,8 @@ export const BeatShell: React.FC<{beat: Beat; children: React.ReactNode}> = ({be
 
       ) : null}
 
-      {beat.title && ![
-        'icon_scene', 'map_pin', 'timeline_card', 'bigtext',
+      {!beat.tsx_id && beat.title && ![
+        'icon_scene', 'map_pin', 'timeline_card', 'bigtext', 'custom_scene',
         'generative_canvas', 'versus_battle', 'balance_meter', 'stack_pyramid',
         'deep_time_slider', 'macro_zoom_globe', 'subsurface_mine', 'dot_matrix_population',
         'money_waterfall', 'frontline_clash', 'animated_route', 'bars', 'line_chart', 'pie_chart'
@@ -2193,6 +2195,18 @@ const PieChartBeat: React.FC<{beat: Beat}> = ({beat}) => {
 };
 
 export const BeatView: React.FC<{beat: Beat}> = ({beat}) => {
+  const frame = useCurrentFrame();
+  const {fps} = useVideoConfig();
+
+  // If this beat has its own AI-generated bespoke TSX component, render it inside a clipped slot above captions
+  const DynamicComp = beat.tsx_id ? DYNAMIC_SCENE_REGISTRY[beat.tsx_id] : undefined;
+  if (DynamicComp) {
+    return (
+      <SlotContainer slot="FULL_STAGE" fullCanvas clip>
+        <DynamicComp frame={frame} fps={fps} dur={beat.dur || 90} />
+      </SlotContainer>
+    );
+  }
 
   let body: React.ReactNode;
 
@@ -2212,6 +2226,14 @@ export const BeatView: React.FC<{beat: Beat}> = ({beat}) => {
     case 'money_waterfall': body = <MoneyWaterfallBeat beat={beat} />; break;
     case 'frontline_clash': body = <FrontlineClashBeat beat={beat} />; break;
     case 'generative_canvas': body = <GenerativeCanvasBeat beat={beat} />; break;
+    case 'custom_scene': body = <GenerativeCanvasBeat beat={beat} />; break;
+    case 'cinematic_dramatic':
+    case 'architectural_blueprint':
+    case 'celestial_constellation':
+    case 'kinetic_wave_field':
+    case 'radial_light_cathedral':
+    case 'topographic_contour':
+      body = <GenerativeCanvasBeat beat={beat} />; break;
     case 'chart': body = beat.spec ? <AbsoluteFill style={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}><ChartVisual spec={beat.spec} /></AbsoluteFill> : <BarsBeat beat={beat} />; break;
     case 'typography': body = beat.spec ? <AbsoluteFill style={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}><TypographyVisual spec={beat.spec} /></AbsoluteFill> : <BigTextBeat beat={beat} />; break;
     case 'visuals': body = <SceneVisualsLayer visuals={beat.visuals} />; break;

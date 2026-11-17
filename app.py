@@ -1,5 +1,6 @@
-"""خادم الويب: واجهة + واجهات API. شغّله ثم افتح http://localhost:8000"""
+"""خادم الويب: واجهة + واجهات API. شغّله ثم افتح http://localhost:8742"""
 import json
+import logging
 import threading
 import time
 import traceback
@@ -15,6 +16,7 @@ from pipeline.geo import get_geo
 from pipeline.render import preview_frame
 from pipeline.run import pick_engine, plan_scenes, produce
 
+logger = logging.getLogger(__name__)
 app = Flask(__name__, static_folder=str(ROOT / "static"), static_url_path="/static")
 JOBS, LOCK = {}, threading.Lock()
 
@@ -30,6 +32,11 @@ def body():
 @app.get("/")
 def index():
     return send_from_directory(app.static_folder, "index.html")
+
+
+@app.get("/favicon.ico")
+def favicon():
+    return ("", 204)
 
 
 @app.get("/outputs/<path:p>")
@@ -241,7 +248,8 @@ def voices():
 
 @app.get("/api/sample")
 def sample():
-    return jsonify(json.load(open(SAMPLE, encoding="utf-8")))
+    with open(SAMPLE, encoding="utf-8") as f:
+        return jsonify(json.load(f))
 
 
 def _pack(script):
@@ -398,7 +406,7 @@ def preview():
     p = plan[i]
     if rem.available() and pick_engine(b.get("engine")) == "remotion":
         try:
-            spec = rem.build_spec(script, st, plan, int(round(total * 30)), get_geo(), None, degrade=False)
+            spec = rem.build_spec(script, st, plan, int(round(total * 30)), get_geo(), None, degrade=False, only_scene_idx=i)
             sc = spec["scenes"][i]
             bi = max(0, min(int(b.get("beat", 0)), len(sc["beats"]) - 1))
             fr = sc["from"] + sc["beats"][bi]["from"] + int(float(b.get("t", 2.0)) * 30)
@@ -496,4 +504,4 @@ def last_warnings():
 
 if __name__ == "__main__":
     OUT.mkdir(exist_ok=True)
-    app.run(host="127.0.0.1", port=int(cfg("PORT", "8000")), threaded=True)
+    app.run(host="127.0.0.1", port=int(cfg("PORT", "8742")), threaded=True)

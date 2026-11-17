@@ -18,32 +18,30 @@ const COUNTRIES: Array<{iso2: string; iso3: string; ar: string[]; en: string[]}>
   (flagCountries as any).countries || [];
 
 /**
- * Resolves ISO-2 ("EG"), ISO-3 ("EGY"), Arabic name ("مصر", "بوليفيا"),
- * or English name ("Egypt", "Bolivia") to lowercase ISO-2 code ("eg", "bo").
+ * Resolves ISO-2 ("EG"), ISO-3 ("EGY"), Arabic name ("مصر"), or English name ("Egypt")
+ * to lowercase ISO-2 code ("eg"). EXACT matches only.
+ * Returns '' when unknown — callers must render nothing rather than a wrong/default flag.
  */
 export const resolveCountryIso2 = (input: string): string => {
-  const raw = (input || 'EG').trim();
+  const raw = (input || '').trim();
+  if (!raw) return '';
   const upper = raw.toUpperCase();
   const lower = raw.toLowerCase();
 
   if (/^[A-Z]{2}$/.test(upper)) {
+    // Python pipeline already verified flags/4x3/{iso2}.svg exists for every code it emits.
     return lower;
   }
-  if (/^[A-Z]{3}$/.test(upper) && ISO3_TO_ISO2[upper]) {
-    return ISO3_TO_ISO2[upper].toLowerCase();
+  if (/^[A-Z]{3}$/.test(upper)) {
+    return ISO3_TO_ISO2[upper] ? ISO3_TO_ISO2[upper].toLowerCase() : '';
   }
 
   for (const c of COUNTRIES) {
-    if (c.iso2 === upper || c.iso3 === upper) return c.iso2.toLowerCase();
-    if (c.ar.some((a) => a === raw || raw.includes(a) || a.includes(raw))) {
-      return c.iso2.toLowerCase();
-    }
-    if (c.en.some((e) => e === lower || lower.includes(e))) {
-      return c.iso2.toLowerCase();
-    }
+    if (c.ar.some((a) => a === raw)) return c.iso2.toLowerCase();
+    if (c.en.some((e) => e.toLowerCase() === lower)) return c.iso2.toLowerCase();
   }
 
-  return 'eg';
+  return '';
 };
 
 export const Flag: React.FC<FlagProps> = ({
@@ -58,6 +56,7 @@ export const Flag: React.FC<FlagProps> = ({
   const {fps} = useVideoConfig();
   const localFrame = Math.max(0, frame - delayFrames);
   const iso2 = useMemo(() => resolveCountryIso2(code), [code]);
+  if (!iso2) return null;
 
   let scale = 1;
   let translateY = 0;
@@ -89,7 +88,6 @@ export const Flag: React.FC<FlagProps> = ({
   const width = isRound ? size : Math.round(size * (4 / 3));
   const height = size;
   const src = staticFile(`flags/${ratioFolder}/${iso2}.svg`);
-  const fallbackSrc = staticFile(`flags/${ratioFolder}/eg.svg`);
 
   return (
     <div
@@ -113,7 +111,6 @@ export const Flag: React.FC<FlagProps> = ({
     >
       <SafeImg
         src={src}
-        fallbackSrc={fallbackSrc}
         style={{
           width: '100%',
           height: '100%',

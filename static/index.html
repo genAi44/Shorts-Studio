@@ -528,7 +528,7 @@
       $('#dirMsg').textContent = 'جارٍ التصميم…';
       try {
         const r = await api('/api/direct', { script: S, style: ST, auto, photos: $('#photos').checked }); S = r.script; renderEditor(); showIssues(r.issues);
-        $('#dirMsg').textContent = (r.by === 'deepseek' ? 'صمّمها DeepSeek.' : 'مقاطع بسيطة.') + (r.warning ? ' (تعذّر DeepSeek: ' + r.warning + ')' : '')
+        $('#dirMsg').textContent = (r.by === 'deepseek' || r.by === 'director_model' ? 'صمّمها الذكاء الاصطناعي (AI TSX).' : 'مقاطع بسيطة.') + (r.warning ? ' (تعذّر المخرج: ' + r.warning + ')' : '')
       }
       catch (e) { $('#dirMsg').textContent = '⛔ ' + e.message }
     }
@@ -634,7 +634,7 @@
       $('#stInfo').innerHTML = `<div class="row"><b>${esc(ST.name)}</b> ${[p.c1, p.c2, p.accent, p.accent2, p.text].map(sw).join('')}
     <span class="chip">خط: ${ST.font}</span><span class="chip">خلفية: ${ST.bg.type}</span><span class="chip">عنوان: ${ST.headline.pos}/${ST.headline.box}</span>
     <span class="chip">ترجمة: ${ST.caption.mode}</span><span class="chip">أرقام: ${ST.stat.layout}</span><span class="chip">نص: ${ST.text.layout}</span>
-    ${by ? `<span class="chip on">${by === 'deepseek' ? 'صمّمه DeepSeek' : 'عشوائي'}</span>` : ''}</div>`;
+    ${by ? `<span class="chip on">${(by === 'deepseek' || by === 'style_model') ? 'صمّمه المدير الفني (AI)' : 'عشوائي'}</span>` : ''}</div>`;
       $('#stJson').value = JSON.stringify(ST, null, 1);
     }
     async function newStyle(rand) {
@@ -936,18 +936,23 @@
         let html = '';
         logs.forEach(l => {
           const time = l.timestamp ? new Date(l.timestamp).toLocaleTimeString() : '';
-          const isErr = !!l.error;
+          const isErr = !!l.error || l.status === 'error';
+          const prov = l.actual_provider || l.requested_provider || l.provider || '-';
+          const mod = l.actual_model || l.requested_model || l.model || '-';
           const routed = l.routed_via ? `<span class="tag" style="background:#1d3557;color:#a8dadc">⚡ X-Routed-Via: ${esc(l.routed_via)}</span>` : '';
           const fallbackBadge = l.fallback_used ? '<span class="tag" style="background:#e63946;color:#fff">⚠ Fallback</span>' : '';
-          const usage = l.usage ? `Tokens: ${l.usage.total_tokens || 0} (${l.usage.prompt_tokens || 0} in / ${l.usage.completion_tokens || 0} out)` : '';
+          const totalTok = l.total_tokens ?? l.usage?.total_tokens ?? 0;
+          const promptTok = l.prompt_tokens ?? l.usage?.prompt_tokens ?? 0;
+          const compTok = l.completion_tokens ?? l.usage?.completion_tokens ?? 0;
+          const usage = `Tokens: ${totalTok} (${promptTok} in / ${compTok} out)`;
 
           html += `
         <div class="fix" style="margin:4px 0;padding:6px 10px;font-size:11px;border-left:3px solid ${isErr ? 'var(--bad)' : 'var(--ok)'}">
           <div class="row" style="justify-content:space-between">
             <div>
               <b>[${esc(l.role || 'general')}]</b> 
-              <span>المزوّد: <b>${esc(l.provider)}</b></span> / 
-              <span>النموذج: <code>${esc(l.model)}</code></span>
+              <span>المزوّد: <b>${esc(prov)}</b></span> / 
+              <span>النموذج: <code>${esc(mod)}</code></span>
               ${routed} ${fallbackBadge}
             </div>
             <span class="cnt">${time} | ${l.latency_ms}ms</span>
@@ -987,15 +992,22 @@
     if ($('#bResetLlmConfig')) {
       $('#bResetLlmConfig').onclick = async () => {
         if (!confirm('هل تريد استعادة الإعدادات التلقائية الموصى بها؟')) return;
+        const hasDeepseek = llmProviders?.deepseek?.configured;
+        const defProv = hasDeepseek ? 'deepseek' : 'freellmapi';
+        const defMod = hasDeepseek ? 'deepseek-chat' : 'auto';
         const defaultRoles = {
-          script: { provider: 'freellmapi', model: 'auto' },
-          director: { provider: 'freellmapi', model: 'auto' },
-          style: { provider: 'freellmapi', model: 'auto' },
-          factcheck: { provider: 'gemini', model: 'gemini-2.5-flash' },
-          chat_edit: { provider: 'freellmapi', model: 'auto' }
+          script: { provider: defProv, model: defMod },
+          director: { provider: defProv, model: defMod },
+          style: { provider: defProv, model: defMod },
+          factcheck: { provider: defProv, model: defMod },
+          chat_edit: { provider: defProv, model: defMod }
         };
         await api('/api/llm/config', { roles: defaultRoles });
         await loadLlmConfig();
+        if ($('#llmConfigMsg')) {
+          $('#llmConfigMsg').textContent = '✓ تمت استعادة الوضع التلقائي الموصى به!';
+          setTimeout(() => { $('#llmConfigMsg').textContent = ''; }, 3500);
+        }
       };
     }
 

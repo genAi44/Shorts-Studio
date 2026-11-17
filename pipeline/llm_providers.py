@@ -91,22 +91,31 @@ def sanitize_text(text: Any) -> str:
 
 
 def extract_json(text: str) -> Any:
-    """استخراج كائن JSON من النص وتنظيف وسوم الماركداون."""
+    """استخراج كائن JSON من النص وتنظيف وسوم الماركداون والتفكير والفواصل الزائدة."""
     t = (text or "").strip()
+    t = re.sub(r"<think>.*?</think>", "", t, flags=re.S | re.I).strip()
     t = re.sub(r"^```(?:json)?\s*|\s*```$", "", t, flags=re.I).strip()
+
+    def _try_parse(candidate: str) -> Any:
+        try:
+            return json.loads(candidate)
+        except Exception:
+            cleaned = re.sub(r",\s*([}\]])", r"\1", candidate)
+            return json.loads(cleaned)
+
     try:
-        return json.loads(t)
+        return _try_parse(t)
     except Exception:
         a, b = t.find("{"), t.rfind("}")
         if a >= 0 and b > a:
             try:
-                return json.loads(t[a:b + 1])
+                return _try_parse(t[a:b + 1])
             except Exception:
                 pass
         arr_a, arr_b = t.find("["), t.rfind("]")
         if arr_a >= 0 and arr_b > arr_a:
             try:
-                return json.loads(t[arr_a:arr_b + 1])
+                return _try_parse(t[arr_a:arr_b + 1])
             except Exception:
                 pass
     raise LLMError("لم يعد النموذج JSON صالحاً.", provider="extractor")
@@ -496,23 +505,26 @@ class DeepSeekProvider(BaseLLMProvider):
         now = time.time()
         if not force_refresh and self._cached_models and (now - self._cache_time < 600):
             return self._cached_models
+        base_models = [
+            {"id": "deepseek-chat", "name": "deepseek-chat (V3 Fast)"},
+            {"id": "deepseek-reasoner", "name": "deepseek-reasoner (R1)"},
+        ]
         if not self.is_configured():
-            return [{"id": "deepseek-chat", "name": "deepseek-chat"}]
+            return base_models
         try:
             url = f"{self.base_url}/models"
             headers = {"Authorization": f"Bearer {self.api_key}"}
             r = requests.get(url, headers=headers, timeout=12)
             if r.status_code == 200:
                 models = r.json().get("data", [])
-                self._cached_models = models
+                seen = {m.get("id") for m in models if isinstance(m, dict)}
+                merged = [bm for bm in base_models if bm["id"] not in seen] + models
+                self._cached_models = merged
                 self._cache_time = now
-                return models
+                return merged
         except Exception:
             pass
-        return self._cached_models or [
-            {"id": "deepseek-chat", "name": "deepseek-chat"},
-            {"id": "deepseek-reasoner", "name": "deepseek-reasoner"},
-        ]
+        return self._cached_models or base_models
 
     def complete(
         self,

@@ -100,8 +100,8 @@ def random_style(seed=None, mood=None):
         "deco": {"frame": r.choice(ENUMS["deco.frame"]), "progress": r.choice(ENUMS["deco.progress"])},
         "pace": round(r.uniform(0.75, 1.3), 2),
         "font2": font2, "weight2": FONTS[font2][2][0],
-        "edit": {"photo": r.choice(ENUMS["edit.photo"]), "cutout": r.choice(ENUMS["edit.cutout"]),
-                 "mixpat": r.choice(["alt", "alt", "tail", "head", "none"]), "shapes": r.choice(ENUMS["edit.shapes"]),
+        "edit": {"photo": r.choice(["bleed", "polaroid", "tilt"]), "cutout": r.choice(ENUMS["edit.cutout"]),
+                 "mixpat": r.choice(["alt", "alt", "tail", "head", "none"]), "shapes": "none",
                  "ken": r.choice(ENUMS["edit.ken"]), "glow": r.random() < 0.7, "blur": r.random() < 0.6,
                  "duo": r.random() < 0.3},
     }

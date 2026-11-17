@@ -5,7 +5,7 @@ import {SafeImg} from './SafeImg';
 
 import {clamp01, enterStyle, useIdle, useProgress, useSpring} from './hooks';
 
-import {MotionCtx, rgba, useTheme} from './theme';
+import {MapLayoutCtx, MotionCtx, rgba, useTheme} from './theme';
 import {BEAT_ZONE} from './layout';
 import {Beat, RGB} from './types';
 import {FireSparks, FloatBadge, MapOverlay} from './fx';
@@ -54,11 +54,11 @@ const MixWord: React.FC<{w: string; i: number; n: number; size: number; hero: bo
 
   const f2 = useFont2();
 
-  const p = useSpring(delay + i * 0.16, 'snappy');
+  const p = useSpring(delay + i * 0.05, 'snappy');
 
   const alt = isAlt(i, n, th.st.edit.mixpat);
 
-  const blur = th.st.edit.blur ? (1 - clamp01(p)) * 16 : 0;
+  const blur = th.st.edit.blur ? (1 - clamp01(p)) * 4 : 0;
 
   const finalSize = Math.max(48, Math.round(alt ? size * 0.94 : size));
 
@@ -398,6 +398,8 @@ export const PhotoBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
   const {settled} = useContext(MotionCtx);
 
+  const {splitBottom} = useContext(MapLayoutCtx);
+
   const pop = useSpring(0.05, 'bouncy');
 
   const sm = useSpring(0.05, 'smooth');
@@ -412,7 +414,7 @@ export const PhotoBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
   const hasNum = !!beat.number;
 
-  const cy = th.zoneCy - (hasNum ? 230 : 110);
+  const cy = splitBottom ? 400 : th.zoneCy - (hasNum ? 230 : 110);
 
   const textY = th.zoneCy + (hasNum ? 170 : 330);
 
@@ -422,7 +424,7 @@ export const PhotoBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
   const cut = !!beat.cut;
 
-  const S = hasNum ? 540 : 620;
+  const S = splitBottom ? 450 : (hasNum ? 540 : 620);
 
 
 
@@ -462,11 +464,11 @@ export const PhotoBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
   } else if (ed.photo === 'bleed') {
 
-    const H = hasNum ? 1200 : 1400;
+    const H = splitBottom ? 680 : (hasNum ? 1200 : 1400);
 
     media = (
 
-      <div style={{position: 'absolute', left: 0, right: 0, top: cy - H / 2, opacity: clamp01(sm * 1.5), translate: `0 ${(1 - sm) * 50}px`, WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 14%, #000 84%, transparent)', maskImage: 'linear-gradient(to bottom, transparent, #000 14%, #000 84%, transparent)'}}>
+      <div style={{position: 'absolute', left: 0, right: 0, top: splitBottom ? 80 : cy - H / 2, opacity: clamp01(sm * 1.5), translate: `0 ${(1 - sm) * 50}px`, WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 14%, #000 84%, transparent)', maskImage: 'linear-gradient(to bottom, transparent, #000 14%, #000 84%, transparent)'}}>
 
         <Framed beat={beat} w={1080} h={H} />
 
@@ -476,9 +478,9 @@ export const PhotoBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
   } else if (ed.photo === 'polaroid') {
 
-    const w = hasNum ? 760 : 860;
+    const w = splitBottom ? 920 : (hasNum ? 820 : 920);
 
-    const h = hasNum ? 560 : 640;
+    const h = splitBottom ? 520 : (hasNum ? 620 : 760);
 
     media = (
 
@@ -492,11 +494,11 @@ export const PhotoBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
   } else if (ed.photo === 'arch') {
 
-    const w = hasNum ? 500 : 580, h = hasNum ? 640 : 760;
+    const w = splitBottom ? 920 : (hasNum ? 820 : 920), h = splitBottom ? 520 : (hasNum ? 660 : 820);
 
     media = (
 
-      <div style={{position: 'absolute', left: 540 - w / 2, top: cy - h / 2 + idle * 0.6, borderRadius: `${w / 2}px ${w / 2}px 36px 36px`, overflow: 'hidden', border: `7px solid ${rgba(th.p.accent)}`, boxShadow: '0 28px 46px rgba(0,0,0,0.32)', ...enterStyle(pop, 'rise', 80)}}>
+      <div style={{position: 'absolute', left: 540 - w / 2, top: cy - h / 2 + idle * 0.5, borderRadius: 28, overflow: 'hidden', border: `2.5px solid ${rgba(th.p.accent, 0.72)}`, boxShadow: `0 28px 54px rgba(0,0,0,0.45), 0 0 36px ${rgba(th.p.accent, 0.22)}`, ...enterStyle(pop, 'rise', 60)}}>
 
         <Framed beat={beat} w={w} h={h} />
 
@@ -506,15 +508,15 @@ export const PhotoBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
   } else if (ed.photo === 'tilt') {
 
-    const w = hasNum ? 600 : 700, h = hasNum ? 520 : 620;
+    const w = splitBottom ? 900 : (hasNum ? 800 : 900), h = splitBottom ? 500 : (hasNum ? 600 : 720);
 
     media = (
 
-      <div style={{position: 'absolute', left: 540 - w / 2, top: cy - h / 2 + idle * 0.5, rotate: `${3 - 3 * (1 - pop)}deg`, ...enterStyle(pop, 'left', 40)}}>
+      <div style={{position: 'absolute', left: 540 - w / 2, top: cy - h / 2 + idle * 0.5, rotate: `${1.5 - 1.5 * (1 - pop)}deg`, ...enterStyle(pop, 'left', 40)}}>
 
-        <div style={{position: 'absolute', left: 26, top: 26, width: w, height: h, borderRadius: 36, background: rgba(th.p.accent)}} />
+        <div style={{position: 'absolute', left: 18, top: 18, width: w, height: h, borderRadius: 28, background: rgba(th.p.accent, 0.85)}} />
 
-        <Framed beat={beat} w={w} h={h} style={{borderRadius: 36, boxShadow: '0 26px 44px rgba(0,0,0,0.3)'}} />
+        <Framed beat={beat} w={w} h={h} style={{borderRadius: 28, boxShadow: '0 26px 44px rgba(0,0,0,0.35)'}} />
 
       </div>
 
@@ -522,15 +524,13 @@ export const PhotoBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
   } else {
 
-    const d = hasNum ? 520 : 640;
+    const w = splitBottom ? 920 : (hasNum ? 820 : 920), h = splitBottom ? 520 : (hasNum ? 640 : 780);
 
     media = (
 
-      <div style={{position: 'absolute', left: 540 - d / 2, top: cy - d / 2 + idle * 0.6, ...enterStyle(pop, 'pop')}}>
+      <div style={{position: 'absolute', left: 540 - w / 2, top: cy - h / 2 + idle * 0.5, borderRadius: 28, overflow: 'hidden', border: `2.5px solid ${rgba(th.p.accent, 0.7)}`, boxShadow: '0 24px 48px rgba(0,0,0,0.4)', ...enterStyle(pop, 'pop')}}>
 
-        <div style={{position: 'absolute', left: -22, top: -22, width: d + 44, height: d + 44, borderRadius: '50%', border: `4px dashed ${rgba(th.p.text, 0.7)}`, rotate: `${spin}deg`}} />
-
-        <Framed beat={beat} w={d} h={d} style={{borderRadius: '50%', border: `8px solid ${rgba(th.p.accent)}`, boxShadow: '0 24px 44px rgba(0,0,0,0.32)'}} />
+        <Framed beat={beat} w={w} h={h} />
 
       </div>
 
@@ -544,13 +544,11 @@ export const PhotoBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
     <AbsoluteFill>
 
-      <AccentShapes seed={beat.from + 7} count={cut || ed.photo !== 'bleed' ? 3 : 2} />
-
       {media}
 
       {hasNum ? <CountNum text={String(beat.number)} size={150} y={textY - 20} /> : null}
 
-      {beat.text && beat.text.trim().length > 0 ? (
+      {!splitBottom && beat.text && beat.text.trim().length > 0 ? (
 
         <div style={{
 
@@ -570,7 +568,7 @@ export const PhotoBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
         }}>
 
-          <MixedText text={beat.text} size={Math.max(48, hasNum ? Math.round(capSize * 0.82) : capSize)} delay={0.3} />
+          <MixedText text={beat.text} size={Math.max(48, hasNum ? Math.round(capSize * 0.82) : capSize)} delay={0} />
 
         </div>
 

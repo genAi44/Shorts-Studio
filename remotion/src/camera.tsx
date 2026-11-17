@@ -46,8 +46,9 @@ export const ParallaxLayer: React.FC<{
 };
 
 /**
- * CameraRig: wraps content in a Ken-Burns slow drift or push-in,
- * plus an optional impact shake triggered at a specific frame.
+ * CameraRig: wraps content in cinematic camera movements
+ * Includes: ken-burns, push-in, pull-out, pan-horizontal, pan-vertical,
+ * zoom-punch (dramatic zoom on revelation), handheld (subtle organic motion)
  *
  * Usage:
  *   <CameraRig mode="ken-burns">
@@ -57,27 +58,73 @@ export const ParallaxLayer: React.FC<{
  *   </CameraRig>
  */
 export const CameraRig: React.FC<{
-  mode?: 'ken-burns' | 'static' | 'push-in';
+  mode?: 'ken-burns' | 'static' | 'push-in' | 'pull-out' | 'pan-horizontal' | 'pan-vertical' | 'zoom-punch' | 'handheld';
   /** frame offset (from beat frame 0) to trigger a punch shake */
   shakeFrame?: number;
   shakeIntensity?: number;
+  /** Easing curve for the camera movement */
+  easing?: 'ease-out' | 'ease-in' | 'ease-in-out' | 'linear';
   children: React.ReactNode;
   style?: React.CSSProperties;
-}> = ({mode = 'ken-burns', shakeFrame = -99, shakeIntensity = 1, children, style}) => {
+}> = ({mode = 'ken-burns', shakeFrame = -99, shakeIntensity = 1, easing = 'ease-out', children, style}) => {
   const frame = useCurrentFrame();
   const {durationInFrames} = useVideoConfig();
   const sh = useCameraShake(shakeFrame, 12, shakeIntensity);
   const prog = frame / Math.max(1, durationInFrames - 1);
 
+  // Easing functions
+  const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+  const easeIn = (t: number) => t * t * t;
+  const easeInOut = (t: number) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const linear = (t: number) => t;
+  
+  const applyEasing = (t: number) => {
+    switch (easing) {
+      case 'ease-in': return easeIn(t);
+      case 'ease-in-out': return easeInOut(t);
+      case 'linear': return linear(t);
+      default: return easeOut(t);
+    }
+  };
+
   let scale = 1;
   let tx = sh.x;
   let ty = sh.y;
+  const easedProg = applyEasing(prog);
 
-  if (mode === 'ken-burns') {
-    scale = 1 + 0.08 * prog;
-    tx += -20 + 40 * prog;
-  } else if (mode === 'push-in') {
-    scale = 1 + 0.12 * prog;
+  switch (mode) {
+    case 'ken-burns':
+      scale = 1 + 0.08 * easedProg;
+      tx += -20 + 40 * easedProg;
+      break;
+    case 'push-in':
+      scale = 1 + 0.12 * easedProg;
+      break;
+    case 'pull-out':
+      scale = 1.12 - 0.12 * easedProg;
+      break;
+    case 'pan-horizontal':
+      tx = -40 + 80 * easedProg;
+      break;
+    case 'pan-vertical':
+      ty = -30 + 60 * easedProg;
+      break;
+    case 'zoom-punch':
+      // Dramatic zoom that accelerates toward the end
+      const punchProg = Math.pow(prog, 1.5);
+      scale = 1 + 0.20 * punchProg;
+      tx = -15 + 30 * punchProg;
+      break;
+    case 'handheld':
+      // Subtle organic handheld motion (only when not settled)
+      if (prog > 0.1 && prog < 0.9) {
+        const shakeAmount = 2.5 * Math.sin(frame * 0.7) * (1 - Math.abs(prog - 0.5) * 2);
+        tx += Math.sin(frame * 0.53) * shakeAmount;
+        ty += Math.cos(frame * 0.47) * shakeAmount * 0.7;
+      }
+      break;
+    default:
+      break;
   }
 
   return (
