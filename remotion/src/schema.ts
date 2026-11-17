@@ -127,6 +127,8 @@ export const VisualElementSchema = z.discriminatedUnion('kind', [
     placement: VisualPlacementSchema.optional(),
     x: z.number().optional(),
     y: z.number().optional(),
+    from: z.number().optional(),
+    to: z.number().optional(),
   }),
   z.object({
     kind: z.literal('emoji'),
@@ -134,6 +136,8 @@ export const VisualElementSchema = z.discriminatedUnion('kind', [
     placement: VisualPlacementSchema.optional(),
     x: z.number().optional(),
     y: z.number().optional(),
+    from: z.number().optional(),
+    to: z.number().optional(),
   }),
   z.object({
     kind: z.literal('flag'),
@@ -141,6 +145,8 @@ export const VisualElementSchema = z.discriminatedUnion('kind', [
     placement: VisualPlacementSchema.optional(),
     x: z.number().optional(),
     y: z.number().optional(),
+    from: z.number().optional(),
+    to: z.number().optional(),
   }),
   z.object({
     kind: z.literal('lottie'),
@@ -148,6 +154,8 @@ export const VisualElementSchema = z.discriminatedUnion('kind', [
     placement: VisualPlacementSchema.optional(),
     x: z.number().optional(),
     y: z.number().optional(),
+    from: z.number().optional(),
+    to: z.number().optional(),
   }),
   z.object({
     kind: z.literal('chart'),
@@ -155,6 +163,8 @@ export const VisualElementSchema = z.discriminatedUnion('kind', [
     placement: VisualPlacementSchema.optional(),
     x: z.number().optional(),
     y: z.number().optional(),
+    from: z.number().optional(),
+    to: z.number().optional(),
   }),
   z.object({
     kind: z.literal('component'),
@@ -162,6 +172,8 @@ export const VisualElementSchema = z.discriminatedUnion('kind', [
     placement: VisualPlacementSchema.optional(),
     x: z.number().optional(),
     y: z.number().optional(),
+    from: z.number().optional(),
+    to: z.number().optional(),
   }),
 ]);
 export type VisualElement = z.infer<typeof VisualElementSchema>;
@@ -212,7 +224,7 @@ export const SceneTransitionSpecSchema = z.object({
 export type SceneTransitionSpec = z.infer<typeof SceneTransitionSpecSchema>;
 
 // 10. Unified Beat Schemas Generated from spec_schema.json
-export const BeatKindSchema = z.enum(['generative_canvas', 'map', 'map_pin', 'photo', 'stat', 'stat_ring_v2', 'bigtext', 'bars', 'timeline', 'timeline_card', 'versus', 'split', 'list', 'icons', 'canvas', 'ticker', 'cardstack', 'elevation_profile', 'line_chart', 'pie_chart', 'versus_battle', 'animated_route', 'balance_meter', 'deep_time_slider', 'stack_pyramid', 'macro_zoom_globe', 'subsurface_mine', 'dot_matrix_population', 'money_waterfall', 'frontline_clash', 'chart', 'typography', 'visuals', 'city_skyline', 'architecture', 'mystery_scene']);
+export const BeatKindSchema = z.enum(['generative_canvas', 'custom_scene', 'map', 'map_pin', 'photo', 'stat', 'stat_ring_v2', 'bigtext', 'bars', 'timeline', 'timeline_card', 'versus', 'split', 'list', 'icons', 'canvas', 'ticker', 'cardstack', 'elevation_profile', 'line_chart', 'pie_chart', 'versus_battle', 'animated_route', 'balance_meter', 'deep_time_slider', 'stack_pyramid', 'macro_zoom_globe', 'subsurface_mine', 'dot_matrix_population', 'money_waterfall', 'frontline_clash', 'chart', 'typography', 'visuals', 'city_skyline', 'architecture', 'mystery_scene']);
 export type BeatKind = z.infer<typeof BeatKindSchema>;
 
 export const CommonBeatFieldsSchema = z.object({
@@ -225,15 +237,40 @@ export const CommonBeatFieldsSchema = z.object({
   settled: z.boolean().optional(),
   cues: z.array(z.any()).optional(),
   visuals: z.array(z.any()).optional(),
+  scene_spec: z.record(z.string(), z.any()).optional(),
+  svg_layers: z.array(z.any()).optional(),
+  environment: z.string().optional(),
+  narration_cues: z.array(z.any()).optional(),
+  tsx_id: z.string().optional(),
   _fallback: z.boolean().optional(),
 });
 
 export const Beat_generative_canvas_Schema = CommonBeatFieldsSchema.extend({
   kind: z.literal('generative_canvas'),
   background: z.string().optional(),
+  bg_mood: z.string().optional(),
   accent: z.string().optional(),
+  secondary_accent: z.string().optional(),
   grid: z.any().optional(),
+  environment: z.string().optional(),
   elements: z.array(z.any()),
+  svg_layers: z.array(z.any()).optional(),
+  scene_spec: z.record(z.string(), z.any()).optional(),
+  narration_cues: z.array(z.any()).optional(),
+  tsx_id: z.string().optional(),
+}).strict();
+export const Beat_custom_scene_Schema = CommonBeatFieldsSchema.extend({
+  kind: z.literal('custom_scene'),
+  background: z.string().optional(),
+  bg_mood: z.string().optional(),
+  accent: z.string().optional(),
+  secondary_accent: z.string().optional(),
+  environment: z.string().optional(),
+  elements: z.array(z.any()).optional(),
+  svg_layers: z.array(z.any()).optional(),
+  scene_spec: z.record(z.string(), z.any()),
+  narration_cues: z.array(z.any()).optional(),
+  tsx_id: z.string().optional(),
 }).strict();
 export const Beat_map_Schema = CommonBeatFieldsSchema.extend({
   kind: z.literal('map'),
@@ -481,6 +518,7 @@ export const Beat_mystery_scene_Schema = CommonBeatFieldsSchema.extend({
 
 export const StrictBeatSchema = z.discriminatedUnion('kind', [
   Beat_generative_canvas_Schema,
+  Beat_custom_scene_Schema,
   Beat_map_Schema,
   Beat_map_pin_Schema,
   Beat_photo_Schema,

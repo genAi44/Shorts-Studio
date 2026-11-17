@@ -229,10 +229,16 @@ def write_script_with_facts(topic: str, facts_text: str, style: Optional[Any] = 
     from . import scriptspec as sp
 
     system = (
-        "You are writing a script for a short Arabic video.\n"
-        "Use ONLY the facts provided below. Do not invent numbers, dates or names.\n"
-        "Every claim in the script must come from the facts list.\n"
-        "If a fact is not in the list, do not include it.\n\n"
+        "You are writing a script for an engaging, highly informative Arabic Shorts video.\n"
+        "Strict rules:\n"
+        "1. When the topic asks for a specific count (e.g. '5 دول', '5 عواصم', 'أفضل 5'), you MUST mention ALL 5 items across the 3 body sections. Distribute them cleanly:\n"
+        "   - In BODY 1: cover items 1 and 2.\n"
+        "   - In BODY 2: cover items 3 and 4.\n"
+        "   - In BODY 3: cover item 5 (the ultimate climax/answer).\n"
+        "   Never stop at only 2 or 3 items when 5 were requested!\n"
+        "2. For each capital/country, explicitly mention both the City Name and the Country Name.\n"
+        "3. Use ONLY the facts provided below and verified, authentic facts. Do not invent fake numbers or dates.\n"
+        "4. Write in concise, punchy Arabic phrases optimized for vertical fast-paced video.\n\n"
         + sp.SYSTEM
     )
 

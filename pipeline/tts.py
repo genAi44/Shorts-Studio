@@ -23,14 +23,20 @@ def probe_dur(path):
 
 def voices():
     key = cfg("ELEVENLABS_API_KEY")
+    default_vid = cfg("ELEVENLABS_VOICE_ID")
     if not key:
-        return []
+        return [{"id": default_vid, "name": f"الصوت الافتراضي ({default_vid[:8]}…)"}] if default_vid else []
     try:
-        r = requests.get("https://api.elevenlabs.io/v1/voices", headers={"xi-api-key": key}, timeout=30)
+        r = requests.get("https://api.elevenlabs.io/v1/voices", headers={"xi-api-key": key}, timeout=15)
         r.raise_for_status()
-        return [{"id": v["voice_id"], "name": v.get("name", v["voice_id"])} for v in r.json().get("voices", [])]
+        vlist = [{"id": v["voice_id"], "name": v.get("name", v["voice_id"])} for v in r.json().get("voices", [])]
+        if vlist:
+            return vlist
     except Exception:
-        return []
+        pass
+    if default_vid:
+        return [{"id": default_vid, "name": f"الصوت الافتراضي ({default_vid[:8]}…)"}]
+    return []
 
 
 def synth(text, voice_id, out_base):

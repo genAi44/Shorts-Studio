@@ -55,9 +55,9 @@ def _set_cached(query: str, results: List[Dict[str, Any]]) -> None:
 
 
 def _search_ddg(query: str, max_results: int = 5, timeout: int = 8) -> List[Dict[str, str]]:
-    """المصدر 1: DuckDuckGo عبر مكتبة duckduckgo_search (مجاني بلا مفتاح)."""
+    """المصدر 1: DuckDuckGo عبر مكتبة ddgs (مجاني بلا مفتاح)."""
     try:
-        from duckduckgo_search import DDGS
+        from ddgs import DDGS
         with DDGS(timeout=timeout) as ddgs:
             raw = list(ddgs.text(query, max_results=max_results))
             if not raw:
@@ -67,11 +67,14 @@ def _search_ddg(query: str, max_results: int = 5, timeout: int = 8) -> List[Dict
                 except Exception:
                     pass
             items = []
+            has_arabic_q = bool(re.search(r"[\u0600-\u06FF]", query or ""))
             for r in raw:
                 title = (r.get("title") or "").strip()
                 body = (r.get("body") or "").strip()
                 href = (r.get("href") or "").strip()
                 if title or body:
+                    if has_arabic_q and not re.search(r"[\u0600-\u06FF]", f"{title} {body}"):
+                        continue
                     items.append({
                         "title": title,
                         "snippet": body,
@@ -174,10 +177,9 @@ def _query_wiki_endpoint(query: str, lang: str = "ar", max_results: int = 3, tim
 
 
 def _search_wikipedia(query: str, max_results: int = 3, timeout: int = 8) -> List[Dict[str, str]]:
-    """المصدر 3: Wikipedia REST API عالمياً (عربي أولاً مع تغطية شاملة لكل دول العالم)."""
+    """المصدر 3: Wikipedia REST API عالمياً (عربي أولاً؛ الإنجليزية فقط إذا احتوى الاستعلام على أحرف لاتينية)."""
     items = _query_wiki_endpoint(query, lang="ar", max_results=max_results, timeout=timeout)
-    if not items:
-        # البحث في النسخة العالمية الشاملة إن لم توجد في العربية
+    if not items and re.search(r"[a-zA-Z]{2,}", query or ""):
         items = _query_wiki_endpoint(query, lang="en", max_results=max_results, timeout=timeout)
     return items
 
@@ -212,12 +214,12 @@ def generate_queries(topic: str, n: int = 3) -> List[str]:
     if not t_clean:
         t_clean = t
 
-    # تقسيم الاستعلامات لتغطية التاريخ، الإحصائيات، والحقائق البارزة
+    # استخراج كبرى الكيانات والمدن إن وجدت لضمان دقة الاستعلامات
     candidates = [
         t_clean,
-        f"{t_clean} تاريخ وحقائق",
-        f"{t_clean} أرقام وإحصائيات",
-        f"معلومات عن {t_clean}",
+        f"{t_clean} قائمة",
+        f"{t_clean} تاريخ وتأسيس",
+        f"أهم {t_clean}",
     ]
     seen = set()
     queries = []

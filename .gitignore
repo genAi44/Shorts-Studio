@@ -25,3 +25,16 @@ data/geodata.db
 data/geodata.db-journal
 data/geodata.db-wal
 data/geodata.db-shm
+
+# Python bytecode
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Generated outputs & caches
+outputs/
+cache/
+frames/
+graphify-out/cache/
+remotion/src/generated/.tsx_cache.json

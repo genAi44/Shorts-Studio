@@ -70,6 +70,7 @@ export const Captions: React.FC<{words: Word[]}> = ({words}) => {
   const chunk = chunks[ci];
   const start = Math.round(chunk[0].s * fps);
   const pop = spring({frame: frame - start, fps, config: PRESETS.snappy});
+  const snapOpacity = Math.min(1, 0.78 + pop * 0.45);
   let act = 0;
   chunk.forEach((w, i) => { if (w.s <= t + 0.02) act = i; });
   const mode = c.mode;
@@ -78,7 +79,7 @@ export const Captions: React.FC<{words: Word[]}> = ({words}) => {
   const wrapStyle: React.CSSProperties = {};
   if (mode === 'pill') Object.assign(wrapStyle, {background: rgba(p.c1, 0.84), borderRadius: 999, padding: '16px 44px'});
   const inner = (
-    <div dir="rtl" lang="ar" style={{...font, display: 'flex', alignItems: 'center', justifyContent: 'center', columnGap: Math.round(c.size * 0.34), fontSize: c.size, lineHeight: 1.3, color: rgba(p.text), opacity: Math.min(1, pop * 1.6), translate: `0 ${(1 - pop) * 16}px`, scale: 0.94 + 0.06 * pop, ...wrapStyle}}>
+    <div dir="rtl" lang="ar" style={{...font, display: 'flex', alignItems: 'center', justifyContent: 'center', columnGap: Math.round(c.size * 0.34), fontSize: c.size, lineHeight: 1.3, color: rgba(p.text), opacity: snapOpacity, translate: `0 ${(1 - pop) * 10}px`, scale: 0.96 + 0.04 * pop, ...wrapStyle}}>
       {chunk.map((w, i) => {
         const active = i === act;
         const st: React.CSSProperties = {display: 'inline-block', textShadow: mode === 'stroke' ? undefined : th.shadow};

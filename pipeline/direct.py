@@ -74,20 +74,24 @@ ICONS = ["pin", "building", "mountain", "clock", "coin", "person", "people", "bo
          "warning", "question", "bolt", "eye"]
 
 KINDS = [
+    "custom_scene",
     "generative_canvas",
     "map_pin", "timeline_card", "stat_ring_v2", "elevation_profile",
     "versus_battle", "animated_route", "balance_meter", "deep_time_slider",
-    "stack_pyramid", "macro_zoom_globe", "subsurface_mine", "dot_matrix_population",
+    "stack_pyramid",     "macro_zoom_globe", "subsurface_mine", "dot_matrix_population",
     "money_waterfall", "frontline_clash",
     "line_chart", "pie_chart", "map", "stat", "bigtext", "bars", "timeline", "versus", "list", "icons", "canvas", "photo", "split", "ticker", "cardstack",
     "city_skyline", "architecture", "mystery_scene",
+    # أنماط مشاهد سينمائية جديدة لتنويع الحركة والإضاءة
+    "cinematic_dramatic", "architectural_blueprint", "celestial_constellation",
+    "kinetic_wave_field", "radial_light_cathedral", "topographic_contour",
 ]
 
 COLORS = ["accent", "accent2", "text", "hl0", "hl1", "hl2", "hl3"]
 
 ENTERS = ["rise", "drop", "pop", "left", "right", "fade"]
 
-CAMERAS = ["push-in", "zoom-in", "zoom-out", "pan-left", "pan-right", "tilt-up", "tilt-down", "parallax", "handheld", "pan", "static"]
+CAMERAS = ["push-in", "zoom-in", "zoom-out", "pan-left", "pan-right", "tilt-up", "tilt-down", "parallax", "handheld", "pan", "static", "pull-out", "zoom-punch", "pan-horizontal", "pan-vertical"]
 
 TERM = re.compile('[.!؟?؛:…،,-]+$')
 
@@ -193,6 +197,9 @@ def _add_camera(out, b):
     cam = b.get("camera")
     if cam in CAMERAS:
         out["camera"] = cam
+    for k in ("scene_spec", "narration_cues", "svg_layers", "environment", "secondary_accent", "tsx_id", "concept"):
+        if b.get(k) is not None and k not in out:
+            out[k] = b[k]
     return out
 
 def normalize_beat(b, sentence="", geo=None):
@@ -228,7 +235,7 @@ def normalize_beat(b, sentence="", geo=None):
             o["sub"] = _words(b.get("sub"), 8)
         if b.get("layout") in ("center", "stack", "diag", "left"):
             o["layout"] = b["layout"]
-        return o
+        return _add_camera(o, b)
 
     if kind == "map_pin":
         region = b.get("region") or "egypt"
@@ -295,6 +302,30 @@ def normalize_beat(b, sentence="", geo=None):
             "sea_label": _s(b.get("sea_label") or "مستوى سطح البحر", 20),
             "country": _s(b.get("country") or "", 6),
         }
+        return _add_camera(o, b)
+
+    if kind == "custom_scene":
+        if isinstance(b.get("elements"), list) and b.get("elements"):
+            try:
+                from .generative_visuals import validate_generative_canvas_spec
+                o = validate_generative_canvas_spec(b)
+                o["kind"] = "custom_scene"
+                if isinstance(b.get("scene_spec"), dict):
+                    o["scene_spec"] = b["scene_spec"]
+                if b.get("approach"):
+                    o["approach"] = _s(b["approach"], 40)
+                return _add_camera(o, b)
+            except Exception:
+                pass
+        o = {
+            "kind": "custom_scene",
+            "title": _words(b.get("title") or fallback_text, 6),
+            "scene_spec": b.get("scene_spec") if isinstance(b.get("scene_spec"), dict) else {"approach": _s(b.get("approach") or "", 40)},
+        }
+        if b.get("approach"):
+            o["approach"] = _s(b["approach"], 40)
+        if b.get("subtitle"):
+            o["subtitle"] = _words(b["subtitle"], 7)
         return _add_camera(o, b)
 
     if kind == "generative_canvas":
@@ -364,6 +395,16 @@ def normalize_beat(b, sentence="", geo=None):
         return bigtext()
     if kind == "photo":
         q = re.sub(r"[^\w\s\-',.]", " ", _s(b.get("query"), 100)).strip()
+        if fallback_text:
+            det_c, det_d = detect_city_in_text(fallback_text)
+            if det_d and det_d.get("en"):
+                c_en = det_d["en"]
+                cou_en = det_d.get("country", "")
+                if c_en.lower() not in q.lower():
+                    q = f"{c_en} {cou_en} landmark historical architecture".strip()
+                    b = dict(b)
+                    b["must_show"] = f"{c_en} {cou_en} landmark"
+                    b["alt_queries"] = [f"{c_en} cityscape", f"{cou_en} landmark"]
         if len(q) < 3:
             return bigtext()
         _NO_CUTOUT_KW = re.compile(
@@ -580,6 +621,21 @@ def photo_to_text(b, sentence="", beat_id="photo"):
     """صورة تعذّر إيجادها ← لوحة رسم تعبيرية غنية بدلاً من شاشة سوداء مجردة."""
     text = sentence or b.get("text") or b.get("title") or "…"
     uid = str(b.get("id") or b.get("title") or beat_id)
+    ent_iso3 = str(b.get("entity_iso3") or "").upper()
+    if ent_iso3:
+        try:
+            from .geo import get_geo
+            if get_geo().has(ent_iso3):
+                return {
+                    "kind": "map",
+                    "countries": [ent_iso3],
+                    "highlight": [ent_iso3],
+                    "title": b.get("entity_name_ar") or b.get("title") or "",
+                    "text": _words(text, 5),
+                    "camera": b.get("camera") or "push-in",
+                }
+        except Exception:
+            pass
     try:
         from .generative_visuals import compose_generative_canvas
         canvas = compose_generative_canvas(
@@ -607,6 +663,16 @@ def photo_to_text(b, sentence="", beat_id="photo"):
         }
         record_fallback("photo_to_text_bigtext", beat_id=uid, beat=fb)
         return fb
+
+# ------------------------------------------------------------------ تحسين غنى المشاهد البصرية
+# أنماط المشاهد السينمائية لتنويع الحركة ولون المزاج
+CINEMATIC_STYLES = [
+    {"name": "cinematic_gold", "bg_grad": "radial-gradient(ellipse at 50% 30%, rgba(212,175,55,0.15) 0%, transparent 60%)", "accent": "#D4AF37", "lighting": "warm"},
+    {"name": "cinematic_cool", "bg_grad": "radial-gradient(ellipse at 50% 30%, rgba(56,189,248,0.12) 0%, transparent 60%)", "accent": "#38bdf8", "lighting": "cool"},
+    {"name": "cinematic_warm", "bg_grad": "radial-gradient(ellipse at 50% 30%, rgba(251,146,60,0.12) 0%, transparent 60%)", "accent": "#fb923c", "lighting": "warm"},
+    {"name": "cinematic_dramatic", "bg_grad": "radial-gradient(ellipse at 50% 40%, rgba(244,63,94,0.10) 0%, transparent 60%)", "accent": "#f43f5e", "lighting": "dramatic"},
+    {"name": "cinematic_neon", "bg_grad": "radial-gradient(ellipse at 50% 30%, rgba(168,85,247,0.12) 0%, transparent 60%)", "accent": "#a855f7", "lighting": "neon"},
+]
 
 # ------------------------------------------------------------------ بدائل بلا نموذج
 
@@ -639,7 +705,7 @@ for _k, _v in WORLD_CITIES.items():
 _PHOTO_PATTERNS = [
     (r"حضار|إمبراطور|شعوب|قبائل|قبيلة|سلالة", "ancient lost civilization ruins monument", "ancient stone ruins architecture", "modern tourist watermark"),
     (r"معبد|معابد|أهرام|أثر|آثار|صرح|مقابر", "ancient temple pyramid ruins archaeological site", "ancient temple structure", "watermark text collage"),
-    (r"مدينة|مدن|عاصمة|قصور|قصر|قلعة|حصن", "ancient historical fortress castle architecture", "historical architecture building", "modern cars watermark"),
+    (r"قصور|قصر|قلعة|حصن|أسوار", "ancient historical fortress castle architecture", "historical architecture building", "modern cars watermark"),
     (r"كنز|كنوز|ذهب|فضة|مجوهرات", "ancient golden treasures artifacts discovery", "golden artifacts discovery", "watermark modern text"),
     (r"فيضان|فيضانات|غرق|طوفان|أمطار|مياه|سدود|أنهار", "massive river flood deluge dramatic water disaster", "river flood water deluge", "watermark text"),
     (r"بركان|حمم|صهارة|فوهة", "active volcano lava eruption smoke landscape", "volcano eruption lava", "watermark text"),
@@ -654,6 +720,34 @@ _PHOTO_PATTERNS = [
 
 def detect_photo_beat(sentence: str, pt_name: str = "", cou_iso: str = "") -> Optional[Dict[str, Any]]:
     clean_pt = re.sub(r"\(.*?\)", "", pt_name).strip() if pt_name else ""
+    try:
+        from .geo_overlay import extract_timed_geo_mentions
+        gm = extract_timed_geo_mentions(sentence, "", [], 150)
+        if gm:
+            m0 = next((x for x in gm if x.get("kind") in ("landmark", "capital", "city", "country")), gm[0])
+            en_n = m0.get("name_en") or m0.get("name_ar") or ""
+            if en_n and en_n.lower() == "marrakesh":
+                en_n = "Marrakech"
+            if en_n.lower() == "marrakesh":
+                en_n = "Marrakech"
+            m_iso3 = str(m0.get("iso3") or cou_iso or "").upper()
+            c_en = ISO3_TO_COUNTRY_EN.get(m_iso3, "") or (ISO3_TO_COUNTRY_EN.get(cou_iso.upper(), "") if cou_iso else "")
+            if en_n:
+                q_base = f"{en_n} {c_en}".strip() if (c_en and c_en.lower() not in en_n.lower() and m0.get("kind") != "country") else en_n
+                return {
+                    "kind": "photo",
+                    "query": f"{q_base} landmark architecture",
+                    "text": _words(sentence, 5),
+                    "camera": "parallax",
+                    "must_show": q_base,
+                    "avoid": "watermark text collage modern cars map flag",
+                    "alt_queries": [f"{q_base} city", f"{en_n} landscape"],
+                    "entity_iso3": m_iso3,
+                    "entity_country_en": c_en,
+                    "entity_name_ar": m0.get("name_ar") or "",
+                }
+    except Exception:
+        pass
     detected_city, city_data = detect_city_in_text(sentence)
     if not clean_pt and detected_city:
         clean_pt = detected_city
@@ -663,7 +757,7 @@ def detect_photo_beat(sentence: str, pt_name: str = "", cou_iso: str = "") -> Op
     country_en = ISO3_TO_COUNTRY_EN.get(cou_iso.upper(), "") if cou_iso else ""
 
     if clean_pt or country_en:
-        city_info = WORLD_CITIES.get(clean_pt)
+        city_info = city_data or WORLD_CITIES.get(clean_pt)
         city_en = city_info["en"] if city_info else clean_pt
         if city_en and city_en.lower() == "marrakesh":
             city_en = "Marrakech"
@@ -689,63 +783,63 @@ def detect_photo_beat(sentence: str, pt_name: str = "", cou_iso: str = "") -> Op
             "camera": "parallax",
             "must_show": must,
             "avoid": "watermark text collage modern cars",
-            "alt_queries": alts
+            "alt_queries": alts,
+            "entity_iso3": (cou_iso or "").upper(),
+            "entity_country_en": country_en or c_name or "",
+            "entity_name_ar": clean_pt or "",
         }
-    for pat, query, must_show, avoid in _PHOTO_PATTERNS:
-        if re.search(pat, sentence, re.I):
-            return {
-                "kind": "photo",
-                "query": query,
-                "text": _words(sentence, 5),
-                "camera": "parallax",
-                "must_show": must_show,
-                "avoid": avoid,
-                "alt_queries": [" ".join(query.split()[:3]), "historical monument architecture"]
-            }
+    try:
+        from .geo_overlay import extract_timed_geo_mentions
+        gm = extract_timed_geo_mentions(sentence, "", [], 150)
+        if gm:
+            m0 = next((x for x in gm if x.get("kind") in ("landmark", "capital", "city")), gm[0])
+            en_n = m0.get("name_en") or m0.get("name_ar") or ""
+            if en_n:
+                return {
+                    "kind": "photo",
+                    "query": f"{en_n} historical landmark architecture",
+                    "text": _words(sentence, 5),
+                    "camera": "parallax",
+                    "must_show": f"{en_n} architecture landmark",
+                    "avoid": "watermark text collage modern cars",
+                    "alt_queries": [f"{en_n} landmark", f"{en_n} heritage"],
+                }
+    except Exception:
+        pass
+    if not re.search(r"إحصائيات|ضحايا|مليون|مليار|نسبة|%|عدد السكان", sentence):
+        for pat, query, must_show, avoid in _PHOTO_PATTERNS:
+            if re.search(pat, sentence, re.I):
+                return {
+                    "kind": "photo",
+                    "query": query,
+                    "text": _words(sentence, 5),
+                    "camera": "parallax",
+                    "must_show": must_show,
+                    "avoid": avoid,
+                    "alt_queries": [" ".join(query.split()[:3]), "historical monument architecture"]
+                }
     return None
 
 def fallback_beat(scene, i, sentence):
     v = scene.get("visual") or {}
 
-    # مشهد الحلقة المفتوحة (open_loop) مشهد توتر وتشويق (Tension Beat)
+    # مشهد الحلقة المفتوحة (open_loop) مشهد توتر وتشويق وتساؤل ذكي متكامل بصرياً
     if scene.get("role") == "open_loop":
-        return {
-            "kind": "canvas",
-            "title": "ترقّب",
-            "camera": "zoom-in",
-            "elements": [
-                {"type": "icon", "name": "question", "x": 540, "y": 680, "size": 240, "color": "accent", "enter": "pop", "loop": "pulse"},
-                {"type": "text", "text": _words(sentence, 6), "x": 540, "y": 1000, "size": 74, "color": "text", "enter": "rise"}
-            ]
-        }
+        from .generative_visuals import compose_generative_canvas
+        return compose_generative_canvas(sentence, context=scene.get("on_screen") or "لغز وتساؤل")
     ty = v.get("type")
     pts = v.get("points") or []
     cs = v.get("countries") or []
     cou_iso = cs[0] if cs else ""
     pt_name = pts[0].get("name", "") if pts else ""
 
-    # فحص ما إذا كانت الجملة أو المشهد يذكر مدينة أو عاصمة معروفة (سلا، فاس، مراكش، إلخ)
+    # فحص ما إذا كانت الجملة أو المشهد يذكر مدينة أو عاصمة معروفة
     detected_city, city_data = detect_city_in_text(sentence)
     if not detected_city:
         detected_city, city_data = detect_city_in_text(scene.get("on_screen", ""))
 
-    # إذا كانت الجملة تذكر مدينة أو عاصمة صراحة والمشهد ليس خاتمة أو ترقب، فالأولوية المطلقة لخريطة المدينة
-    if detected_city and city_data and scene.get("role") not in ("open_loop", "cta", "loop"):
-        return {
-            "kind": "map",
-            "title": scene.get("on_screen", "") or detected_city,
-            "countries": [city_data["iso"]],
-            "highlight": [city_data["iso"]],
-            "points": [{"name": detected_city, "lat": city_data["lat"], "lon": city_data["lon"], "dot": True}],
-            "camera": "zoom-in"
-        }
-
-    if i == 0 and ty == "map":
-        map_pts = list(pts)
-        if not map_pts and detected_city and city_data:
-            map_pts = [{"name": detected_city, "lat": city_data["lat"], "lon": city_data["lon"], "dot": True}]
-        return {"kind": "map", "title": scene.get("on_screen", ""), "countries": cs,
-                "highlight": v.get("highlight") or cs, "points": map_pts}
+    # ملاحظة: الخرائط الجغرافية تُعرض الآن كطبقة MapOverlay ذكية متزامنة مع الصوت (pipeline/geo_overlay.py)،
+    # لذلك يركز المشهد الأساسي على التكوين البصري والمعماري والتعبيري للجملة دون تكرار خريطة خلفية.
 
     # مشهد الـ Hook (الخطاف في أول ثوانٍ): يجب أن يكون مشهداً بطلاً جذاباً بصرياً (Hero Visual)
     if scene.get("role") == "hook" or i == 0:
@@ -810,20 +904,33 @@ def fallback_beat(scene, i, sentence):
             "camera": "push-in",
         }
 
-    # إذا ورد ترتيب أو قائمة أو مراكز أولى (أغنى، أكبر، أفضل، المراكز)
+    # إذا ورد ترتيب أو قائمة أو مراكز أولى (أغنى، أكبر، أفضل، المراكز) مع أرقام أو أسماء أعداد عربية
     _RANK_KW = re.compile(r"أغنى|أكبر|أفضل|أعلى|أقوى|المراكز|ترتيب|قائمة|ranking|top", re.I)
+    _AR_NUM_WORDS = re.compile(r"ثلاث|أربع|خمس|ست|سبع|ثمان|تسع|عشر")
     if _RANK_KW.search(sentence) and not (cou_iso or pt_name):
         nums = re.findall(r"\d[\d,.]*", sentence)
-        return {
-            "kind": "bars",
-            "title": _words(sentence, 5),
-            "items": [
-                {"label": "المرتبة الأولى", "value": 100, "display": nums[0] if nums else "١"},
-                {"label": "المرتبة الثانية", "value": 85, "display": nums[1] if len(nums) > 1 else "٢"},
-                {"label": "المرتبة الثالثة", "value": 70, "display": nums[2] if len(nums) > 2 else "٣"},
-            ],
-            "camera": "push-in",
-        }
+        if len(nums) >= 3:
+            return {
+                "kind": "bars",
+                "title": _words(sentence, 5),
+                "items": [
+                    {"label": _words(sentence, 2) + " ١", "value": 100, "display": nums[0]},
+                    {"label": _words(sentence, 2) + " ٢", "value": 85, "display": nums[1]},
+                    {"label": _words(sentence, 2) + " ٣", "value": 70, "display": nums[2]},
+                ],
+                "camera": "push-in",
+            }
+        if _AR_NUM_WORDS.search(sentence) or nums:
+            return {
+                "kind": "bars",
+                "title": _words(sentence, 5),
+                "items": [
+                    {"label": "المركز ١", "value": 100, "display": "1"},
+                    {"label": "المركز ٢", "value": 82, "display": "2"},
+                    {"label": "المركز ٣", "value": 64, "display": "3"},
+                ],
+                "camera": "push-in",
+            }
 
     # مفاهيم تخصصية تحتاج مشهد توليدي (بركان، غاز، طاقة، تضخم)
     _GEN_KW = re.compile(r"بركان|حمم|غاز طبيعي|طاقة|حصار|مضيق|ذكاء اصطناعي|بيانات|تضخم|صاروخ|باطن الأرض|ثروات", re.I)
@@ -1003,6 +1110,10 @@ BEAT_RULES: Dict[str, Dict[str, Any]] = {
         "predicate": _pred_elements_nonempty,
         "reason": "generative_canvas requires non-empty elements",
     },
+    "custom_scene": {
+        "predicate": _pred_always_true,
+        "reason": "invalid custom_scene",
+    },
     "bigtext": {"predicate": _pred_always_true, "reason": "invalid bigtext"},
     "versus_battle": {"predicate": _pred_always_true, "reason": "invalid versus_battle"},
     "animated_route": {"predicate": _pred_always_true, "reason": "invalid animated_route"},
@@ -1014,6 +1125,13 @@ BEAT_RULES: Dict[str, Dict[str, Any]] = {
     "dot_matrix_population": {"predicate": _pred_always_true, "reason": "invalid dot_matrix_population"},
     "money_waterfall": {"predicate": _pred_always_true, "reason": "invalid money_waterfall"},
     "frontline_clash": {"predicate": _pred_always_true, "reason": "invalid frontline_clash"},
+    # أنماط مشاهد سينمائية جديدة
+    "cinematic_dramatic": {"predicate": _pred_elements_nonempty, "reason": "cinematic_dramatic requires elements"},
+    "architectural_blueprint": {"predicate": _pred_elements_nonempty, "reason": "architectural_blueprint requires elements"},
+    "celestial_constellation": {"predicate": _pred_elements_nonempty, "reason": "celestial_constellation requires elements"},
+    "kinetic_wave_field": {"predicate": _pred_elements_nonempty, "reason": "kinetic_wave_field requires elements"},
+    "radial_light_cathedral": {"predicate": _pred_elements_nonempty, "reason": "radial_light_cathedral requires elements"},
+    "topographic_contour": {"predicate": _pred_elements_nonempty, "reason": "topographic_contour requires elements"},
 }
 
 
@@ -1038,9 +1156,17 @@ def guard_beat(b: Any, scene: dict, beat_index: int, sentence: str, geo=None) ->
 
 def beats_for_scene(scene, geo=None):
 
-    """مقاطع المشهد: من script (إن وُجدت ولها نفس عدد الجمل) وإلا بدائل آمنة."""
-    sents = sentences(scene.get("narration", ""))
+    """مقاطع المشهد: إذا كان المقطع مخصصاً بالكود الأصلي (tsx_id) لكل المشهد، يُحفظ كمقطع واحد متكامل؛ وإلا حسب الجمل."""
     raw = scene.get("beats") if isinstance(scene.get("beats"), list) else []
+    if len(raw) == 1 and isinstance(raw[0], dict) and raw[0].get("tsx_id"):
+        full_narr = scene.get("narration", "")
+        b0 = dict(raw[0])
+        normed = normalize_beat(b0, full_narr, geo)
+        for k in ("tsx_id", "narration", "video_title", "facts_summary", "video_countries", "video_cities", "scene_spec", "narration_cues", "concept", "accent", "secondary_accent"):
+            if k in b0 and k not in normed:
+                normed[k] = b0[k]
+        return [normed]
+    sents = sentences(scene.get("narration", ""))
     out = []
     for i, s in enumerate(sents):
         b = raw[i] if i < len(raw) else fallback_beat(scene, i, s)
@@ -1049,136 +1175,25 @@ def beats_for_scene(scene, geo=None):
 
 # ------------------------------------------------------------------ المخرج (DeepSeek)
 
-DIRECTOR_SYSTEM = """أنت مخرج فني ومحلل بيانات لفيديوهات Shorts عربية بالموشن غرافيك. لكل جملة منطوقة ترسم مشهداً حركياً يوضّح معناها لحظة نطقها.
+DIRECTOR_SYSTEM = """أنت كبير المخرجين الفنيين ومصممي الموشن غرافيك ومهندسي Remotion لفيديوهات Shorts العربية.
 
-## إطار التفكير البصري (يجب تطبيقه على كل جملة قبل اختيار النوع)
+## المبدأ الأساسي: لا قوالب مسبقة التصميم. كل مشهد يبدأ من لوحة بيضاء (BLANK CANVAS).
 
-**الخطوة ١: تحليل نوع المعلومة**
-- رقم واحد صادم (إحصاء، ارتفاع، تاريخ)؟
-- أرقام متعددة قابلة للمقارنة (نسب، كميات)؟
-- سلسلة زمنية (أرقام عبر سنوات متعاقبة ≥3)؟
-- توزيع نسبي (نسب مئوية تجمع ~100%)؟
-- مقارنة طرفين (أكثر/أقل من، بينما، مقابل)؟
-- تسلسل خطوات أو عملية؟
-- مكان أو علاقة مكانية؟
-- ارتفاع جغرافي/طبوغرافي؟
-- مفهوم مجرد أو قصة؟
+مهمتك: لا تكرر قالباً ولا تختار من مكتبة تصاميم مسبقة.
+لكل جملة منطوقة، عليك أن تتخيل المشهد من الصفر وتبتكر فكرة بصرية فريدة تعبّر عن المعنى الدقيق للجملة وكياناتها وأرقامها، وتصمم تكوينها البصري والحركي بالكامل.
+يقوم المحرك بكتابة كود Remotion TSX ورسوم SVG المتجهة بالكامل خصيصاً لكل مشهد.
 
-**الخطوة ٢: هل التصور يضيف فهماً حقيقياً؟**
-- إذا كان النص وحده يوصل المعنى بوضوح → bigtext أو icons أو cardstack
-- إذا كان التصور يجعل الفهم أسرع أو أعمق → اختر التصور المناسب
-
-**الخطوة ٣: خريطة الاختيار الذكي**
-| نوع المعلومة | النوع الأمثل |
-|---|---|
-
-| رسم حر/عملية/شبكة/تفاعل/قوة/فكرة ديناميكية | generative_canvas |
-| صراع طرفين/مقارنة بطولية أو تنافسية | versus_battle |
-| هرمية/طبقات/ترتيب تصاعدي أو تنازلي | stack_pyramid |
-| ميزان/تأرجح قوى أو نسبتين متقابلتين | balance_meter |
-| مسار تنقل/رحلة بين محطات أو مدن | animated_route |
-| خط زمني/عصور ومحطات تاريخية | deep_time_slider أو timeline_card |
-| ارتفاع جبل/قمة/عمق بحري بالمتر | elevation_profile |
-| رقم واحد بطل متوهج | stat_ring_v2 |
-| مقارنة أرقام أو كميات | bars |
-| صورة حقيقية لمعلم أو شخص أو كائن | photo |
-| خريطة إقليمية ودبابيس | map_pin أو map |
-| رسم بياني لسلسلة زمنية متعاقبة | line_chart |
-| رسم بياني لنسب مئوية | pie_chart |
-| عبارة افتتاحية خاطفة قوية | bigtext (مرة واحدة فقط كحد أقصى) |
-| مدينة / أفق حضري | city_skyline |
-| مبنى تاريخي / معماري | architecture |
-| سؤال / غموض / لغز | mystery_scene |
-
-**الخطوة ٤: تحقق صحة البيانات**
-- لا تخترع أرقاماً أو نسباً لم ترد في الجملة أو في facts
-- إذا لم تكن البيانات صريحة → استخدم generative_canvas أو photo أو versus_battle أو stack_pyramid
-
-**خلاصة**: اختر النوع البصري الحي الأغنى الذي يجعل المشاهد ينبهر بالرسم والحركة.
-
----
-
-ستستلم المشاهد وجمل كل مشهد، وتعيد لكل جملة مقطعاً (beat) واحداً بالترتيب، وبعدد الجمل بالضبط.
-
-حقل camera (اختياري، لأي نوع مقطع):
-- "push-in": تكبير تدريجي 100%→107% — للتأكيد والـ hook.
-- "pan": انزلاق أفقي — للقوائم والتسلسل.
-- "parallax": طبقات بسرعات مختلفة — للصور والخرائط.
-- "zoom-in", "zoom-out", "tilt-up", "tilt-down", "static".
-
-أنواع المقاطع (kind) وحقولها:
-
-- "map": للأماكن والعواصم والمدن والحدود الجغرافية. إلزامي كلما ذكرت الجملة مدينة أو عاصمة أو دولة أو توسعاً جغرافياً:
-  {"kind":"map","title":"فاس: العاصمة الثانية","countries":["MAR"],"highlight":["MAR"],"points":[{"name":"فاس","lat":34.033,"lon":-5.0}],"camera":"zoom-in"}
-
-- "generative_canvas": لوحة رسم حر إبداعية بالـ SVG والعناصر المتحركة. استخدمه بكثرة لتمثيل العمليات والتفاعلات والشبكات والأنظمة:
-  {"kind":"generative_canvas","title":"شبكة التفاعل والتجارة","grid":"dots","elements":[{"type":"shape","shape":"circle","x":540,"y":850,"w":180,"h":180,"fill":"#f59e0b","motion":"pop"},{"type":"badge","text":"المركز الرئيسي","x":540,"y":850,"icon":"sparkles"},{"type":"badge","text":"الميناء","x":280,"y":650,"icon":"ship"},{"type":"connector","fromX":280,"fromY":650,"toX":540,"toY":850,"color":"#f59e0b","style":"dashed","animated":true}],"camera":"zoom-in"}
-  العناصر المتاحة:
-  - badge: {"type":"badge","text":"..","x":540,"y":800,"icon":"sparkles|star|shield|fire|coin|crown","color":"#.."}
-  - shape: {"type":"shape","shape":"circle|rect|pill|ring","x":..,"y":..,"w":..,"h":..,"fill":"#..","motion":"pop|rise|drop"}
-  - counter: {"type":"counter","value":100,"prefix":"","suffix":"%","label":"..","x":..,"y":..}
-  - gauge: {"type":"gauge","value":75,"label":"..","x":..,"y":..}
-  - connector: {"type":"connector","fromX":..,"fromY":..,"toX":..,"toY":..,"color":"#..","style":"solid|dashed","animated":true}
-  توزيع العناصر: وزّع العناصر عمودياً على كامل الشاشة (y من 420 إلى 1500) ولا تكتلها في نطاق y ضيق. مثال توزيع: قمة (y=450)، وسط (y=850-950)، قاع (y=1350-1480).
-
-- "versus_battle": صراع ومقارنة حماسية بين طرفين أو قوتين مع شارة VS:
-  {"kind":"versus_battle","title":"صراع النفوذ","left":{"title":"الطرف الأول","subtitle":"وصف موجز أو رقم","badge":"أفضلية"},"right":{"title":"الطرف الثاني","subtitle":"وصف موجز أو رقم","badge":"تحدي"},"camera":"zoom-in"}
-
-- "stack_pyramid": هرم أو طبقات متتالية من القمة للقاعدة:
-  {"kind":"stack_pyramid","title":"الهرم الطبقي","tiers":[{"label":"القمة والقيادة","value":"5%"},{"label":"الطبقة الوسطى","value":"25%"},{"label":"القاعدة الشعبية","value":"70%"}],"camera":"tilt-up"}
-
-- "balance_meter": ميزان متحرك يتأرجح بين وزنين أو قوتين:
-  {"kind":"balance_meter","title":"ميزان القوى","leftLabel":"القوة الأولى","leftWeight":65,"rightLabel":"القوة الثانية","rightWeight":35,"unit":"%","camera":"push-in"}
-
-- "animated_route": مسار رحلة أو انتقال بين محطات:
-  {"kind":"animated_route","title":"مسار الحملة","stops":[{"name":"نقطة البداية"},{"name":"محطة العبور"},{"name":"المقر النهائي"}],"camera":"pan-left"}
-
-- "deep_time_slider": خط زمني يمر عبر العصور والمحطات التاريخية:
-  {"kind":"deep_time_slider","title":"المحطات التاريخية","eras":[{"name":"البداية","year":"١٥٠٠ م"},{"name":"الذروة","year":"١٧٥٠ م"},{"name":"الحاضر","year":"٢٠٢٤ م"}],"camera":"pan-left"}
-
-- "map_pin": خريطة إقليمية مع دبابيس وأسماء مدن تسقط بالحركة النابضة:
-  {"kind":"map_pin","title":"مسار انتقال العواصم","region":"egypt","points":[{"name":"القاهرة","x":540,"y":780},{"name":"الإسكندرية","x":420,"y":560}]}
-
-- "timeline_card": خط زمني عربي مع بطاقات محطات تاريخية:
-  {"kind":"timeline_card","title":"تطور العواصم عبر الزمن","items":[{"year":"٦٤١ م","label":"تأسيس الفسطاط","icon":"icons/history/castle.svg"},{"year":"٩٦٩ م","label":"بناء القاهرة","icon":"icons/building/mosque.svg"}]}
-
-- "stat_ring_v2": حلقة إحصائية ثلاثية الأبعاد تحتوي أيقونة بطل في مركزها والرقم يتصاعد بتوهج ذهبي:
-  {"kind":"stat_ring_v2","number":"1,000","label":"عام من التاريخ","icon":"icons/time/hourglass.svg","camera":"zoom-in"}
-
-- "elevation_profile": تصور بصري متحرك لارتفاع جبل أو قمة أو بناية فوق سطح البحر:
-  {"kind":"elevation_profile","title":"جبل إيفرست","height":"8,849","unit":"م","sea_label":"سطح البحر","camera":"push-in"}
-
-- "bars": مقارنة أرقام حقيقية بأعمدة ملونة:
-  {"kind":"bars","title":"مقارنة الأرقام","items":[{"label":"الطرف أ","value":85,"display":"85K"},{"label":"الطرف ب","value":42,"display":"42K"}],"camera":"push-in"}
-
-- "line_chart": رسم بياني خطي متحرك للبيانات الزمنية (≥3 نقاط):
-  {"kind":"line_chart","title":"نمو عدد السكان","points":[{"label":"1800","value":1.0},{"label":"1900","value":1.6},{"label":"2000","value":6.1}],"y_label":"مليار","camera":"push-in"}
-
-- "pie_chart": مخطط دائري للبيانات النسبية التي تجمع 100%:
-  {"kind":"pie_chart","title":"توزيع الحصص","items":[{"label":"النفط","value":40},{"label":"الغاز","value":35},{"label":"أخرى","value":25}],"camera":"zoom-in"}
-
-- "photo": للجمل التي تذكر شخصاً، معلماً، أثراً، مدينة، أو كائناً حقيقياً قابلاً للتصوير:
-  {"kind":"photo","query":"pyramids of giza cairo egypt","text":"أهرامات الجيزة الخالدة","camera":"parallax","must_show":"pyramids","avoid":"watermark text collage"}
-
+لكل جملة في السكربت، تخيّل من الصفر تصميماً بصرياً فريداً ومختلفاً تماماً عن المشاهد الأخرى، وحدد في المقطع (beat):
+1. title: عنوان عربي مكثف ومباشر (3-6 كلمات) من صميم معنى الجملة.
+2. concept: وصف بصري تفصيلي إبداعي خاص بهذه الجملة فقط (مثلاً: واجهة المحكمة العليا في سوكري بأعمدة كلاسيكية وختم دستوري متوهج، أو قمم جبال الأنديز المضاءة ليلاً لمدينة لاباز، أو خريطة جغرافية بالحدود الدقيقة، أو مشهد رمزي ملموس من الواقع — ممنوع القوالب أو الأشكال الهندسية الفارغة مثل دوائر ومثلثات عشوائية).
+3. camera: حركة الكاميرا السينمائية ("push-in", "zoom-in", "pan-left", "tilt-up", "parallax", "zoom-out").
+4. kind: "custom_scene" (إلزامي ليعمل محرك توليد الأكواد الأصلية Remotion TSX).
 
 قواعد صارمة:
-- مدينة أو أفق حضري → city_skyline. مبنى تاريخي أو معماري → architecture. سؤال أو لغز → mystery_scene. استعمل photo فقط لما لا يمكن تمثيله بالرسوم المتجهة. لا تزد نسبة photo عن 15-25% من المقاطع.
-- ممنوع بتاتاً استخدام نوع "icons" (الدوائر القديمة بنجوم مكررة ملغاة تماماً).
-- الأعلام (visuals): إذا أضفت علماً في حقل visuals فيجب أن يكون علم الدولة التي يتحدث عنها هذا المقطع تحديداً. إذا تناول المقطع دولاً متعددة أو منطقة عامة (آسيا، أوروبا...) فلا تضع أي علم. لا تكرر نفس العلم في مقاطع متتالية لدول مختلفة.
-- الأرقام في الصوت والصورة: عند استخدام stat_ring_v2 أو bars مع رقم دقيق، اكتب في السرد الصوتي (title/subtitle) صيغة تقريبية ("أكثر من 36 مليون") والرقم الدقيق يبقى فقط في حقل number للتصور البصري. لا تكرر الرقم الكامل في العنوان والسرد والشارة معاً.
-- مشهد البداية (Hook - أول جملة): يجب أن يكون مشهداً سينمائياً بطلاً يخطف الأبصار فوراً (Hero Visual)! استخدم نوع "photo" مع استعلام إنجليزي فائق الدقة أو "generative_canvas" بتكوين فني غني. يُمنع منعاً باتاً عرض شاشة سوداء فارغة بنص فقط (bigtext مجرد).
-- ممنوع تكرار "bigtext" نهائياً، ويُمنع استخدامه لأكثر من مرة واحدة فقط وبشرط وجود مغزى قوي! بقية المشاهد يجب أن تكون بصرية سينمائية (generative_canvas, photo, versus_battle, stack_pyramid, balance_meter, bars, stat_ring_v2).
-- الصور الواقعية (photo): استخدمها بسخاء في 40% إلى 50% من المقاطع كلما ذكرت الجملة حضارة، معلماً، أثراً، معبداً، كارثة طبيعية، مدينة، أسلحة، نقوداً، أو حدثاً تاريخياً. اكتب دائماً query بالإنجليزية دقيقاً ومحدداً مع 2 alt_queries واضحة.
-- أعطِ أولوية قصوى لـ "generative_canvas" عندما تصف الجملة عملية تفاعلية أو نظاماً أو شبكة أو حركة مفاهيمية.
-- في versus_battle: إذا لم تكن هناك أرقام صريحة، لا تضع أرقاماً عشوائية أبداً، بل ركز على title و subtitle و badge لكلا الطرفين.
-- في balance_meter: استخدم دائماً leftLabel و rightLabel و leftWeight و rightWeight.
-- في stack_pyramid: استخدم دائماً مصفوفة tiers من القمة للقاعدة.
-- تنويع صارم: لا مقطعان متتاليان من نفس النوع أبداً.
-- ممنوع تكرار نمط map→stat_ring_v2→bars أكثر من مرة واحدة في الفيديو كله. كل منطقة جغرافية يجب أن تُعرض بأسلوب مختلف: versus_battle أو generative_canvas أو photo أو balance_meter أو stack_pyramid.
-- مشهد CTA (نهاية الفيديو): يجب أن يحتوي على عنصر بصري قوي (generative_canvas بشبكة نجوم أو عناصر متحركة، أو photo مناسب)، وليس شاشة سوداء أو progress bar فارغة. أضف شارات نص تحفيزية واضحة.
-- لا تخترع أرقاماً أو حقائق: كل رقم أو تاريخ أو اسم يجب أن يرد صراحة في السرد أو facts.
+- لا تخترع أرقاماً أو تواريخ لم ترد في السكربت أو facts.
+- كل مشهد مستقل في تصميمه وألوانه وحركته عن المشاهد الأخرى؛ يُمنع تكرار الفكرة البصرية أو استخدام قوالب ثابتة.
 - أعد JSON فقط:
-{"scenes":[{"id":"hook","beats":[{...}]},{"id":"lead","beats":[{...}]},{"id":"body1","beats":[{...}]},{"id":"open_loop1","beats":[{...}]},{"id":"body2","beats":[{...}]},{"id":"open_loop2","beats":[{...}]},{"id":"body3","beats":[{...}]},{"id":"cta","beats":[{...}]}]}"""
+{"scenes":[{"id":"hook","beats":[{"kind":"custom_scene","title":"...","concept":"...","camera":"push-in"}]},{"id":"lead","beats":[{...}]},{"id":"body1","beats":[{...}]},{"id":"open_loop1","beats":[{...}]},{"id":"body2","beats":[{...}]},{"id":"open_loop2","beats":[{...}]},{"id":"body3","beats":[{...}]},{"id":"cta","beats":[{...}]}]}"""
 
 PHOTO_RULES = """
 
@@ -1273,6 +1288,7 @@ def apply_beats(script, result, geo=None, llm_retry_fn: Optional[Callable[[List[
 
         has_map_beat = any(b.get("kind") in ("map", "map_pin") for b in target["beats"])
         if not has_map_beat and sc.get("role") in ("body", "lead") and target["beats"]:
+            orig_concept = target["beats"][0].get("concept")
             if vis.get("type") == "map" and (vis.get("countries") or vis.get("points")):
                 map_cand = normalize_beat({
                     "kind": "map",
@@ -1283,6 +1299,8 @@ def apply_beats(script, result, geo=None, llm_retry_fn: Optional[Callable[[List[
                     "camera": "zoom-in",
                 }, sents[0], geo)
                 if map_cand.get("kind") == "map":
+                    if orig_concept:
+                        map_cand["concept"] = orig_concept
                     target["beats"][0] = map_cand
             elif det_city and det_info:
                 map_cand = normalize_beat({
@@ -1294,8 +1312,91 @@ def apply_beats(script, result, geo=None, llm_retry_fn: Optional[Callable[[List[
                     "camera": "zoom-in",
                 }, sents[0], geo)
                 if map_cand.get("kind") == "map":
+                    if orig_concept:
+                        map_cand["concept"] = orig_concept
                     target["beats"][0] = map_cand
         targets.append(target)
+
+    # دمج خطة محرك الذكاء البصري (Visual Intelligence Engine) لتوحيد السياق التاريخي والجغرافي عبر المشاهد
+    try:
+        from .visual_intelligence import analyze_script_visual_intelligence
+        vi_plan = s.get("_visual_intelligence")
+        if not isinstance(vi_plan, dict) or not vi_plan.get("scenes"):
+            vi_plan = analyze_script_visual_intelligence(s, geo=geo, use_llm=bool(result))
+            s["_visual_intelligence"] = vi_plan
+        vi_by_id = {sc_v["id"]: sc_v for sc_v in (vi_plan.get("scenes") or []) if isinstance(sc_v, dict)}
+        for t in targets:
+            sc_vi = vi_by_id.get(t.get("id"))
+            if not sc_vi:
+                continue
+            t["_vi"] = sc_vi
+            for b in (t.get("beats") or []):
+                if isinstance(b, dict):
+                    b["visual_intelligence"] = {
+                        "semantic_goal": sc_vi.get("semantic_goal"),
+                        "historical_era": sc_vi.get("historical_era"),
+                        "is_historical": sc_vi.get("is_historical"),
+                        "visual_mode": sc_vi.get("visual_mode"),
+                        "entities": [e.get("name") for e in (sc_vi.get("entities") or [])[:6]],
+                        "relationships": sc_vi.get("relationships") or [],
+                        "avoid": sc_vi.get("avoid"),
+                    }
+                    if b.get("kind") == "photo":
+                        if not b.get("query") and sc_vi.get("media_query_en"):
+                            b["query"] = sc_vi["media_query_en"]
+                        if not b.get("must_show") and sc_vi.get("must_show"):
+                            b["must_show"] = sc_vi["must_show"]
+                        if not b.get("avoid") and sc_vi.get("avoid"):
+                            b["avoid"] = sc_vi["avoid"]
+                    if b.get("kind") == "photo" and sc_vi.get("media_query_en"):
+                        b["query"] = sc_vi["media_query_en"]
+                        if sc_vi.get("must_show"):
+                            b["must_show"] = sc_vi["must_show"]
+                        if sc_vi.get("avoid"):
+                            b["avoid"] = sc_vi["avoid"]
+    except Exception:
+        pass
+
+    # ضمان تنوّع بصري سينمائي: ترقية حتى مشهدين (hook / body) إلى صور حقيقية مرخّصة (photo)
+    # لتفعيل تخطيط الشاشة المقسّمة (Photo Top + Panoramic Map Bottom) بدلاً من الاقتصار على رسوم SVG فقط
+    photo_count = sum(1 for t in targets for b in (t.get("beats") or []) if b.get("kind") == "photo")
+    map_count = sum(1 for t in targets for b in (t.get("beats") or []) if b.get("kind") in ("map", "map_pin"))
+    if photo_count < 2:
+        for t in targets:
+            if photo_count >= 2:
+                break
+            if t.get("role") not in ("hook", "body") or not t.get("beats"):
+                continue
+            cur_kind = t["beats"][0].get("kind")
+            if cur_kind == "photo":
+                continue
+            if cur_kind in ("map", "map_pin") and map_count <= 1:
+                continue
+            first_sent = (sentences(t.get("narration", "")) or [t.get("narration", "")])[0]
+            pb = detect_photo_beat(first_sent) or detect_photo_beat(f"{t.get('on_screen', '')} {s.get('title', '')}")
+            sc_vi = t.get("_vi") if isinstance(t.get("_vi"), dict) else {}
+            if not pb and sc_vi.get("media_query_en"):
+                pb = {
+                    "kind": "photo",
+                    "query": sc_vi["media_query_en"],
+                    "text": _words(first_sent, 5),
+                    "camera": "parallax",
+                    "must_show": sc_vi.get("must_show") or sc_vi["media_query_en"],
+                    "avoid": sc_vi.get("avoid") or "watermark text collage",
+                    "alt_queries": [sc_vi["media_query_en"]],
+                }
+            if pb:
+                if sc_vi.get("media_query_en"):
+                    pb["query"] = sc_vi["media_query_en"]
+                if sc_vi.get("must_show"):
+                    pb["must_show"] = sc_vi["must_show"]
+                if sc_vi.get("avoid"):
+                    pb["avoid"] = sc_vi["avoid"]
+                pb["text"] = _words(first_sent, 5)
+                pb_norm = validate_beat(normalize_beat(pb, first_sent, geo))
+                if pb_norm.get("kind") == "photo":
+                    t["beats"][0] = pb_norm
+                    photo_count += 1
 
     # إثراء خريطة المشهد الافتتاحي (Hook) بدبابيس جميع المدن/العواصم المذكورة في السكربت إن كانت نقاطها فارغة
     hook_target = s.get("hook")
@@ -1326,6 +1427,7 @@ def apply_beats(script, result, geo=None, llm_retry_fn: Optional[Callable[[List[
         sents = sentences(target.get("narration", ""))
         beats = target.get("beats", [])
         seen_stat_numbers = set()
+        seen_map_cities = set()
         for bi, b in enumerate(beats):
             cur_kind = b.get("kind")
             sent = sents[bi] if bi < len(sents) else ""
@@ -1362,6 +1464,17 @@ def apply_beats(script, result, geo=None, llm_retry_fn: Optional[Callable[[List[
                 elif num_key:
                     seen_stat_numbers.add(num_key)
 
+            # منع تكرار نفس خريطة المدينة أو نفس الصورة للمدينة داخل المشهد الواحد (تثبيت المشهد ومنع الوميض والتشتت)
+            if cur_kind == "map":
+                curr_city = ((b.get("points") or [{}])[0].get("name") or "").strip()
+                if curr_city and curr_city in seen_map_cities:
+                    from .generative_visuals import compose_generative_canvas
+                    b = compose_generative_canvas(sent, context=b.get("title") or curr_city)
+                    beats[bi] = b
+                    cur_kind = "generative_canvas"
+                elif curr_city:
+                    seen_map_cities.add(curr_city)
+
             # منع تكرار نفس النوع مرتين متتاليتين (مع استثناء الخرائط التي تعرض مدناً أو نقاطاً جغرافية مختلفة)
             is_diff_map = False
             if cur_kind == "map" and prev_kind == "map":
@@ -1370,8 +1483,11 @@ def apply_beats(script, result, geo=None, llm_retry_fn: Optional[Callable[[List[
                 if curr_pt and prev_pt and curr_pt != prev_pt:
                     is_diff_map = True
 
-            is_repeat = ((cur_kind == prev_kind and not is_diff_map) or
-                         (cur_kind in ("stat", "stat_ring_v2") and prev_kind in ("stat", "stat_ring_v2")))
+            is_repeat = (
+                cur_kind not in ("custom_scene", "generative_canvas")
+                and ((cur_kind == prev_kind and not is_diff_map)
+                     or (cur_kind in ("stat", "stat_ring_v2") and prev_kind in ("stat", "stat_ring_v2")))
+            )
             if is_repeat:
                 if cur_kind == "map":
                     pts = b.get("points") or []
@@ -1488,13 +1604,165 @@ def apply_beats(script, result, geo=None, llm_retry_fn: Optional[Callable[[List[
     try:
         from . import visual_tools
         from .scriptspec import PART_IDS, PARTS_BY_ID
+        from .storyteller import (
+            _extract_all_cities,
+            _extract_countries_from_text,
+            design_scene_specification,
+            evaluate_and_improve_scene,
+            generate_dynamic_tsx_file,
+        )
+
         transitions = visual_tools.pick_transitions(len(PART_IDS), seed=42)
+        used_palettes: set = set()
+        used_environments: set = set()
+        used_approaches: set = set()
+        used_cameras: set = set()
+        prev_signatures: List[str] = []
+        dynamic_tsx_beats: List[Dict[str, Any]] = []
+        global_beat_idx = 0
+
+        # استخراج السياق العام للفيديو بالكامل (العنوان + الحقائق الموثقة + الدول والمدن الرئيسية)
+        full_video_title = str(s.get("title") or "").strip()
+        facts_list: List[str] = []
+        for f_item in (s.get("facts") or []):
+            if isinstance(f_item, dict) and f_item.get("claim"):
+                facts_list.append(str(f_item["claim"]).strip())
+            elif isinstance(f_item, str) and f_item.strip():
+                facts_list.append(f_item.strip())
+        if isinstance(s.get("_facts_data"), dict) and s["_facts_data"].get("facts"):
+            raw_facts_str = str(s["_facts_data"]["facts"]).strip()
+            for line in raw_facts_str.splitlines():
+                cl = line.strip("•-* \t")
+                if len(cl) > 12 and cl not in facts_list:
+                    facts_list.append(cl)
+                if len(facts_list) >= 8:
+                    break
+        facts_summary = " | ".join(facts_list[:6])
+
+        all_script_text_parts = [full_video_title]
+        video_countries: List[str] = []
+        video_cities: List[Dict[str, Any]] = []
+        seen_vc_coords = set()
+        for pid in PART_IDS:
+            sc_dict = s.get(pid)
+            if isinstance(sc_dict, dict):
+                all_script_text_parts.append(str(sc_dict.get("on_screen") or ""))
+                all_script_text_parts.append(str(sc_dict.get("narration") or ""))
+                vis_d = sc_dict.get("visual") if isinstance(sc_dict.get("visual"), dict) else {}
+                for c_iso in (vis_d.get("countries") or vis_d.get("highlight") or []):
+                    c_up = str(c_iso).upper().strip()
+                    if c_up and c_up not in video_countries:
+                        video_countries.append(c_up)
+                for pt in (vis_d.get("points") or []):
+                    if isinstance(pt, dict) and "lat" in pt and "lon" in pt:
+                        ck = (round(float(pt["lat"]), 1), round(float(pt["lon"]), 1))
+                        if ck not in seen_vc_coords:
+                            seen_vc_coords.add(ck)
+                            video_cities.append({
+                                "name": str(pt.get("name") or ""),
+                                "lat": float(pt["lat"]),
+                                "lon": float(pt["lon"]),
+                            })
+        full_script_text = " ".join(all_script_text_parts)
+        for c_iso in _extract_countries_from_text(full_script_text):
+            if c_iso not in video_countries:
+                video_countries.append(c_iso)
+        for c_obj in _extract_all_cities(full_script_text):
+            ck = (round(float(c_obj["lat"]), 1), round(float(c_obj["lon"]), 1))
+            if ck not in seen_vc_coords:
+                seen_vc_coords.add(ck)
+                video_cities.append({
+                    "name": c_obj["name"],
+                    "lat": float(c_obj["lat"]),
+                    "lon": float(c_obj["lon"]),
+                })
+            if c_obj.get("iso") and c_obj["iso"] not in video_countries:
+                video_countries.append(c_obj["iso"])
+
         for idx, pid in enumerate(PART_IDS):
             if pid in s and isinstance(s[pid], dict):
-                sc_obj = {**s[pid], "id": pid, "role": PARTS_BY_ID[pid]["role"]}
-                # إثراء المشهد بعنصر بصري تراكبي ذكي وموجز (علم الدولة، أيقونة معبرة، أو لوتي في الـ hook)
+                sc_role = PARTS_BY_ID[pid]["role"]
+                sc_obj = {**s[pid], "id": pid, "role": sc_role}
                 s[pid]["visuals"] = visual_tools.enrich_scene_visuals(sc_obj, scene_index=idx, preferred_icon_set="lucide")
                 s[pid]["transition"] = transitions[idx]
+
+                prev_narr = s.get(PART_IDS[idx - 1], {}).get("narration", "") if idx > 0 else ""
+                next_narr = s.get(PART_IDS[idx + 1], {}).get("narration", "") if idx + 1 < len(PART_IDS) else ""
+                full_scene_narr = s[pid].get("narration", "")
+                sc_beats = s[pid].get("beats") or []
+
+                # دمج مقاطع المشهد الواحد في مقطع بصري متكامل واحد يغطي الجملة كاملة (8 مشاهد = 8 تصاميم متكاملة)
+                if len(sc_beats) > 1:
+                    primary_beat = dict(sc_beats[0])
+                    concepts = [str(b.get("concept") or "").strip() for b in sc_beats if isinstance(b, dict) and b.get("concept")]
+                    if concepts:
+                        primary_beat["concept"] = " — ".join(dict.fromkeys(c for c in concepts if c))
+                    for b_other in sc_beats[1:]:
+                        if isinstance(b_other, dict) and b_other.get("kind") == "map" and primary_beat.get("kind") != "map":
+                            for mk in ("countries", "highlight", "points"):
+                                if b_other.get(mk) and not primary_beat.get(mk):
+                                    primary_beat[mk] = b_other[mk]
+                    sc_beats = [primary_beat]
+                    s[pid]["beats"] = sc_beats
+
+                for b_idx, beat_item in enumerate(sc_beats):
+                    if not isinstance(beat_item, dict):
+                        continue
+                    sent_txt = full_scene_narr
+                    was_fallback = beat_item.get("_fallback")
+                    designed = design_scene_specification(
+                        scene_id=f"{pid}_{b_idx}",
+                        role=sc_role,
+                        narration=sent_txt,
+                        on_screen=beat_item.get("title") or s[pid].get("on_screen", ""),
+                        scene_index=global_beat_idx,
+                        total_scenes=len(PART_IDS),
+                        prev_narration=prev_narr,
+                        next_narration=next_narr,
+                        video_title=full_video_title,
+                        used_palettes=used_palettes,
+                        used_environments=used_environments,
+                        used_approaches=used_approaches,
+                        used_cameras=used_cameras,
+                    )
+                    if beat_item.get("kind") in ("generative_canvas", "custom_scene"):
+                        improved, _ = evaluate_and_improve_scene(designed, sent_txt, global_beat_idx, prev_signatures)
+                        used_palettes.add(improved.get("bg_mood") or improved.get("accent"))
+                        used_environments.add(improved.get("environment"))
+                        if was_fallback:
+                            improved["_fallback"] = True
+                        if beat_item.get("concept"):
+                            improved["concept"] = beat_item["concept"]
+                        for gk in ("countries", "highlight", "points"):
+                            if beat_item.get(gk):
+                                improved[gk] = beat_item[gk]
+                        improved["tsx_id"] = f"DynamicScene_{pid}_{b_idx}_{global_beat_idx}"
+                        improved["narration"] = sent_txt
+                        improved["video_title"] = full_video_title
+                        improved["facts_summary"] = facts_summary
+                        improved["video_countries"] = video_countries[:3]
+                        improved["video_cities"] = video_cities[:5]
+                        sc_beats[b_idx] = improved
+                        dynamic_tsx_beats.append(improved)
+                    else:
+                        beat_item["scene_spec"] = designed["scene_spec"]
+                        beat_item["narration_cues"] = designed["narration_cues"]
+                        if beat_item.get("kind") not in ("photo", "map", "map_pin"):
+                            beat_item["tsx_id"] = f"DynamicScene_{pid}_{b_idx}_{global_beat_idx}"
+                            beat_item["narration"] = sent_txt
+                            beat_item["video_title"] = full_video_title
+                            beat_item["facts_summary"] = facts_summary
+                            beat_item["video_countries"] = video_countries[:3]
+                            beat_item["video_cities"] = video_cities[:5]
+                            beat_item["accent"] = designed.get("accent") or "#38bdf8"
+                            beat_item["secondary_accent"] = designed.get("secondary_accent") or "#818cf8"
+                            dynamic_tsx_beats.append(beat_item)
+                        else:
+                            beat_item.pop("tsx_id", None)
+                    global_beat_idx += 1
+
+        if dynamic_tsx_beats:
+            generate_dynamic_tsx_file(dynamic_tsx_beats, use_llm=False)
     except Exception:
         pass
     s['body'] = [s.get('body1', {}), s.get('body2', {}), s.get('body3', {})]

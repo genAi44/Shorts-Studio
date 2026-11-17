@@ -26,6 +26,13 @@ export const makeTheme = (st: Style) => {
         return p.accent;
     }
   };
+  // Cinematic lighting presets per scene mood
+  const lighting = {
+    keyLight: st.dark ? `rgba(255,220,180,0.12)` : `rgba(255,255,240,0.15)`,
+    fillLight: st.dark ? `rgba(100,140,200,0.08)` : `rgba(200,220,255,0.10)`,
+    rimLight: st.dark ? `rgba(255,200,100,0.20)` : `rgba(255,255,255,0.25)`,
+    ambientOcclusion: st.dark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.15)',
+  };
   return {
     st, p, dark: st.dark, family: `F_${st.font}`, family2: `F2_${st.font2}`, weight: st.weight, pace: st.pace, tok,
     zoneCy: ({top: 870, center: 870, upper: 920, lower: 650} as Record<string, number>)[st.headline.pos] ?? 870,
@@ -37,7 +44,15 @@ export const makeTheme = (st: Style) => {
       in: Easing.bezier(0.7, 0, 0.84, 0.35),
       inOut: Easing.bezier(0.65, 0, 0.35, 1),
     },
-    shadow: st.dark ? '0 4px 16px rgba(0,0,0,0.5)' : '0 3px 10px rgba(255,255,255,0.55)',
+    shadow: st.dark ? '0 4px 20px rgba(0,0,0,0.6)' : '0 3px 12px rgba(255,255,255,0.6)',
+    // Cinematic lighting
+    lighting,
+    // Vignette for cinematic depth
+    vignette: st.dark 
+      ? 'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.55) 100%)'
+      : 'radial-gradient(ellipse at center, transparent 40%, rgba(30,25,20,0.35) 100%)',
+    // Film grain overlay
+    grainIntensity: 0.06,
   };
 };
 export type Theme = ReturnType<typeof makeTheme>;
@@ -46,3 +61,6 @@ export const useTheme = () => useContext(ThemeCtx);
 
 // سرعة الحركة للمشهد (الـ HOOK أسرع) وحالة «الثبات» لمشهد الـ LOOP.
 export const MotionCtx = createContext({speed: 1, settled: false});
+
+// تخطيط الشاشة المقسمة: صورة في الأعلى وخريطة تفاعلية عريضة في الأسفل
+export const MapLayoutCtx = createContext({splitBottom: false});

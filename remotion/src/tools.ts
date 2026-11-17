@@ -131,8 +131,9 @@ export const resolve_flag = (query: string) => {
   return {
     code: iso2.toUpperCase(),
     iso2,
-    fileRect: `flags/4x3/${iso2}.svg`,
-    fileRound: `flags/1x1/${iso2}.svg`,
+    found: Boolean(iso2),
+    fileRect: iso2 ? `flags/4x3/${iso2}.svg` : '',
+    fileRound: iso2 ? `flags/1x1/${iso2}.svg` : '',
   };
 };
 

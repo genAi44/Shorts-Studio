@@ -16,93 +16,67 @@ export const Background: React.FC<{spec?: Spec}> = ({spec}) => {
   const s = bg.motion ? frame / fps : 0;
   const k = bg.intensity;
 
-  const darkBase = 'linear-gradient(180deg, #090e17 0%, #030508 55%, #010204 100%)';
+  const darkBase = `linear-gradient(${bg.angle}deg, ${rgba(mixc(p.c1, [16, 28, 52], 0.45))} 0%, ${rgba(mixc(p.c2, [10, 18, 36], 0.5))} 55%, #070d19 100%)`;
   const base = th.dark ? darkBase : `linear-gradient(${bg.angle}deg, ${rgba(p.c1)}, ${rgba(p.c2)})`;
 
   return (
     <AbsoluteFill style={{background: base, overflow: 'hidden'}}>
-      {/* 1. مسحة لونية خفيفة من باليتة الستايل */}
+      {/* 1. مسحة لونية غنية وديناميكية من باليتة الستايل */}
       {th.dark && (
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            background: `radial-gradient(ellipse at 50% 30%, ${rgba(p.c1, 0.45)} 0%, ${rgba(p.c2, 0.7)} 70%, transparent 100%)`,
+            background: `radial-gradient(ellipse 90% 65% at 50% 32%, ${rgba(p.accent, 0.24)} 0%, ${rgba(p.c1, 0.55)} 52%, ${rgba(p.c2, 0.75)} 85%, transparent 100%)`,
             mixBlendMode: 'screen',
           }}
         />
       )}
 
-      {/* 2. شبكة إحداثيات خطية خافتة للعمق البصري */}
+      {/* 2. أمواج متجهة متحركة تملأ الفراغ البصري */}
+      <Waves color={rgba(p.accent, th.dark ? 0.14 : 0.18)} s={s} />
+
+      {/* 3. شبكة إحداثيات هندسية للعمق البصري */}
       {th.dark && (
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            backgroundImage: `linear-gradient(rgba(212, 175, 55, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(212, 175, 55, 0.04) 1px, transparent 1px)`,
-            backgroundSize: '120px 120px',
-            backgroundPosition: `${(s * 10) % 120}px ${(s * 8) % 120}px`,
+            backgroundImage: `linear-gradient(${rgba(p.accent, 0.08)} 1px, transparent 1px), linear-gradient(90deg, ${rgba(p.accent2, 0.08)} 1px, transparent 1px)`,
+            backgroundSize: '110px 110px',
+            backgroundPosition: `${(s * 12) % 110}px ${(s * 9) % 110}px`,
             pointerEvents: 'none',
           }}
         />
       )}
 
-      {/* 4. توهج سبوت لايت ذهبي في المركز */}
+      {/* 4. توهج سبوت لايت محيطي متعدد الطبقات */}
       {th.dark && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: `radial-gradient(circle at 50% 44%, ${rgba(p.accent, 0.22)} 0%, ${rgba(p.accent2, 0.12)} 48%, transparent 78%)`,
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+
+      {/* 5. شرارات وجمرات ذهبية متصاعدة */}
+      {th.dark && <FireSparks n={28} zIndex={3} />}
+
+      {/* 6. تأطير سينمائي متوازن يحافظ على إضاءة المشهد */}
+      {th.dark ? (
         <div
           style={{
             position: 'absolute',
             inset: 0,
             background:
-              'radial-gradient(circle at 50% 45%, rgba(212, 175, 55, 0.16) 0%, rgba(212, 175, 55, 0.04) 45%, transparent 68%)',
+              'radial-gradient(circle at 50% 50%, transparent 55%, rgba(0,0,0,0.35) 85%, rgba(0,0,0,0.62) 100%)',
             pointerEvents: 'none',
+            zIndex: 4,
           }}
         />
-      )}
-
-      {/* 5. شرارات وجمرات لهب ذهبية متصاعدة مستمرة طوال الفيديو */}
-      {th.dark && <FireSparks n={28} zIndex={3} />}
-
-      {/* 6. تأطير سينمائي وتظليل داكن للأطراف (Vignette) */}
-      {th.dark ? (
-        <>
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background:
-                'radial-gradient(circle at 50% 50%, transparent 32%, rgba(0,0,0,0.65) 75%, rgba(0,0,0,0.96) 100%)',
-              pointerEvents: 'none',
-              zIndex: 4,
-            }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: 220,
-              background:
-                'linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%)',
-              pointerEvents: 'none',
-              zIndex: 4,
-            }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: 260,
-              background:
-                'linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)',
-              pointerEvents: 'none',
-              zIndex: 4,
-            }}
-          />
-        </>
       ) : null}
     </AbsoluteFill>
   );

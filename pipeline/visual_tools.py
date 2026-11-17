@@ -248,26 +248,61 @@ def resolve_flag(query: str, shape: str = "rect") -> Dict[str, Any]:
     iso2 = None
     if re.match(r"^[A-Z]{2}$", upper):
         iso2 = lower
-    elif re.match(r"^[A-Z]{3}$", upper) and upper in iso3_map:
-        iso2 = iso3_map[upper].lower()
+    elif re.match(r"^[A-Z]{3}$", upper):
+        _ISO3_TO_ISO2_EXTRA = {
+            "PAN": "pa", "CRI": "cr", "ISL": "is", "GRL": "gl", "MUS": "mu", "SLB": "sb",
+            "AND": "ad", "LIE": "li", "MCO": "mc", "SMR": "sm", "VAT": "va", "LUX": "lu",
+            "MLT": "mt", "CYP": "cy", "IRL": "ie", "NZL": "nz", "AUS": "au", "CAN": "ca",
+            "MEX": "mx", "ARG": "ar", "CHL": "cl", "COL": "co", "PER": "pe", "VEN": "ve",
+            "ECU": "ec", "URY": "uy", "PRY": "py", "CUB": "cu", "DOM": "do", "HTI": "ht",
+            "JAM": "jm", "GTM": "gt", "HND": "hn", "SLV": "sv", "NIC": "ni", "BTN": "bt",
+            "MDV": "mv", "WSM": "ws", "DMA": "dm", "GRD": "gd", "LCA": "lc", "VCT": "vc",
+            "PLW": "pw", "MHL": "mh", "FSM": "fm", "NRU": "nr", "TUV": "tv", "KIR": "ki",
+        }
+        if upper in iso3_map:
+            iso2 = iso3_map[upper].lower()
+        elif upper in _ISO3_TO_ISO2_EXTRA:
+            iso2 = _ISO3_TO_ISO2_EXTRA[upper]
+        else:
+            try:
+                from .geo import get_geo
+                c_meta = get_geo().c.get(upper) or {}
+                if c_meta.get("iso2"):
+                    iso2 = str(c_meta["iso2"]).lower()
+            except Exception:
+                pass
 
     if not iso2:
-        # Check pipeline.geo AR_ISO3
+        # Check pipeline.geo AR_ISO3 — exact name only (substring matches caused wrong flags)
         for ar_name, iso3_code in AR_ISO3.items():
-            if ar_name == raw or (len(raw) >= 3 and (ar_name in raw or raw in ar_name)):
+            if ar_name == raw:
                 if iso3_code in iso3_map:
                     iso2 = iso3_map[iso3_code].lower()
                     break
 
     if not iso2:
+        # Exact match first across iso2, iso3, ar, en
         for c in countries:
             if c["iso2"].upper() == upper or c["iso3"].upper() == upper:
                 iso2 = c["iso2"].lower()
                 break
-            if any(a == raw or (len(raw) >= 3 and (a in raw or raw in a)) for a in c.get("ar", [])):
+            if any(a == raw for a in c.get("ar", [])):
                 iso2 = c["iso2"].lower()
                 break
-            if any(e == lower or (len(lower) >= 3 and (e in lower or lower in e)) for e in c.get("en", [])):
+            if any(e == lower for e in c.get("en", [])):
+                iso2 = c["iso2"].lower()
+                break
+
+    if not iso2 and not re.match(r"^[A-Z]{2,3}$", upper):
+        # Whole-word fallback only (never partial words: 'بنما' ≠ 'بنمائي', 'pan' ≠ 'japan')
+        for c in countries:
+            if any(
+                len(a) >= 3 and re.search(rf"(?:^|[\s،,.\-]){re.escape(a)}(?:$|[\s،,.\-])", raw)
+                for a in c.get("ar", [])
+            ):
+                iso2 = c["iso2"].lower()
+                break
+            if any(len(e) >= 4 and re.search(rf"\b{re.escape(e)}\b", lower) for e in c.get("en", [])):
                 iso2 = c["iso2"].lower()
                 break
 
@@ -459,9 +494,11 @@ def normalize_visual_element(el: Dict[str, Any], preferred_icon_set: str = "luci
             },
         }
     elif kind == "flag":
-        raw_code = str(spec.get("code") or el.get("code") or "EG").strip()
+        raw_code = str(spec.get("code") or el.get("code") or "").strip()
         shape = "round" if spec.get("shape") == "round" else "rect"
         resolved = resolve_flag(raw_code, shape=shape)
+        if not resolved.get("found") or not resolved.get("code"):
+            return None  # never fall back to a default country's flag
         out = {
             "kind": "flag",
             "spec": {
@@ -522,6 +559,10 @@ def normalize_visual_element(el: Dict[str, Any], preferred_icon_set: str = "luci
 
     if placement in ("center", "top-right", "top-left", "bottom-right", "bottom-left", "badge-row", "hero"):
         out["placement"] = placement
+    # Optional timed window (frames, scene-local) — used by entity-synced flags
+    if isinstance(el.get("from"), (int, float)) and isinstance(el.get("to"), (int, float)) and el["to"] > el["from"]:
+        out["from"] = max(0, int(el["from"]))
+        out["to"] = int(el["to"])
     if isinstance(el.get("x"), (int, float)) and isinstance(el.get("y"), (int, float)):
         # Enforce 9:16 safe margins
         out["x"] = max(90, min(990, int(el["x"])))
@@ -540,6 +581,14 @@ def enrich_scene_visuals(
     - Consistent icon set per video (`preferred_icon_set`)
     - No emoji spam (at most 1 emoji per scene)
     """
+    vis = scene.get("visual") if isinstance(scene.get("visual"), dict) else {}
+    vis_countries = [str(c) for c in ((vis.get("countries") or []) + (vis.get("highlight") or [])) if c]
+    expected_flag_codes: List[str] = []
+    for vc in vis_countries:
+        fl = resolve_flag(vc, shape="rect")
+        if fl.get("found") and fl.get("code") and fl["code"] not in expected_flag_codes:
+            expected_flag_codes.append(fl["code"])
+
     existing = scene.get("visuals")
     if isinstance(existing, list) and existing:
         norm = []
@@ -548,6 +597,12 @@ def enrich_scene_visuals(
             n_el = normalize_visual_element(el, preferred_icon_set=preferred_icon_set)
             if not n_el:
                 continue
+            if n_el["kind"] == "flag" and expected_flag_codes:
+                cur_code = str((n_el.get("spec") or {}).get("code") or "").upper()
+                if cur_code not in expected_flag_codes:
+                    fixed_fl = resolve_flag(expected_flag_codes[0], shape=(n_el.get("spec") or {}).get("shape", "rect"))
+                    if fixed_fl.get("found") and fixed_fl.get("code"):
+                        n_el["spec"] = {**n_el["spec"], "code": fixed_fl["code"]}
             if n_el["kind"] == "emoji":
                 if emoji_count >= 1:
                     continue
@@ -559,7 +614,6 @@ def enrich_scene_visuals(
             return norm
 
     text = f"{scene.get('on_screen', '')} {scene.get('narration', '')}"
-    vis = scene.get("visual") if isinstance(scene.get("visual"), dict) else {}
     out: List[Dict[str, Any]] = []
 
     # 1. Check if a country is mentioned or in map visual -> add <Flag /> ONLY if validated
@@ -575,8 +629,14 @@ def enrich_scene_visuals(
             })
             flag_added = True
     else:
-        for ar_name, iso3 in AR_ISO3.items():
-            if ar_name in text:
+        for ar_name, iso3 in sorted(AR_ISO3.items(), key=lambda x: len(x[0]), reverse=True):
+            if len(ar_name) < 3:
+                continue
+            if ar_name in ("أمريكا", "امريكا") and re.search(
+                r"(?:أمريكا|امريكا)\s+(?:الجنوبية|الشمالية|اللاتينية|الوسطى)", text
+            ):
+                continue
+            if re.search(rf"(?:^|[\s،؟!.,:؛\-وبلفك]){re.escape(ar_name)}(?:$|[\s،؟!.,:؛\-])", text):
                 fl = resolve_flag(iso3, shape="rect")
                 if fl.get("found") and fl.get("code"):
                     out.append({

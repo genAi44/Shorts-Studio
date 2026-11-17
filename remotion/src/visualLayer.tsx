@@ -1,5 +1,5 @@
 import React from 'react';
-import {AbsoluteFill} from 'remotion';
+import {AbsoluteFill, interpolate, useCurrentFrame} from 'remotion';
 import {Icon} from './icons';
 import {Emoji} from './emoji';
 import {Flag} from './flag';
@@ -44,7 +44,8 @@ export const SingleVisualElement: React.FC<{item: VisualElement; index?: number}
   item,
   index = 0,
 }) => {
-  const delayFrames = index * 5;
+  // Timed elements (entity-synced flags) start their entrance animation when they appear
+  const delayFrames = (typeof item.from === 'number' ? item.from : 0) + index * 5;
   switch (item.kind) {
     case 'icon':
       return (
@@ -95,18 +96,34 @@ export const SingleVisualElement: React.FC<{item: VisualElement; index?: number}
   }
 };
 
+const FADE_FRAMES = 6;
+
+/** Opacity of a timed element (from/to in scene-local frames); 1 for untimed elements. */
+const timedOpacity = (v: VisualElement, frame: number): number => {
+  if (typeof v.from !== 'number' || typeof v.to !== 'number') return 1;
+  if (frame < v.from || frame >= v.to) return 0;
+  const fadeIn = v.from === 0 ? 1 : interpolate(frame, [v.from, v.from + FADE_FRAMES], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+  const fadeOut = interpolate(frame, [v.to - FADE_FRAMES, v.to], [1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+  return Math.min(fadeIn, fadeOut);
+};
+
 /**
  * Renders `visuals` attached to a Scene or Beat.
- * Enforces the `motion-design-quality` rule: max 3 visual elements per scene to prevent visual clutter.
+ * Timed elements (`from`/`to`, e.g. entity-synced flags) are shown only inside their window,
+ * so the flag always matches the country currently being spoken about.
+ * Enforces the `motion-design-quality` rule: max 3 visible elements at a time.
  */
 export const SceneVisualsLayer: React.FC<{visuals?: VisualElement[]}> = ({visuals}) => {
+  const frame = useCurrentFrame();
   if (!visuals || visuals.length === 0) return null;
-  const bounded = visuals.slice(0, 3).filter((v) => {
-    if (!v || !v.spec) return false;
-    if (v.kind === 'flag' && !v.spec.code) return false;
-    if (v.kind === 'icon' && !v.spec.name) return false;
-    return true;
-  });
+  const bounded = visuals
+    .filter((v) => {
+      if (!v || !v.spec) return false;
+      if (v.kind === 'flag' && !v.spec.code) return false;
+      if (v.kind === 'icon' && !v.spec.name) return false;
+      return timedOpacity(v, frame) > 0;
+    })
+    .slice(0, 3);
   if (bounded.length === 0) return null;
 
   const badgeItems = bounded.filter((v) => v.placement === 'badge-row' || (!v.placement && v.kind !== 'chart' && v.kind !== 'component'));
@@ -115,12 +132,13 @@ export const SceneVisualsLayer: React.FC<{visuals?: VisualElement[]}> = ({visual
   return (
     <AbsoluteFill style={{pointerEvents: 'none', zIndex: 16}}>
       {positionedItems.map((item, idx) => (
-        <div key={`pos_${idx}`} style={placementStyle(item.placement, item.x, item.y)}>
+        <div key={`pos_${idx}`} data-slot={(item as any).slot || 'STAGE_B'} style={{...placementStyle(item.placement, item.x, item.y), opacity: timedOpacity(item, frame)}}>
           <SingleVisualElement item={item} index={idx} />
         </div>
       ))}
       {badgeItems.length > 0 && (
         <div
+          data-slot="HEADER"
           style={{
             position: 'absolute',
             top: SAFE_TOP,
@@ -135,8 +153,9 @@ export const SceneVisualsLayer: React.FC<{visuals?: VisualElement[]}> = ({visual
         >
           {badgeItems.map((item, idx) => (
             <div
-              key={`badge_${idx}`}
+              key={`badge_${item.kind}_${item.from ?? 'x'}_${idx}`}
               style={{
+                opacity: timedOpacity(item, frame),
                 padding: '6px 14px',
                 borderRadius: 999,
                 background: 'rgba(11, 18, 32, 0.72)',

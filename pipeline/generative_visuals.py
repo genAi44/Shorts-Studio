@@ -174,6 +174,32 @@ def validate_generative_canvas_spec(spec: Dict[str, Any]) -> Dict[str, Any]:
         cleaned_elements.append(e)
 
     out["elements"] = cleaned_elements
+
+    # Ensure rich AI Visual Storyteller layers (scene_spec, svg_layers, environment, narration_cues)
+    if not out.get("scene_spec") or not out.get("svg_layers") or not out.get("environment"):
+        try:
+            from .storyteller import design_scene_specification
+            story_spec = design_scene_specification(
+                scene_id=str(out.get("id") or "gen"),
+                role="body",
+                narration=str(out.get("title") or "") + " " + str(out.get("subtitle") or ""),
+                on_screen=str(out.get("title") or ""),
+                scene_index=len(cleaned_elements),
+                total_scenes=8,
+                prev_narration="",
+                next_narration="",
+                video_title=str(out.get("title") or ""),
+                used_palettes=set(),
+                used_environments=set(),
+                used_approaches=set(),
+                used_cameras=set(),
+            )
+            for k in ("scene_spec", "svg_layers", "environment", "narration_cues", "background", "secondary_accent", "tsx_id"):
+                if not out.get(k) and story_spec.get(k):
+                    out[k] = story_spec[k]
+        except Exception:
+            pass
+
     return out
 
 
@@ -456,7 +482,7 @@ def compose_procedural_scene(topic: str, context: Optional[str] = None) -> Dict[
         }
 
     # 4. تضخم / صعود الأسعار / صاروخ اقتصادي
-    if _has_any_whole_word(t, ["تضخم", "أسعار", "غلاء", "عملة", "اقتصادي", "صاروخ", "inflation", "rocket", "prices", "economy"]):
+    if _has_any_whole_word(t, ["تضخم", "أسعار", "غلاء", "عملة", "صاروخ", "inflation", "rocket", "prices"]):
         return {
             "kind": "generative_canvas",
             "title": "انفجار معدلات التضخم والأسعار",
@@ -794,100 +820,27 @@ def compose_procedural_scene(topic: str, context: Optional[str] = None) -> Dict[
             ],
         }
 
-    # 9. سياق عام ذكي ومحدد (Clean Semantic Spotlight)
-    nums = re.findall(r"\d+[\d,.]*", topic)
-    icon_name = "lucide:sparkles"
-    if _has_any_whole_word(t, ["سؤال", "لماذا", "كيف", "لغز", "سر", "بحث", "تعليقات", "شارك", "اكتب"]):
-        icon_name = "lucide:help-circle"
-    elif _has_any_whole_word(t, ["شعب", "بشر", "سكان", "مجتمع", "قبيلة"]):
-        icon_name = "lucide:users"
-    elif _has_any_whole_word(t, ["ملك", "حكم", "سلطة", "دولة", "سيادة", "دستور"]):
-        icon_name = "lucide:crown"
-    elif _has_any_whole_word(t, ["مدينة", "عاصمة", "عاصمتين", "بناء", "معمار"]):
-        icon_name = "lucide:landmark"
+    # 9. تصميم مشهد أصيل متكامل عبر محرك السرد البصري (AI Visual Storyteller)
+    from .storyteller import design_scene_specification, evaluate_and_improve_scene
 
-    title_txt = _words(context, 5) or _words(topic, 5) or "تحليل المشهد"
-    first_chunk = _words(topic, 5)
-    second_chunk = _words(topic, 5, 5)
-    top_badge_txt = first_chunk if first_chunk and first_chunk != title_txt else (second_chunk or title_txt)
-    bottom_badge_txt = second_chunk if second_chunk and second_chunk != top_badge_txt else (_words(topic, 5, 10) or "خلاصة المشهد")
-
-    elements = [
-        {
-            "type": "shape",
-            "shape": "ring",
-            "x": 540,
-            "y": 880,
-            "w": 420,
-            "stroke": "#38bdf8",
-            "strokeWidth": 2.5,
-            "fill": "rgba(56, 189, 248, 0.05)",
-            "motion": "pop",
-            "loop": "pulse",
-            "delay": 0,
-        },
-        {
-            "type": "icon",
-            "name": icon_name,
-            "x": 540,
-            "y": 880,
-            "size": 130,
-            "color": "#38bdf8",
-            "motion": "pop",
-            "delay": 5,
-        },
-        {
-            "type": "badge",
-            "x": 540,
-            "y": 560,
-            "text": top_badge_txt,
-            "icon": icon_name,
-            "size": "lg",
-            "bg": "rgba(15, 23, 42, 0.95)",
-            "borderColor": "#38bdf8",
-            "textColor": "#ffffff",
-            "motion": "drop",
-            "delay": 10,
-        },
-    ]
-
-    if nums:
-        elements.append({
-            "type": "counter",
-            "x": 540,
-            "y": 1240,
-            "from": 0,
-            "to": float(nums[0].replace(",", "")),
-            "unit": "%" if "%" in topic else "",
-            "label": bottom_badge_txt,
-            "color": "#38bdf8",
-            "fontSize": 68,
-            "motion": "pop",
-            "delay": 15,
-        })
-    else:
-        elements.append({
-            "type": "badge",
-            "x": 540,
-            "y": 1180,
-            "text": bottom_badge_txt,
-            "icon": "lucide:sparkles",
-            "size": "md",
-            "bg": "rgba(56, 189, 248, 0.14)",
-            "borderColor": "#38bdf8",
-            "textColor": "#bae6fd",
-            "motion": "rise",
-            "delay": 15,
-        })
-
-    return {
-        "kind": "generative_canvas",
-        "title": title_txt,
-        "subtitle": "",
-        "accent": "#38bdf8",
-        "grid": "dots",
-        "elements": elements,
-    }
+    seed_idx = sum(ord(ch) for ch in (topic or "scene")) % 10
+    designed = design_scene_specification(
+        scene_id=f"gen_{seed_idx}",
+        role="body",
+        narration=topic,
+        on_screen=context or _words(topic, 5),
+        scene_index=seed_idx,
+        total_scenes=8,
+        prev_narration="",
+        next_narration="",
+        video_title=context or _words(topic, 5),
+        used_palettes=set(),
+        used_environments=set(),
+        used_approaches=set(),
+        used_cameras=set(),
+    )
+    improved, _ = evaluate_and_improve_scene(designed, topic, seed_idx, [])
+    return improved
 
 
 def compose_generative_canvas(

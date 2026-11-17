@@ -5,13 +5,122 @@ import re
 import subprocess
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, features
 
 from .config import FONT, FPS, H, W
 from .style import FONTS
 
 DATA = FONT.parent
 SC = 2  # supersampling للأقنعة
+_HAS_RAQM = bool(features.check("raqm"))
+
+# Pure-Python Arabic contextual shaper (Presentation Forms-B) + RTL reorderer when libraqm is unavailable
+_AR_FORMS = {
+    "\u0621": ("\uFE80", "\uFE80", "\uFE80", "\uFE80", False),
+    "\u0622": ("\uFE81", "\uFE82", "\uFE81", "\uFE82", False),
+    "\u0623": ("\uFE83", "\uFE84", "\uFE83", "\uFE84", False),
+    "\u0624": ("\uFE85", "\uFE86", "\uFE85", "\uFE86", False),
+    "\u0625": ("\uFE87", "\uFE88", "\uFE87", "\uFE88", False),
+    "\u0626": ("\uFE89", "\uFE8A", "\uFE8B", "\uFE8C", True),
+    "\u0627": ("\uFE8D", "\uFE8E", "\uFE8D", "\uFE8E", False),
+    "\u0628": ("\uFE8F", "\uFE90", "\uFE91", "\uFE92", True),
+    "\u0629": ("\uFE93", "\uFE94", "\uFE93", "\uFE94", False),
+    "\u062A": ("\uFE95", "\uFE96", "\uFE97", "\uFE98", True),
+    "\u062B": ("\uFE99", "\uFE9A", "\uFE9B", "\uFE9C", True),
+    "\u062C": ("\uFE9D", "\uFE9E", "\uFE9F", "\uFEA0", True),
+    "\u062D": ("\uFEA1", "\uFEA2", "\uFEA3", "\uFEA4", True),
+    "\u062E": ("\uFEA5", "\uFEA6", "\uFEA7", "\uFEA8", True),
+    "\u062F": ("\uFEA9", "\uFEAA", "\uFEA9", "\uFEAA", False),
+    "\u0630": ("\uFEAB", "\uFEAC", "\uFEAB", "\uFEAC", False),
+    "\u0631": ("\uFEAD", "\uFEAE", "\uFEAD", "\uFEAE", False),
+    "\u0632": ("\uFEAF", "\uFEB0", "\uFEAF", "\uFEB0", False),
+    "\u0633": ("\uFEB1", "\uFEB2", "\uFEB3", "\uFEB4", True),
+    "\u0634": ("\uFEB5", "\uFEB6", "\uFEB7", "\uFEB8", True),
+    "\u0635": ("\uFEB9", "\uFEBA", "\uFEBB", "\uFEBC", True),
+    "\u0636": ("\uFEBD", "\uFEBE", "\uFEBF", "\uFEC0", True),
+    "\u0637": ("\uFEC1", "\uFEC2", "\uFEC3", "\uFEC4", True),
+    "\u0638": ("\uFEC5", "\uFEC6", "\uFEC7", "\uFEC8", True),
+    "\u0639": ("\uFEC9", "\uFECA", "\uFECB", "\uFECC", True),
+    "\u063A": ("\uFECD", "\uFECE", "\uFECF", "\uFED0", True),
+    "\u0641": ("\uFED1", "\uFED2", "\uFED3", "\uFED4", True),
+    "\u0642": ("\uFED5", "\uFED6", "\uFED7", "\uFED8", True),
+    "\u0643": ("\uFED9", "\uFEDA", "\uFEDB", "\uFEDC", True),
+    "\u0644": ("\uFEDD", "\uFEDE", "\uFEDF", "\uFEE0", True),
+    "\u0645": ("\uFEE1", "\uFEE2", "\uFEE3", "\uFEE4", True),
+    "\u0646": ("\uFEE5", "\uFEE6", "\uFEE7", "\uFEE8", True),
+    "\u0647": ("\uFEE9", "\uFEEA", "\uFEEB", "\uFEEC", True),
+    "\u0648": ("\uFEED", "\uFEEE", "\uFEED", "\uFEEE", False),
+    "\u0649": ("\uFEEF", "\uFEF0", "\uFEEF", "\uFEF0", False),
+    "\u064A": ("\uFEF1", "\uFEF2", "\uFEF3", "\uFEF4", True),
+}
+_LAM_ALEF = {
+    "\u0622": ("\uFEF5", "\uFEF6"),
+    "\u0623": ("\uFEF7", "\uFEF8"),
+    "\u0625": ("\uFEF9", "\uFEFA"),
+    "\u0627": ("\uFEFB", "\uFEFC"),
+}
+_HARAKAT = set("\u064B\u064C\u064D\u064E\u064F\u0650\u0651\u0652\u0653\u0654\u0655\u0670\u0640")
+
+
+def _shape_arabic(text: str) -> str:
+    if _HAS_RAQM or not text or not re.search(r"[\u0600-\u06FF]", str(text)):
+        return str(text)
+    # Strip tashkeel for clean Presentation Forms-B shaping
+    chars = [c for c in str(text) if c not in _HARAKAT]
+    out = []
+    i = 0
+    n = len(chars)
+    while i < n:
+        ch = chars[i]
+        if ch not in _AR_FORMS:
+            out.append(ch)
+            i += 1
+            continue
+        prev_c = chars[i - 1] if i > 0 else ""
+        prev_joins = bool(prev_c in _AR_FORMS and _AR_FORMS[prev_c][4])
+        # Check Lam-Alef ligature
+        if ch == "\u0644" and i + 1 < n and chars[i + 1] in _LAM_ALEF:
+            iso_lig, fin_lig = _LAM_ALEF[chars[i + 1]]
+            out.append(fin_lig if prev_joins else iso_lig)
+            i += 2
+            continue
+        next_c = chars[i + 1] if i + 1 < n else ""
+        next_joins = bool(_AR_FORMS[ch][4] and next_c in _AR_FORMS)
+        iso, fin, ini, med, _ = _AR_FORMS[ch]
+        if prev_joins and next_joins:
+            out.append(med)
+        elif prev_joins:
+            out.append(fin)
+        elif next_joins:
+            out.append(ini)
+        else:
+            out.append(iso)
+        i += 1
+    shaped = "".join(out)
+    # Reorder tokens RTL while keeping ASCII/number runs LTR
+    tokens = re.findall(r"[A-Za-z0-9_.,:%+\-/]+|[^\sA-Za-z0-9_.,:%+\-/]+|\s+", shaped)
+    visual_tokens = []
+    for tok in reversed(tokens):
+        if re.match(r"^[A-Za-z0-9_.,:%+\-/]+$", tok) or tok.isspace():
+            visual_tokens.append(tok)
+        else:
+            visual_tokens.append(tok[::-1])
+    return "".join(visual_tokens)
+
+
+def _tlen(font, s: str) -> float:
+    if _HAS_RAQM:
+        return font.getlength(s, language="ar")
+    return font.getlength(_shape_arabic(s))
+
+
+def _dtext(draw, xy, s: str, **kw):
+    if _HAS_RAQM:
+        kw["language"] = "ar"
+        draw.text(xy, s, **kw)
+    else:
+        kw.pop("language", None)
+        draw.text(xy, _shape_arabic(s), **kw)
 
 # ---------------------------------------------------------------- أدوات
 _fonts = {}
@@ -67,7 +176,7 @@ def paste_rgba(ov, layer, x, y):
 def wrap_lines(text, font, maxw):
     lines, cur = [], []
     for w in text.split():
-        if cur and font.getlength(" ".join(cur + [w]), language="ar") > maxw:
+        if cur and _tlen(font, " ".join(cur + [w])) > maxw:
             lines.append(" ".join(cur))
             cur = [w]
         else:
@@ -330,9 +439,9 @@ class MapLayer:
             ty = (ly if dot else y) + int(10 * (1 - k))
             if kind == "pin" and dot:
                 ty = y - 100 + int(10 * (1 - k))
-            w = font.getlength(name, language="ar")
+            w = _tlen(font, name)
             d.rounded_rectangle([x - w / 2 - 22, ty - 40, x + w / 2 + 22, ty + 40], radius=22, fill=pal["c1"] + (int(200 * k),))
-            d.text((x, ty), name, font=font, fill=pal["text"] + (int(255 * k),), anchor="mm", language="ar")
+            _dtext(d, (x, ty), name, font=font, fill=pal["text"] + (int(255 * k),), anchor="mm")
 
 
 # ---------------------------------------------------------------- المشهد
@@ -379,7 +488,7 @@ class SceneRenderer:
     def _chunks(words, font, maxw, maxn, gap):
         out, cur, w = [], [], 0
         for it in words:
-            wd = font.getlength(it[0], language="ar") * 1.12
+            wd = _tlen(font, it[0]) * 1.12
             if cur and (w + wd + gap > maxw or len(cur) >= maxn):
                 out.append(cur)
                 cur, w = [], 0
@@ -405,7 +514,7 @@ class SceneRenderer:
             LH = 240
             layer = Image.new("RGBA", (W, LH), (0, 0, 0, 0))
             d = ImageDraw.Draw(layer)
-            w = font.getlength(line, language="ar")
+            w = _tlen(font, line)
             cx, anc = (540, "mm") if not right else (1000, "rm")
             x0, x1 = (cx - w / 2, cx + w / 2) if not right else (cx - w, cx)
             cyl = LH // 2
@@ -421,8 +530,8 @@ class SceneRenderer:
             elif box == "underline":
                 d.rectangle([x0, cyl + 62, x1, cyl + 72], fill=pal["accent"] + (255,))
             if box in ("none", "bar", "underline"):
-                d.text((cx, cyl + 4), line, font=font, fill=self.shadow(), anchor=anc, language="ar")
-            d.text((cx, cyl), line, font=font, fill=tc + (255,), anchor=anc, language="ar")
+                _dtext(d, (cx, cyl + 4), line, font=font, fill=self.shadow(), anchor=anc)
+            _dtext(d, (cx, cyl), line, font=font, fill=tc + (255,), anchor=anc)
             enter, dx, dy = h["enter"], 0, 0
             if enter == "rise":
                 dy = (1 - p) * 50
@@ -462,7 +571,7 @@ class SceneRenderer:
         gap = int(size * 0.36)
         act = max(i for i, w in enumerate(cur) if w[1] <= t + 0.02)
         fonts = [self.F(size * 1.14 if (hl == "scale" and i == act) else size) for i in range(len(cur))]
-        ws = [f.getlength(w[0], language="ar") for f, w in zip(fonts, cur)]
+        ws = [_tlen(f, w[0]) for f, w in zip(fonts, cur)]
         total = sum(ws) + gap * (len(ws) - 1)
         y = self.cap_y
         d = ImageDraw.Draw(ov)
@@ -486,12 +595,12 @@ class SceneRenderer:
                 else:
                     col = pal["accent"]
             if mode == "stroke":
-                d.text((x, y), w[0], font=f, fill=col + (255,), anchor="rm", language="ar", stroke_width=max(size // 9, 4),
+                _dtext(d, (x, y), w[0], font=f, fill=col + (255,), anchor="rm", stroke_width=max(size // 9, 4),
                        stroke_fill=pal["c2"] + (255,))
             else:
                 if mode in ("plain", "underline", "box_word") and not (active and hl == "box"):
-                    d.text((x, y + 4), w[0], font=f, fill=self.shadow(), anchor="rm", language="ar")
-                d.text((x, y), w[0], font=f, fill=col + (255,), anchor="rm", language="ar")
+                    _dtext(d, (x, y + 4), w[0], font=f, fill=self.shadow(), anchor="rm")
+                _dtext(d, (x, y), w[0], font=f, fill=col + (255,), anchor="rm")
             x -= wd + gap
 
     # ---- أرقام
@@ -516,8 +625,8 @@ class SceneRenderer:
         def text(xy, s_, f, col, al, anchor="mm"):
             if al <= 0.01:
                 return
-            d.text((xy[0], xy[1] + 4), s_, font=f, fill=sh[:3] + (int(sh[3] * al),), anchor=anchor, language="ar")
-            d.text(xy, s_, font=f, fill=tuple(col) + (int(255 * al),), anchor=anchor, language="ar")
+            _dtext(d, (xy[0], xy[1] + 4), s_, font=f, fill=sh[:3] + (int(sh[3] * al),), anchor=anchor)
+            _dtext(d, xy, s_, font=f, fill=tuple(col) + (int(255 * al),), anchor=anchor)
 
         lines = wrap_lines(lab, self.F(60, -120), 840)[:2]
         if lay == "ring":
@@ -569,7 +678,7 @@ class SceneRenderer:
         idx = 0
         gap = int(size * 0.28)
         for li, lw in enumerate(lines):
-            ws = [f.getlength(w, language="ar") for w in lw]
+            ws = [_tlen(f, w) for w in lw]
             tot = sum(ws) + gap * (len(ws) - 1)
             xr = 540 + tot / 2 if layout in ("center", "stack", "diag") else 960
             for w, wd in zip(lw, ws):
@@ -583,8 +692,8 @@ class SceneRenderer:
                     if layout == "stack":
                         x = 540 + wd / 2
                     y = y0 + li * lh + int(34 * (1 - k))
-                    d.text((x, y + 5), w, font=f, fill=sh[:3] + (int(sh[3] * k),), anchor="rm", language="ar")
-                    d.text((x, y), w, font=f, fill=col + (int(255 * k),), anchor="rm", language="ar")
+                    _dtext(d, (x, y + 5), w, font=f, fill=sh[:3] + (int(sh[3] * k),), anchor="rm")
+                    _dtext(d, (x, y), w, font=f, fill=col + (int(255 * k),), anchor="rm")
                 xr -= wd + gap
                 idx += 1
         if layout == "left":

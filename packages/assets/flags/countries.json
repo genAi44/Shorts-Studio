@@ -1,0 +1,742 @@
+{
+  "version": "1.0.0",
+  "license": "MIT (flag-icons)",
+  "iso3ToIso2": {
+    "EGY": "eg",
+    "SAU": "sa",
+    "ARE": "ae",
+    "QAT": "qa",
+    "KWT": "kw",
+    "BHR": "bh",
+    "OMN": "om",
+    "YEM": "ye",
+    "IRQ": "iq",
+    "SYR": "sy",
+    "JOR": "jo",
+    "LBN": "lb",
+    "PSE": "ps",
+    "SDN": "sd",
+    "LBY": "ly",
+    "TUN": "tn",
+    "DZA": "dz",
+    "MAR": "ma",
+    "MRT": "mr",
+    "SOM": "so",
+    "DJI": "dj",
+    "COM": "km",
+    "TUR": "tr",
+    "IRN": "ir",
+    "PAK": "pk",
+    "AFG": "af",
+    "IND": "in",
+    "CHN": "cn",
+    "JPN": "jp",
+    "KOR": "kr",
+    "RUS": "ru",
+    "DEU": "de",
+    "FRA": "fr",
+    "GBR": "gb",
+    "ITA": "it",
+    "ESP": "es",
+    "PRT": "pt",
+    "GRC": "gr",
+    "NLD": "nl",
+    "BEL": "be",
+    "CHE": "ch",
+    "AUT": "at",
+    "POL": "pl",
+    "UKR": "ua",
+    "SWE": "se",
+    "NOR": "no",
+    "USA": "us",
+    "CAN": "ca",
+    "MEX": "mx",
+    "BRA": "br",
+    "ARG": "ar",
+    "BOL": "bo",
+    "CHL": "cl",
+    "PER": "pe",
+    "COL": "co",
+    "VEN": "ve",
+    "ECU": "ec",
+    "PRY": "py",
+    "URY": "uy",
+    "ZAF": "za",
+    "NGA": "ng",
+    "ETH": "et",
+    "KEN": "ke",
+    "TZA": "tz",
+    "GHA": "gh",
+    "SEN": "sn",
+    "MLI": "ml",
+    "IDN": "id",
+    "MYS": "my",
+    "SGP": "sg",
+    "THA": "th",
+    "VNM": "vn",
+    "PHL": "ph",
+    "AUS": "au",
+    "NZL": "nz",
+    "KAZ": "kz",
+    "UZB": "uz",
+    "AZE": "az",
+    "GEO": "ge",
+    "ARM": "am"
+  },
+  "countries": [
+    {
+      "iso2": "EG",
+      "iso3": "EGY",
+      "ar": [
+        "مصر",
+        "القاهرة",
+        "المصرية"
+      ],
+      "en": [
+        "egypt",
+        "cairo"
+      ]
+    },
+    {
+      "iso2": "SA",
+      "iso3": "SAU",
+      "ar": [
+        "السعودية",
+        "المملكة العربية السعودية",
+        "الرياض"
+      ],
+      "en": [
+        "saudi arabia",
+        "saudi",
+        "riyadh"
+      ]
+    },
+    {
+      "iso2": "AE",
+      "iso3": "ARE",
+      "ar": [
+        "الإمارات",
+        "ابوظبي",
+        "أبوظبي",
+        "دبي"
+      ],
+      "en": [
+        "united arab emirates",
+        "uae",
+        "dubai",
+        "abu dhabi"
+      ]
+    },
+    {
+      "iso2": "QA",
+      "iso3": "QAT",
+      "ar": [
+        "قطر",
+        "الدوحة"
+      ],
+      "en": [
+        "qatar",
+        "doha"
+      ]
+    },
+    {
+      "iso2": "KW",
+      "iso3": "KWT",
+      "ar": [
+        "الكويت"
+      ],
+      "en": [
+        "kuwait"
+      ]
+    },
+    {
+      "iso2": "BH",
+      "iso3": "BHR",
+      "ar": [
+        "البحرين",
+        "المنامة"
+      ],
+      "en": [
+        "bahrain",
+        "manama"
+      ]
+    },
+    {
+      "iso2": "OM",
+      "iso3": "OMN",
+      "ar": [
+        "عمان",
+        "سلطنة عمان",
+        "مسقط"
+      ],
+      "en": [
+        "oman",
+        "muscat"
+      ]
+    },
+    {
+      "iso2": "YE",
+      "iso3": "YEM",
+      "ar": [
+        "اليمن",
+        "صنعاء"
+      ],
+      "en": [
+        "yemen",
+        "sanaa"
+      ]
+    },
+    {
+      "iso2": "IQ",
+      "iso3": "IRQ",
+      "ar": [
+        "العراق",
+        "بغداد"
+      ],
+      "en": [
+        "iraq",
+        "baghdad"
+      ]
+    },
+    {
+      "iso2": "SY",
+      "iso3": "SYR",
+      "ar": [
+        "سوريا",
+        "دمشق"
+      ],
+      "en": [
+        "syria",
+        "damascus"
+      ]
+    },
+    {
+      "iso2": "JO",
+      "iso3": "JOR",
+      "ar": [
+        "الأردن",
+        "الاردن",
+        "عمان"
+      ],
+      "en": [
+        "jordan",
+        "amman"
+      ]
+    },
+    {
+      "iso2": "LB",
+      "iso3": "LBN",
+      "ar": [
+        "لبنان",
+        "بيروت"
+      ],
+      "en": [
+        "lebanon",
+        "beirut"
+      ]
+    },
+    {
+      "iso2": "PS",
+      "iso3": "PSE",
+      "ar": [
+        "فلسطين",
+        "القدس",
+        "غزة"
+      ],
+      "en": [
+        "palestine",
+        "jerusalem"
+      ]
+    },
+    {
+      "iso2": "SD",
+      "iso3": "SDN",
+      "ar": [
+        "السودان",
+        "الخرطوم"
+      ],
+      "en": [
+        "sudan",
+        "khartoum"
+      ]
+    },
+    {
+      "iso2": "LY",
+      "iso3": "LBY",
+      "ar": [
+        "ليبيا",
+        "طرابلس"
+      ],
+      "en": [
+        "libya",
+        "tripoli"
+      ]
+    },
+    {
+      "iso2": "TN",
+      "iso3": "TUN",
+      "ar": [
+        "تونس"
+      ],
+      "en": [
+        "tunisia",
+        "tunis"
+      ]
+    },
+    {
+      "iso2": "DZ",
+      "iso3": "DZA",
+      "ar": [
+        "الجزائر"
+      ],
+      "en": [
+        "algeria",
+        "algiers"
+      ]
+    },
+    {
+      "iso2": "MA",
+      "iso3": "MAR",
+      "ar": [
+        "المغرب",
+        "الرباط"
+      ],
+      "en": [
+        "morocco",
+        "rabat"
+      ]
+    },
+    {
+      "iso2": "MR",
+      "iso3": "MRT",
+      "ar": [
+        "موريتانيا",
+        "نواكشوط"
+      ],
+      "en": [
+        "mauritania"
+      ]
+    },
+    {
+      "iso2": "BO",
+      "iso3": "BOL",
+      "ar": [
+        "بوليفيا",
+        "لاباز",
+        "سوكري"
+      ],
+      "en": [
+        "bolivia",
+        "la paz",
+        "sucre"
+      ]
+    },
+    {
+      "iso2": "TR",
+      "iso3": "TUR",
+      "ar": [
+        "تركيا",
+        "أنقرة",
+        "إسطنبول"
+      ],
+      "en": [
+        "turkey",
+        "turkiye",
+        "ankara",
+        "istanbul"
+      ]
+    },
+    {
+      "iso2": "IR",
+      "iso3": "IRN",
+      "ar": [
+        "إيران",
+        "ايران",
+        "طهران"
+      ],
+      "en": [
+        "iran",
+        "tehran"
+      ]
+    },
+    {
+      "iso2": "US",
+      "iso3": "USA",
+      "ar": [
+        "أمريكا",
+        "امريكا",
+        "الولايات المتحدة",
+        "واشنطن"
+      ],
+      "en": [
+        "united states",
+        "usa",
+        "america",
+        "us"
+      ]
+    },
+    {
+      "iso2": "GB",
+      "iso3": "GBR",
+      "ar": [
+        "بريطانيا",
+        "المملكة المتحدة",
+        "إنجلترا",
+        "لندن"
+      ],
+      "en": [
+        "united kingdom",
+        "uk",
+        "britain",
+        "england",
+        "london"
+      ]
+    },
+    {
+      "iso2": "FR",
+      "iso3": "FRA",
+      "ar": [
+        "فرنسا",
+        "باريس"
+      ],
+      "en": [
+        "france",
+        "paris"
+      ]
+    },
+    {
+      "iso2": "DE",
+      "iso3": "DEU",
+      "ar": [
+        "ألمانيا",
+        "المانيا",
+        "برلين"
+      ],
+      "en": [
+        "germany",
+        "berlin"
+      ]
+    },
+    {
+      "iso2": "IT",
+      "iso3": "ITA",
+      "ar": [
+        "إيطاليا",
+        "ايطاليا",
+        "روما"
+      ],
+      "en": [
+        "italy",
+        "rome"
+      ]
+    },
+    {
+      "iso2": "ES",
+      "iso3": "ESP",
+      "ar": [
+        "إسبانيا",
+        "اسبانيا",
+        "مدريد",
+        "الأندلس"
+      ],
+      "en": [
+        "spain",
+        "madrid"
+      ]
+    },
+    {
+      "iso2": "RU",
+      "iso3": "RUS",
+      "ar": [
+        "روسيا",
+        "موسكو"
+      ],
+      "en": [
+        "russia",
+        "moscow"
+      ]
+    },
+    {
+      "iso2": "CN",
+      "iso3": "CHN",
+      "ar": [
+        "الصين",
+        "بكين"
+      ],
+      "en": [
+        "china",
+        "beijing"
+      ]
+    },
+    {
+      "iso2": "JP",
+      "iso3": "JPN",
+      "ar": [
+        "اليابان",
+        "طوكيو"
+      ],
+      "en": [
+        "japan",
+        "tokyo"
+      ]
+    },
+    {
+      "iso2": "IN",
+      "iso3": "IND",
+      "ar": [
+        "الهند",
+        "نيودلهي"
+      ],
+      "en": [
+        "india",
+        "new delhi"
+      ]
+    },
+    {
+      "iso2": "BR",
+      "iso3": "BRA",
+      "ar": [
+        "البرازيل"
+      ],
+      "en": [
+        "brazil"
+      ]
+    },
+    {
+      "iso2": "AR",
+      "iso3": "ARG",
+      "ar": [
+        "الأرجنتين",
+        "الارجنتين"
+      ],
+      "en": [
+        "argentina"
+      ]
+    },
+    {
+      "iso2": "ZA",
+      "iso3": "ZAF",
+      "ar": [
+        "جنوب أفريقيا",
+        "جنوب افريقيا"
+      ],
+      "en": [
+        "south africa"
+      ]
+    },
+    {
+      "iso2": "ID",
+      "iso3": "IDN",
+      "ar": [
+        "إندونيسيا",
+        "اندونيسيا"
+      ],
+      "en": [
+        "indonesia"
+      ]
+    },
+    {
+      "iso2": "MY",
+      "iso3": "MYS",
+      "ar": [
+        "ماليزيا"
+      ],
+      "en": [
+        "malaysia"
+      ]
+    },
+    {
+      "iso2": "PK",
+      "iso3": "PAK",
+      "ar": [
+        "باكستان"
+      ],
+      "en": [
+        "pakistan"
+      ]
+    },
+    {
+      "iso2": "CA",
+      "iso3": "CAN",
+      "ar": [
+        "كندا"
+      ],
+      "en": [
+        "canada"
+      ]
+    },
+    {
+      "iso2": "AU",
+      "iso3": "AUS",
+      "ar": [
+        "أستراليا",
+        "استراليا"
+      ],
+      "en": [
+        "australia"
+      ]
+    },
+    {
+      "iso2": "MX",
+      "iso3": "MEX",
+      "ar": [
+        "المكسيك"
+      ],
+      "en": [
+        "mexico"
+      ]
+    },
+    {
+      "iso2": "KR",
+      "iso3": "KOR",
+      "ar": [
+        "كوريا الجنوبية",
+        "كوريا",
+        "سيول"
+      ],
+      "en": [
+        "south korea",
+        "korea",
+        "seoul"
+      ]
+    },
+    {
+      "iso2": "GR",
+      "iso3": "GRC",
+      "ar": [
+        "اليونان",
+        "أثينا"
+      ],
+      "en": [
+        "greece",
+        "athens"
+      ]
+    },
+    {
+      "iso2": "PT",
+      "iso3": "PRT",
+      "ar": [
+        "البرتغال",
+        "لشبونة"
+      ],
+      "en": [
+        "portugal",
+        "lisbon"
+      ]
+    },
+    {
+      "iso2": "NL",
+      "iso3": "NLD",
+      "ar": [
+        "هولندا",
+        "أمستردام"
+      ],
+      "en": [
+        "netherlands",
+        "amsterdam"
+      ]
+    },
+    {
+      "iso2": "CH",
+      "iso3": "CHE",
+      "ar": [
+        "سويسرا"
+      ],
+      "en": [
+        "switzerland"
+      ]
+    },
+    {
+      "iso2": "SE",
+      "iso3": "SWE",
+      "ar": [
+        "السويد"
+      ],
+      "en": [
+        "sweden"
+      ]
+    },
+    {
+      "iso2": "NO",
+      "iso3": "NOR",
+      "ar": [
+        "النرويج"
+      ],
+      "en": [
+        "norway"
+      ]
+    },
+    {
+      "iso2": "UA",
+      "iso3": "UKR",
+      "ar": [
+        "أوكرانيا",
+        "اوكرانيا"
+      ],
+      "en": [
+        "ukraine"
+      ]
+    },
+    {
+      "iso2": "PL",
+      "iso3": "POL",
+      "ar": [
+        "بولندا"
+      ],
+      "en": [
+        "poland"
+      ]
+    },
+    {
+      "iso2": "ET",
+      "iso3": "ETH",
+      "ar": [
+        "إثيوبيا",
+        "اثيوبيا"
+      ],
+      "en": [
+        "ethiopia"
+      ]
+    },
+    {
+      "iso2": "NG",
+      "iso3": "NGA",
+      "ar": [
+        "نيجيريا"
+      ],
+      "en": [
+        "nigeria"
+      ]
+    },
+    {
+      "iso2": "CL",
+      "iso3": "CHL",
+      "ar": [
+        "تشيلي"
+      ],
+      "en": [
+        "chile"
+      ]
+    },
+    {
+      "iso2": "PE",
+      "iso3": "PER",
+      "ar": [
+        "بيرو"
+      ],
+      "en": [
+        "peru"
+      ]
+    },
+    {
+      "iso2": "CO",
+      "iso3": "COL",
+      "ar": [
+        "كولومبيا"
+      ],
+      "en": [
+        "colombia"
+      ]
+    }
+  ]
+}

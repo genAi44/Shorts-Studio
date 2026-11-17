@@ -1,0 +1,176 @@
+{
+  "fps": 30,
+  "width": 1080,
+  "height": 1920,
+  "total": 240,
+  "audio": "",
+  "style": {
+    "name": "smoke-light",
+    "seed": 102030,
+    "dark": false,
+    "font": "kufi",
+    "weight": 700,
+    "palette": {
+      "c1": [210, 222, 238],
+      "c2": [140, 165, 198],
+      "accent": [190, 64, 40],
+      "accent2": [40, 114, 120],
+      "text": [34, 28, 22],
+      "ctx": [195, 205, 220],
+      "ctx_edge": [140, 150, 165],
+      "hl": [
+        [190, 64, 40],
+        [40, 114, 120],
+        [40, 190, 61],
+        [120, 46, 40],
+        [58, 40, 190]
+      ]
+    },
+    "bg": {
+      "type": "waves",
+      "angle": 135,
+      "motion": true,
+      "intensity": 0.65
+    },
+    "headline": {
+      "pos": "upper",
+      "size": 76,
+      "box": "none",
+      "enter": "wipe"
+    },
+    "caption": {
+      "mode": "stroke",
+      "y": 1520,
+      "size": 72,
+      "hl": "scale"
+    },
+    "map": {
+      "fill": "flat",
+      "edge": 6,
+      "ctx_alpha": 0.45,
+      "marker": "pin"
+    },
+    "stat": {
+      "layout": "ring"
+    },
+    "text": {
+      "layout": "center",
+      "size": 96
+    },
+    "deco": {
+      "frame": "none",
+      "progress": "none"
+    },
+    "pace": 1.0,
+    "font2": "lalezar",
+    "weight2": 400,
+    "edit": {
+      "photo": "tilt",
+      "cutout": "plain",
+      "mixpat": "alt",
+      "shapes": "diamonds",
+      "ken": "pan",
+      "glow": true,
+      "blur": false,
+      "duo": false
+    }
+  },
+  "scenes": [
+    {
+      "id": "sc_0",
+      "role": "hook",
+      "from": 0,
+      "dur": 60,
+      "words": [
+        { "t": "اختبار", "s": 0.1, "e": 0.6 },
+        { "t": "البنية", "s": 0.6, "e": 1.2 },
+        { "t": "البصرية", "s": 1.2, "e": 1.9 }
+      ],
+      "beats": [
+        {
+          "kind": "stat",
+          "from": 0,
+          "dur": 60,
+          "title": "دقة الفحص البصري",
+          "number": "99%",
+          "label": "استقرار الطبقات",
+          "layout": "ring"
+        }
+      ],
+      "visuals": []
+    },
+    {
+      "id": "sc_1",
+      "role": "body",
+      "from": 60,
+      "dur": 60,
+      "words": [
+        { "t": "مقارنة", "s": 0.1, "e": 0.6 },
+        { "t": "الأداء", "s": 0.6, "e": 1.2 },
+        { "t": "الفعلي", "s": 1.2, "e": 1.9 }
+      ],
+      "beats": [
+        {
+          "kind": "bars",
+          "from": 0,
+          "dur": 60,
+          "title": "تطور استقرار المشاهد",
+          "unit": "%",
+          "items": [
+            { "label": "التخطيط", "value": 98, "display": "98%" },
+            { "label": "المخطط", "value": 99, "display": "99%" },
+            { "label": "الاختبار", "value": 95, "display": "95%" }
+          ]
+        }
+      ],
+      "visuals": []
+    },
+    {
+      "id": "sc_2",
+      "role": "body",
+      "from": 120,
+      "dur": 60,
+      "words": [
+        { "t": "مراحل", "s": 0.1, "e": 0.6 },
+        { "t": "التحقق", "s": 0.6, "e": 1.2 },
+        { "t": "الشامل", "s": 1.2, "e": 1.9 }
+      ],
+      "beats": [
+        {
+          "kind": "timeline",
+          "from": 0,
+          "dur": 60,
+          "title": "مراحل التحقق",
+          "events": [
+            { "year": "١", "label": "عقد التخطيط" },
+            { "year": "٢", "label": "توحيد المخطط" },
+            { "year": "٣", "label": "فحص الإطارات" }
+          ]
+        }
+      ],
+      "visuals": []
+    },
+    {
+      "id": "sc_3",
+      "role": "loop",
+      "from": 180,
+      "dur": 60,
+      "words": [
+        { "t": "جودة", "s": 0.1, "e": 0.6 },
+        { "t": "مضمونة", "s": 0.6, "e": 1.2 },
+        { "t": "دائماً", "s": 1.2, "e": 1.9 }
+      ],
+      "beats": [
+        {
+          "kind": "versus",
+          "from": 0,
+          "dur": 60,
+          "title": "مقارنة النتائج",
+          "left": { "name": "السابق", "value": "60%", "note": "تداخل طبقات" },
+          "right": { "name": "الحالي", "value": "99%", "note": "تخطيط مركزي" }
+        }
+      ],
+      "visuals": []
+    }
+  ]
+}

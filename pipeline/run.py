@@ -75,6 +75,22 @@ def produce(script, style, voice_id, job_dir, log=print, progress=lambda f: None
     script = normalize(script)
     style = norm_style(style)
     geo = get_geo()
+    # تشغيل وحفظ خطة محرك الذكاء البصري (Visual Intelligence Engine) في مجلد المهمة
+    try:
+        from .visual_intelligence import analyze_script_visual_intelligence
+        vi_plan = script.get("_visual_intelligence")
+        if not isinstance(vi_plan, dict) or not vi_plan.get("scenes"):
+            vi_plan = analyze_script_visual_intelligence(script, geo=geo, use_llm=True)
+            script["_visual_intelligence"] = vi_plan
+        vi_by_id = {sv["id"]: sv for sv in (vi_plan.get("scenes") or []) if isinstance(sv, dict) and sv.get("id")}
+        for sc_item in scenes_of(script):
+            sv = vi_by_id.get(sc_item.get("id"))
+            if sv and not sc_item.get("_vi"):
+                sc_item["_vi"] = sv
+        with open(os.path.join(job_dir, "visual_intelligence.json"), "w", encoding="utf-8") as vif:
+            json.dump(vi_plan, vif, ensure_ascii=False, indent=2)
+    except Exception as e:
+        log(f"⚠️ تعذر حفظ visual_intelligence.json: {e}")
     errs = [i for i in validate(script, geo) if i["level"] == "error"]
     if errs:
         raise ValueError("السكربت فيه أخطاء تمنع التوليد: " + " | ".join(i["msg"] for i in errs))
@@ -102,6 +118,10 @@ def produce(script, style, voice_id, job_dir, log=print, progress=lambda f: None
         wavs.append(wav)
     au = os.path.join(job_dir, "audio_all.wav")
     assemble.concat(wavs, au)
+    try:
+        assemble.loudnorm(au)
+    except Exception as e:
+        log(f"⚠️ تعذر تطبيع جهارة الصوت (سيُستخدم الصوت الأصلي): {e}")
     final = os.path.join(job_dir, "short.mp4")
     info = [{"id": p["sc"]["id"], "dur": round(p["dur"], 2)} for p in plan]
 
@@ -115,6 +135,13 @@ def produce(script, style, voice_id, job_dir, log=print, progress=lambda f: None
         try:
             from . import visual_tools
             visual_tools.record_asset_credits(spec, job_dir)
+        except Exception:
+            pass
+        try:
+            from . import visual_qa
+            qa_rep = visual_qa.audit_spec(spec, job_dir=job_dir, check_pixels=(cfg("VISUAL_QA", "0") == "1"))
+            if not qa_rep.get("passed"):
+                log(f"تحذير QA: متوسط الدرجة {qa_rep.get('average_score')}/100 — راجع qa_report.json")
         except Exception:
             pass
         if m:
@@ -137,7 +164,8 @@ def produce(script, style, voice_id, job_dir, log=print, progress=lambda f: None
             progress(0.08 + 0.9 * (i + 1) / n)
         v = os.path.join(job_dir, "video_only.mp4")
         assemble.concat(clips, v)
-        assemble.mux(v, au, final)
+        # تحسين جودة التمويج للجودة السينمائية
+        assemble.mux(v, au, final, quality="high")
 
     credits = open(os.path.join(job_dir, "credits.txt"), encoding="utf-8").read() if os.path.exists(os.path.join(job_dir, "credits.txt")) else ""
     if credits:

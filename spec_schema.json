@@ -13,6 +13,22 @@
     "settled": "boolean",
     "cues": "array",
     "visuals": "array",
+    "scene_spec": "object",
+    "svg_layers": "array",
+    "environment": "string",
+    "narration_cues": "array",
+    "tsx_id": "string",
+    "concept": "string",
+    "narration": "string",
+    "video_title": "string",
+    "facts_summary": "string",
+    "video_countries": "array",
+    "video_cities": "array",
+    "accent": "string",
+    "secondary_accent": "string",
+    "countries": "array",
+    "highlight": "array",
+    "points": "array",
     "_fallback": "boolean"
   },
   "beats": {
@@ -20,9 +36,32 @@
       "required": ["kind", "elements"],
       "fields": {
         "background": "string",
+        "bg_mood": "string",
         "accent": "string",
+        "secondary_accent": "string",
         "grid": "any",
-        "elements": "array"
+        "environment": "string",
+        "elements": "array",
+        "svg_layers": "array",
+        "scene_spec": "object",
+        "narration_cues": "array",
+        "tsx_id": "string"
+      }
+    },
+    "custom_scene": {
+      "required": ["kind", "scene_spec"],
+      "fields": {
+        "background": "string",
+        "bg_mood": "string",
+        "accent": "string",
+        "secondary_accent": "string",
+        "approach": "string",
+        "environment": "string",
+        "elements": "array",
+        "svg_layers": "array",
+        "scene_spec": "object",
+        "narration_cues": "array",
+        "tsx_id": "string"
       }
     },
     "map": {
