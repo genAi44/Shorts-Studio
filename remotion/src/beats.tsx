@@ -1134,9 +1134,9 @@ const CanvasEl: React.FC<{el: any; idx: number}> = ({el, idx}) => {
 
   const kind: EnterKind = el.enter === 'pop' ? 'pop' : el.enter === 'drop' ? 'drop' : el.enter === 'left' ? 'left' : el.enter === 'right' ? 'right' : el.enter === 'fade' ? 'fade' : 'rise';
 
-  const x = Number(el.x) || 540;
+  const x = el.x != null ? Number(el.x) : 540;
 
-  const y = Number(el.y) || 960;
+  const y = el.y != null ? Number(el.y) : 960;
 
   const loop = el.loop === 'float' ? {translate: `0 ${Math.sin(t * 2) * 12}px`} : el.loop === 'pulse' ? {scale: 1 + 0.06 * Math.sin(t * 3)} : el.loop === 'spin' ? {rotate: `${(t * 40) % 360}deg`} : {};
 
@@ -1485,7 +1485,7 @@ const MapPinBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
       {beat.title && (
         <div style={{position: 'absolute', left: 60, right: 60, top: BEAT_ZONE.title_top, textAlign: 'center', zIndex: 10}}>
-          <GlowText fontSize={beat.title.length > 22 ? 58 : 68} gold>{beat.title}</GlowText>
+          <GlowText fontSize={beat.title.length > 22 ? 58 : 68} gold={false}>{beat.title}</GlowText>
         </div>
       )}
 
@@ -1495,7 +1495,7 @@ const MapPinBeat: React.FC<{beat: Beat}> = ({beat}) => {
           key={i}
           from={{x: points[i].x, y: points[i].y}}
           to={{x: pt.x, y: pt.y}}
-          color="#38bdf8"
+          color={rgba(th.p.accent2)}
           curvature={28}
           delay={10 + i * 8}
         />
@@ -1503,13 +1503,16 @@ const MapPinBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
       {/* Ripple rings */}
       {points.map((pt, i) => (
-        <PinRipple key={i} x={pt.x} y={pt.y} color={i % 2 === 0 ? '#D4AF37' : '#38bdf8'} delay={i * 6} />
+        <PinRipple key={i} x={pt.x} y={pt.y} color={rgba(i % 2 === 0 ? th.p.accent : th.p.accent2)} delay={i * 6} />
       ))}
 
       {/* Pin badges */}
       {points.map((pt, i) => {
         const pinPop = useSpring(0.1 + i * 0.15, 'bouncy');
         const iconPath = pt.icon || 'icons/map/map_pin.svg';
+        const pinCol = rgba(i % 2 === 0 ? th.p.accent : th.p.accent2);
+        const pinColA65 = rgba(i % 2 === 0 ? th.p.accent : th.p.accent2, 0.65);
+        const pinColA07 = rgba(i % 2 === 0 ? th.p.accent : th.p.accent2, 0.7);
         return (
           <div
             key={i}
@@ -1530,8 +1533,8 @@ const MapPinBeat: React.FC<{beat: Beat}> = ({beat}) => {
                 height: 104,
                 borderRadius: '50%',
                 background: 'radial-gradient(circle at 35% 35%, rgba(45, 55, 72, 0.92), rgba(10, 14, 26, 0.97))',
-                border: `3px solid ${i % 2 === 0 ? '#D4AF37' : '#38bdf8'}`,
-                boxShadow: `0 0 22px ${i % 2 === 0 ? 'rgba(212,175,55,0.65)' : 'rgba(56,189,248,0.55)'}, 0 8px 20px rgba(0,0,0,0.7)`,
+                border: `3px solid ${pinCol}`,
+                boxShadow: `0 0 22px ${pinColA65}, 0 8px 20px rgba(0,0,0,0.7)`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1546,7 +1549,7 @@ const MapPinBeat: React.FC<{beat: Beat}> = ({beat}) => {
                   padding: '5px 18px',
                   borderRadius: 20,
                   background: 'rgba(8, 12, 22, 0.92)',
-                  border: `1.5px solid ${i % 2 === 0 ? 'rgba(212,175,55,0.7)' : 'rgba(56,189,248,0.6)'}`,
+                  border: `1.5px solid ${pinColA07}`,
                   fontFamily: th.family,
                   fontSize: 26,
                   fontWeight: 800,
@@ -1585,7 +1588,7 @@ const TimelineCardBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
       {beat.title && (
         <div style={{position: 'absolute', left: 60, right: 60, top: BEAT_ZONE.sub_title_top, textAlign: 'center', zIndex: 10}}>
-          <GlowText fontSize={62} gold>{beat.title}</GlowText>
+          <GlowText fontSize={62} gold={false}>{beat.title}</GlowText>
         </div>
       )}
 
@@ -1599,7 +1602,7 @@ const TimelineCardBeat: React.FC<{beat: Beat}> = ({beat}) => {
           y1={startY}
           x2={220}
           y2={startY + totalH}
-          stroke="rgba(212, 175, 55, 0.3)"
+          stroke={rgba(th.p.accent, 0.3)}
           strokeWidth={6}
           strokeLinecap="round"
         />
@@ -1608,17 +1611,17 @@ const TimelineCardBeat: React.FC<{beat: Beat}> = ({beat}) => {
           y1={startY}
           x2={220}
           y2={startY + totalH * lineProgress}
-          stroke="#D4AF37"
+          stroke={rgba(th.p.accent)}
           strokeWidth={6}
           strokeLinecap="round"
-          filter="drop-shadow(0 0 10px #D4AF37)"
+          filter={`drop-shadow(0 0 10px ${rgba(th.p.accent)})`}
         />
         <circle
           cx={220}
           cy={startY + totalH * lineProgress}
           r={10}
-          fill="#FFF3C4"
-          filter="drop-shadow(0 0 12px #FFD700)"
+          fill={rgba(th.p.accent, 0.8)}
+          filter={`drop-shadow(0 0 12px ${rgba(th.p.accent)})`}
         />
       </svg>
 
@@ -1646,8 +1649,8 @@ const TimelineCardBeat: React.FC<{beat: Beat}> = ({beat}) => {
                   height: 96,
                   borderRadius: '50%',
                   background: 'radial-gradient(circle at 35% 35%, #2a3342, #0f172a)',
-                  border: '3px solid #D4AF37',
-                  boxShadow: '0 0 20px rgba(212, 175, 55, 0.4), 0 8px 18px rgba(0,0,0,0.6)',
+                  border: `3px solid ${rgba(th.p.accent)}`,
+                  boxShadow: `0 0 20px ${rgba(th.p.accent, 0.4)}, 0 8px 18px rgba(0,0,0,0.6)`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -1663,7 +1666,7 @@ const TimelineCardBeat: React.FC<{beat: Beat}> = ({beat}) => {
                   padding: '14px 28px',
                   borderRadius: 24,
                   background: 'rgba(15, 23, 42, 0.88)',
-                  border: '1.5px solid rgba(212, 175, 55, 0.4)',
+                  border: `1.5px solid ${rgba(th.p.accent, 0.4)}`,
                   boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
                   minWidth: 460,
                   maxWidth: 700,
@@ -1676,10 +1679,10 @@ const TimelineCardBeat: React.FC<{beat: Beat}> = ({beat}) => {
                       fontFamily: th.family,
                       fontSize: 34,
                       fontWeight: 900,
-                      color: '#FFD700',
+                      color: rgba(th.p.accent),
                       marginBottom: 4,
                       letterSpacing: '0.02em',
-                      textShadow: '0 2px 8px rgba(212, 175, 55, 0.5)',
+                      textShadow: `0 2px 8px ${rgba(th.p.accent, 0.5)}`,
                     }}
                   >
                     {it.year}
