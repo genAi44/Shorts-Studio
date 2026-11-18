@@ -1732,12 +1732,12 @@ const StatRingV2Beat: React.FC<{beat: Beat}> = ({beat}) => {
       >
         <defs>
           <linearGradient id="ringGradV2" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#FFF3C4" />
-            <stop offset="50%" stopColor="#D4AF37" />
-            <stop offset="100%" stopColor="#8B6508" />
+            <stop offset="0%" stopColor={rgba(th.p.accent, 0.6)} />
+            <stop offset="50%" stopColor={rgba(th.p.accent)} />
+            <stop offset="100%" stopColor={rgba(th.p.accent2)} />
           </linearGradient>
           <filter id="ringGlowV2" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="0" stdDeviation="16" floodColor="#D4AF37" floodOpacity="0.8" />
+            <feDropShadow dx="0" dy="0" stdDeviation="16" floodColor={rgba(th.p.accent)} floodOpacity="0.8" />
           </filter>
         </defs>
         <circle cx={540} cy={cy - 120} r={R} fill="none" stroke="rgba(255, 255, 255, 0.12)" strokeWidth={16} />
@@ -1765,7 +1765,7 @@ const StatRingV2Beat: React.FC<{beat: Beat}> = ({beat}) => {
           height: 200,
           borderRadius: '50%',
           background: 'radial-gradient(circle at 35% 35%, rgba(45, 55, 72, 0.7), rgba(15, 23, 42, 0.85))',
-          border: '2px solid rgba(212, 175, 55, 0.5)',
+          border: `2px solid ${rgba(th.p.accent, 0.5)}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -1786,7 +1786,7 @@ const StatRingV2Beat: React.FC<{beat: Beat}> = ({beat}) => {
           ...enterStyle(a, 'rise', 40),
         }}
       >
-        <GlowText fontSize={130} gold>
+        <GlowText fontSize={130} gold={false}>
           {show}
         </GlowText>
       </div>
@@ -1808,7 +1808,7 @@ const StatRingV2Beat: React.FC<{beat: Beat}> = ({beat}) => {
               padding: '12px 36px',
               borderRadius: 30,
               background: 'rgba(15, 23, 42, 0.85)',
-              border: '1.5px solid rgba(212, 175, 55, 0.5)',
+              border: `1.5px solid ${rgba(th.p.accent, 0.5)}`,
               fontFamily: th.family,
               fontSize: 48,
               fontWeight: 700,
