@@ -1216,7 +1216,7 @@ PHOTO_RULES = """
 
 - camera: "parallax" للمناظر والمدن، "push-in" للوجوه والمباني، "static" للأحداث التاريخية.
 
-- استعمل photo فقط لما لا تستطيع city_skyline أو architecture أو mystery_scene أو icon_scene أو map تمثيله (وجه شخص حقيقي، حدث تاريخي لا يُختزل في رمز). لا تزد عن 15-25% من المقاطع، ولا مقطعين متتاليين منه."""
+- استعمل photo فقط لما لا تستطيع city_skyline أو architecture أو mystery_scene أو generative_canvas أو map تمثيله (وجه شخص حقيقي، حدث تاريخي لا يُختزل في رمز). لا تزد عن 15-25% من المقاطع، ولا مقطعين متتاليين منه."""
 
 def director_system(photos=True):
 
@@ -1508,7 +1508,7 @@ def apply_beats(script, result, geo=None, llm_retry_fn: Optional[Callable[[List[
                     }
                     beats[bi] = b
                     cur_kind = "photo"
-                elif cur_kind in ("photo", "stat", "stat_ring_v2", "icon_scene", "generative_canvas"):
+                elif cur_kind in ("photo", "stat", "stat_ring_v2", "generative_canvas"):
                     photo_b = detect_photo_beat(sent) if prev_kind != "photo" else None
                     if photo_b and cur_kind != "photo":
                         beats[bi] = photo_b

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AbsoluteFill, Easing, Sequence, continueRender, delayRender, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Sequence, continueRender, delayRender, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import { Audio } from '@remotion/media';
 import { loadFont } from '@remotion/fonts';
 import { BeatView } from './beats';
@@ -36,41 +36,14 @@ const Scene: React.FC<{ scene: SceneSpec; index: number; fallbackTransition?: an
   const transition = scene.transition ?? fallbackTransition;
   const dur = Math.max(1, scene.dur);
 
-  // حركة كاميرا سينمائية متنوعة لكل مشهد (دفع، سحب، انزياح أفقي/عمودي سلس)
-  const camMode = index % 4;
-  const camProgress = interpolate(frame, [0, dur], [0, 1], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-    easing: Easing.inOut(Easing.sin),
-  });
-  const baseScale =
-    camMode === 0
-      ? interpolate(camProgress, [0, 1], [1.0, 1.055])
-      : camMode === 1
-        ? interpolate(camProgress, [0, 1], [1.05, 1.005])
-        : camMode === 2
-          ? interpolate(camProgress, [0, 1], [1.01, 1.045])
-          : interpolate(camProgress, [0, 1], [1.02, 1.05]);
-  const panX =
-    camMode === 2
-      ? interpolate(camProgress, [0, 1], [-12, 12])
-      : camMode === 3
-        ? interpolate(camProgress, [0, 1], [10, -10])
-        : 0;
-  const panY =
-    camMode === 1
-      ? interpolate(camProgress, [0, 1], [8, -8])
-      : camMode === 3
-        ? interpolate(camProgress, [0, 1], [-8, 10])
-        : 0;
-
   // دخول وخروج سينمائي ناعم عند حدود المشاهد (بدل القطع الحاد)
   const enterSpr = index === 0 ? 1 : spring({ frame, fps, config: { damping: 16, stiffness: 180, mass: 0.7 } });
   const enterScale = index === 0 ? 1 : interpolate(enterSpr, [0, 1], [1.06, 1.0]);
   const enterY = index === 0 ? 0 : interpolate(enterSpr, [0, 1], [index % 2 === 0 ? 28 : -24, 0]);
   const enterOp = index === 0 ? 1 : interpolate(frame, [0, 7], [0.25, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const exitOp = dur > 10 ? interpolate(frame, [dur - 6, dur], [1, 0.72], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }) : 1;
-  const camScale = baseScale * enterScale;
+  // ponytail: scene-level Ken Burns removed — BeatShell already applies per-beat camera; compounding caused ~1.27× over-zoom
+  const camScale = enterScale;
   const sceneOpacity = Math.min(enterOp, exitOp);
 
   const hasMapOverlay = Boolean(scene.map_overlay);
@@ -87,7 +60,7 @@ const Scene: React.FC<{ scene: SceneSpec; index: number; fallbackTransition?: an
       <MapLayoutCtx.Provider value={{ splitBottom: hasSplitMap }}>
         <AbsoluteFill
           style={{
-            transform: `translate3d(${panX.toFixed(1)}px, ${(panY + enterY).toFixed(1)}px, 0) scale(${camScale.toFixed(4)})`,
+            transform: `translate3d(0px, ${enterY.toFixed(1)}px, 0) scale(${camScale.toFixed(4)})`,
             transformOrigin: '50% 45%',
           }}
         >
