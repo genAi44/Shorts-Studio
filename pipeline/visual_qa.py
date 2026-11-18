@@ -15,10 +15,75 @@ from typing import Any, Dict, List, Optional
 from .layout_planner import SLOTS
 
 
+_RASTER_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tiff"}
+
+
+def _has_raster(value: Any) -> bool:
+    """Returns True if value is a string path pointing to a raster image."""
+    if not isinstance(value, str):
+        return False
+    lower = value.lower().strip()
+    return any(lower.endswith(ext) for ext in _RASTER_EXTS)
+
+
+def _scan_rasters(obj: Any) -> List[str]:
+    """Recursively find all raster image paths in a spec dict/list."""
+    hits: List[str] = []
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if _has_raster(v):
+                hits.append(f"{k}={v}")
+            else:
+                hits.extend(_scan_rasters(v))
+    elif isinstance(obj, list):
+        for item in obj:
+            hits.extend(_scan_rasters(item))
+    return hits
+
+
 def _audit_scene(scene: Dict[str, Any]) -> Dict[str, Any]:
     sid = str(scene.get("id") or "scene")
     issues: List[Dict[str, str]] = []
     score = 100
+
+    # 0a. Rule 1.1 — no raster images anywhere in the scene
+    raster_hits = _scan_rasters(scene)
+    for hit in raster_hits[:3]:  # cap to 3 to avoid flooding
+        issues.append({
+            "type": "raster_image",
+            "severity": "error",
+            "detail": f"صورة نقطية محظورة (القاعدة 1.1): {hit[:80]}",
+        })
+        score -= 30
+
+    # 0b. Rule 1.2 — scene must have at least one non-text visual element
+    beats = scene.get("beats") or []
+    visual_beats = [
+        b for b in beats
+        if b.get("kind") not in ("text", "text_reveal", "text_only", "caption", None)
+        or b.get("elements") or b.get("icon") or b.get("hero_icon") or b.get("nodes")
+    ]
+    all_elements = []
+    for b in beats:
+        all_elements.extend(b.get("elements") or [])
+    has_graphic = any(
+        b.get("kind") in ("icon", "stat", "map", "map_pin", "chart", "gauge", "counter", "badge",
+                          "generative_canvas", "lottie", "flag", "emoji", "photo", "canvas")
+        or b.get("icon") or b.get("hero_icon") or b.get("nodes") or b.get("elements")
+        for b in beats
+    )
+    text_only_kinds = {"text", "text_reveal", "text_only", "caption"}
+    all_text_only = beats and all(
+        b.get("kind") in text_only_kinds and not b.get("elements") and not b.get("icon")
+        for b in beats
+    )
+    if all_text_only or (beats and not has_graphic):
+        issues.append({
+            "type": "text_only_scene",
+            "severity": "error",
+            "detail": f"مشهد نصي خالص بدون عناصر مرئية — مخالفة القاعدة 1.2 (المشهد: {sid})",
+        })
+        score -= 25
 
     # 1. Beat time-window overlap check per slot
     beats = scene.get("beats") or []
@@ -107,6 +172,25 @@ def _check_still_darkness(spec: Dict[str, Any], job_dir: str) -> Optional[Dict[s
         return None
 
 
+def _audit_design_repetition(spec: Dict[str, Any]) -> List[Dict[str, str]]:
+    """Flags when the same scene visual 'kind' appears more than MAX_REPEAT times in one video."""
+    MAX_REPEAT = 2
+    kind_counts: Dict[str, int] = {}
+    for scene in spec.get("scenes") or []:
+        for beat in (scene.get("beats") or []):
+            k = str(beat.get("kind") or "unknown")
+            kind_counts[k] = kind_counts.get(k, 0) + 1
+    issues = []
+    for k, cnt in kind_counts.items():
+        if cnt > MAX_REPEAT and k not in ("text", "caption", "text_reveal"):
+            issues.append({
+                "type": "design_repetition",
+                "severity": "warning",
+                "detail": f"نوع المشهد '{k}' يتكرر {cnt} مرات (الحد المسموح: {MAX_REPEAT})",
+            })
+    return issues
+
+
 def audit_spec(
     spec: Dict[str, Any],
     job_dir: Optional[str] = None,
@@ -115,10 +199,12 @@ def audit_spec(
     """يفحص كل مشاهد الـ spec ويكتب `qa_report.json` إذا حُدّد `job_dir`."""
     scenes_rep = [_audit_scene(sc) for sc in (spec.get("scenes") or [])]
     avg_score = round(sum(r["score"] for r in scenes_rep) / max(1, len(scenes_rep)), 1)
+    design_issues = _audit_design_repetition(spec)
     report: Dict[str, Any] = {
-        "passed": all(r["passed"] for r in scenes_rep),
+        "passed": all(r["passed"] for r in scenes_rep) and not any(i["severity"] == "error" for i in design_issues),
         "average_score": avg_score,
         "scenes": scenes_rep,
+        "design_issues": design_issues,
     }
     if check_pixels and job_dir:
         px = _check_still_darkness(spec, job_dir)

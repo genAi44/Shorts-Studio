@@ -144,14 +144,33 @@ def _find_icon(name: str, beat_id: str = "unknown", beat: Optional[dict] = None)
             return v
 
     record_fallback(f"unknown_icon:{name}", beat_id=beat_id, beat=beat)
-    return "icons/history/monument.svg"
+    # Dynamic fallback: pick from diverse pool instead of always returning monument.svg
+    # (monument.svg caused Roman-pillar repetition across unrelated videos)
+    diverse_fallbacks = [
+        "icons/star/star.svg",
+        "icons/map/compass.svg",
+        "icons/world/globe-2.svg",
+        "icons/chart/chart-bar.svg",
+        "icons/crown/trophy.svg",
+        "icons/building/landmark.svg",
+        "icons/history/monument.svg",
+    ]
+    beat_text = str((beat or {}).get("text") or (beat or {}).get("narration") or "").lower()
+    for kw, icon_name in KEYWORD_MAP.items():
+        if kw in beat_text:
+            candidate = _find_icon(icon_name, beat_id=beat_id)  # one level only, no recursion
+            if candidate and candidate != "icons/history/monument.svg":
+                return candidate
+    # Rotate through fallback pool using beat_id hash to avoid same icon repeating
+    idx = abs(hash(beat_id)) % len(diverse_fallbacks)
+    return diverse_fallbacks[idx]
 
 
 def resolve_icon(icon_path: str, beat_id: str = "unknown", beat: Optional[dict] = None) -> str:
     """Ensures any icon path requested by director/LLM exists on disk in remotion/public/."""
     if not icon_path:
         record_fallback("empty_icon_path", beat_id=beat_id, beat=beat)
-        return "icons/history/monument.svg"
+        return "icons/world/globe-2.svg"
     clean = icon_path.strip().replace("\\", "/")
     if clean.startswith("public/"):
         clean = " ".join(clean.split())[len("public/"):]
@@ -238,6 +257,27 @@ def sanitize_spec_assets(spec: dict) -> dict:
                 for pt in beat["points"]:
                     if isinstance(pt, dict) and "icon" in pt:
                         pt["icon"] = resolve_icon(pt["icon"], beat_id=beat_id, beat=beat)
+
+            # 5b. Network nodes diversity — force unique icons per node so all nodes never look identical
+            if "nodes" in beat and isinstance(beat["nodes"], list):
+                used_node_icons: set = set()
+                _node_pool = [
+                    "icons/map/compass.svg", "icons/chart/chart-bar.svg", "icons/star/star.svg",
+                    "icons/crown/trophy.svg", "icons/world/globe-2.svg", "icons/building/landmark.svg",
+                    "icons/science/atom.svg", "icons/arrow/trending-up.svg", "icons/person/users.svg",
+                ]
+                for ni, node in enumerate(beat["nodes"]):
+                    if not isinstance(node, dict):
+                        continue
+                    if "icon" in node:
+                        node["icon"] = resolve_icon(node["icon"], beat_id=f"{beat_id}:node{ni}", beat=beat)
+                    if node.get("icon") in used_node_icons:
+                        # Pick next unused icon from diversity pool
+                        for alt in _node_pool:
+                            if alt not in used_node_icons and (ROOT / "remotion" / "public" / alt).exists():
+                                node["icon"] = alt
+                                break
+                    used_node_icons.add(node.get("icon", ""))
 
             # 6. Canvas elements
             if "elements" in beat and isinstance(beat["elements"], list):
