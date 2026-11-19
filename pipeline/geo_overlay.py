@@ -629,17 +629,23 @@ def build_scene_map_overlay(
         if idx_m == 0 and trig_frame <= 14:
             trig_frame = 0
 
+        # Vary zoom when previous scene covered the same country to avoid identical consecutive maps
+        prev_same_country = (
+            isinstance(prev_overlay, dict)
+            and prev_overlay.get("waypoints")
+            and str(prev_overlay["waypoints"][-1].get("iso3") or "") == str(iso_m or "")
+        )
+        zoom_variety = 0.18 if prev_same_country else 0.0
+
         if m.get("is_microstate"):
-            target_zoom = 2.15
+            target_zoom = 2.15 + zoom_variety
         elif single_country_scene:
             if len(distinct_cities) >= 2:
-                target_zoom = 1.22 if m["kind"] in ("capital", "city") else 1.08
+                target_zoom = 1.22 + zoom_variety if m["kind"] in ("capital", "city") else 1.08 + zoom_variety
             else:
-                # Single country + its capital: keep 100% of the country border visible with a gentle cinematic push
-                target_zoom = 1.12 if m["kind"] in ("capital", "city") else 1.06
+                target_zoom = 1.12 + zoom_variety if m["kind"] in ("capital", "city") else 1.06 + zoom_variety
         else:
-            # Multi-country scene: zoom smoothly into each country/capital
-            target_zoom = 1.65 if m["kind"] in ("capital", "city") else 1.38
+            target_zoom = 1.65 + zoom_variety if m["kind"] in ("capital", "city") else 1.38 + zoom_variety
             if S < 5.0:
                 scale_boost = min(1.55, max(1.0, 4.5 / max(S, 1.8)))
                 target_zoom = round(min(2.4, target_zoom * scale_boost), 2)
