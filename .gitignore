@@ -38,3 +38,4 @@ cache/
 frames/
 graphify-out/
 remotion/src/generated/.tsx_cache.json
+remotion/public/spec.json
