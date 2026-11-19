@@ -1,12 +1,22 @@
 /**
  * CameraRig — Cinematic 2.5D camera system for Remotion.
- * Provides Ken Burns, parallax layering, and impact shakes
- * without touching BeatShell's existing camera modes.
+ * v2: spring per-axis, rotation, punch-in, parallax 5 depths, motion-blur Trail.
  */
 import React from 'react';
-import {AbsoluteFill, useCurrentFrame, useVideoConfig} from 'remotion';
+import {AbsoluteFill, spring, useCurrentFrame, useVideoConfig} from 'remotion';
+import {Trail} from '@remotion/motion-blur';
 
-// --- Impact shake (for dramatic stat reveals / number pops) ---
+// ─── spring presets ───────────────────────────────────────────────────────────
+const SPRINGS = {
+  smooth:  {mass: 1,   damping: 28, stiffness: 120},
+  snappy:  {mass: 1,   damping: 18, stiffness: 220},
+  heavy:   {mass: 1.4, damping: 32, stiffness: 90},
+  bouncy:  {mass: 0.8, damping: 12, stiffness: 180},
+  pop:     {mass: 0.6, damping: 10, stiffness: 300},
+} as const;
+type Preset = keyof typeof SPRINGS;
+
+// ─── Impact shake ─────────────────────────────────────────────────────────────
 export const useCameraShake = (
   triggerFrame: number,
   dur = 12,
@@ -17,26 +27,43 @@ export const useCameraShake = (
   if (t < 0 || t >= dur) return {x: 0, y: 0, rot: 0};
   const decay = 1 - t / dur;
   return {
-    x: Math.sin(t * 2.1) * 8 * intensity * decay,
-    y: Math.cos(t * 1.7) * 5 * intensity * decay,
+    x:   Math.sin(t * 2.1) * 8  * intensity * decay,
+    y:   Math.cos(t * 1.7) * 5  * intensity * decay,
     rot: Math.sin(t * 1.5) * 0.6 * intensity * decay,
   };
 };
 
-// --- Parallax layer (depth 0 = slow background, 2 = fast foreground) ---
+// ─── Punch-in hook ────────────────────────────────────────────────────────────
+/** Triggers a sharp zoom-in spring at `triggerFrame`, returns scale 1→target. */
+export const usePunchIn = (
+  triggerFrame: number,
+  targetScale = 1.18,
+  preset: Preset = 'pop',
+) => {
+  const frame = useCurrentFrame();
+  const {fps} = useVideoConfig();
+  const cfg = SPRINGS[preset];
+  const prog = spring({frame: frame - triggerFrame, fps, config: cfg});
+  if (frame < triggerFrame) return 1;
+  return 1 + (targetScale - 1) * prog;
+};
+
+// ─── Parallax layer (5 depths) ────────────────────────────────────────────────
 export const ParallaxLayer: React.FC<{
-  depth?: 0 | 1 | 2;
+  depth?: 0 | 1 | 2 | 3 | 4;  // 0=slowest bg, 4=fastest fg
   children: React.ReactNode;
   style?: React.CSSProperties;
-}> = ({depth = 1, children, style}) => {
+}> = ({depth = 2, children, style}) => {
   const frame = useCurrentFrame();
   const {durationInFrames} = useVideoConfig();
   const prog = frame / Math.max(1, durationInFrames - 1);
-  const sp = ([0.25, 0.55, 1.0] as const)[depth];
+  // speed multipliers for 5 depth levels
+  const sp = ([0.12, 0.28, 0.50, 0.72, 1.0] as const)[depth];
+  const range = 32;
   return (
     <AbsoluteFill
       style={{
-        transform: `translate(${(-14 + 28 * prog) * sp}px, ${(-6 + 12 * prog) * sp}px)`,
+        transform: `translate(${(-range / 2 + range * prog) * sp}px, ${(-range * 0.3 / 2 + range * 0.3 * prog) * sp}px)`,
         ...style,
       }}
     >
@@ -45,114 +72,154 @@ export const ParallaxLayer: React.FC<{
   );
 };
 
+// ─── CameraRig ────────────────────────────────────────────────────────────────
+export type CameraMode =
+  | 'ken-burns'
+  | 'static'
+  | 'push-in'
+  | 'pull-out'
+  | 'pan-horizontal'
+  | 'pan-vertical'
+  | 'zoom-punch'
+  | 'handheld'
+  | 'drift-left'
+  | 'drift-right'
+  | 'float-up';
+
 /**
- * CameraRig: wraps content in cinematic camera movements
- * Includes: ken-burns, push-in, pull-out, pan-horizontal, pan-vertical,
- * zoom-punch (dramatic zoom on revelation), handheld (subtle organic motion)
+ * CameraRig: wraps content in cinematic camera movements with spring physics.
+ * Each axis (scale, tx, ty, rot) has an independent spring so motion feels organic.
  *
  * Usage:
- *   <CameraRig mode="ken-burns">
- *     <ParallaxLayer depth={0}>{bgMap}</ParallaxLayer>
- *     <ParallaxLayer depth={1}>{cards}</ParallaxLayer>
- *     <ParallaxLayer depth={2}>{text}</ParallaxLayer>
+ *   <CameraRig mode="push-in" motionBlur>
+ *     <ParallaxLayer depth={0}>{bg}</ParallaxLayer>
+ *     <ParallaxLayer depth={2}>{cards}</ParallaxLayer>
+ *     <ParallaxLayer depth={4}>{text}</ParallaxLayer>
  *   </CameraRig>
  */
 export const CameraRig: React.FC<{
-  mode?: 'ken-burns' | 'static' | 'push-in' | 'pull-out' | 'pan-horizontal' | 'pan-vertical' | 'zoom-punch' | 'handheld';
-  /** frame offset (from beat frame 0) to trigger a punch shake */
+  mode?: CameraMode;
   shakeFrame?: number;
   shakeIntensity?: number;
-  /** Easing curve for the camera movement */
-  easing?: 'ease-out' | 'ease-in' | 'ease-in-out' | 'linear';
+  springPreset?: Preset;
+  /** Trigger a zoom punch at this frame */
+  punchFrame?: number;
+  punchScale?: number;
+  /** Enable @remotion/motion-blur Trail on the rig */
+  motionBlur?: boolean;
+  /** Number of blur layers (Trail `layers` prop) */
+  motionBlurLayers?: number;
+  motionBlurOpacity?: number;
   children: React.ReactNode;
   style?: React.CSSProperties;
-}> = ({mode = 'ken-burns', shakeFrame = -99, shakeIntensity = 1, easing = 'ease-out', children, style}) => {
+}> = ({
+  mode = 'ken-burns',
+  shakeFrame = -99,
+  shakeIntensity = 1,
+  springPreset = 'smooth',
+  punchFrame = -99,
+  punchScale = 1.18,
+  motionBlur = false,
+  motionBlurLayers = 3,
+  motionBlurOpacity = 0.6,
+  children,
+  style,
+}) => {
   const frame = useCurrentFrame();
-  const {durationInFrames} = useVideoConfig();
+  const {fps, durationInFrames} = useVideoConfig();
   const sh = useCameraShake(shakeFrame, 12, shakeIntensity);
   const prog = frame / Math.max(1, durationInFrames - 1);
+  const cfg = SPRINGS[springPreset];
 
-  // Easing functions
-  const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
-  const easeIn = (t: number) => t * t * t;
-  const easeInOut = (t: number) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-  const linear = (t: number) => t;
-  
-  const applyEasing = (t: number) => {
-    switch (easing) {
-      case 'ease-in': return easeIn(t);
-      case 'ease-in-out': return easeInOut(t);
-      case 'linear': return linear(t);
-      default: return easeOut(t);
-    }
-  };
+  // per-axis springs from frame 0
+  const sp = spring({frame, fps, config: cfg, durationInFrames});
+  const punchSp = usePunchIn(punchFrame, punchScale, 'pop');
 
-  let scale = 1;
+  let scale = punchSp;
   let tx = sh.x;
   let ty = sh.y;
-  const easedProg = applyEasing(prog);
+  let rot = sh.rot;
 
   switch (mode) {
     case 'ken-burns':
-      scale = 1 + 0.08 * easedProg;
-      tx += -20 + 40 * easedProg;
+      scale *= 1 + 0.08 * sp;
+      tx += (-20 + 40 * sp);
       break;
     case 'push-in':
-      scale = 1 + 0.12 * easedProg;
+      scale *= 1 + 0.12 * sp;
       break;
     case 'pull-out':
-      scale = 1.12 - 0.12 * easedProg;
+      scale *= 1.12 - 0.12 * sp;
       break;
     case 'pan-horizontal':
-      tx = -40 + 80 * easedProg;
+      tx += -40 + 80 * sp;
       break;
     case 'pan-vertical':
-      ty = -30 + 60 * easedProg;
+      ty += -30 + 60 * sp;
       break;
-    case 'zoom-punch':
-      // Dramatic zoom that accelerates toward the end
-      const punchProg = Math.pow(prog, 1.5);
-      scale = 1 + 0.20 * punchProg;
-      tx = -15 + 30 * punchProg;
+    case 'drift-left':
+      tx += 24 * sp;
+      scale *= 1 + 0.04 * sp;
       break;
+    case 'drift-right':
+      tx += -24 * sp;
+      scale *= 1 + 0.04 * sp;
+      break;
+    case 'float-up':
+      ty += 20 * sp;
+      scale *= 1 + 0.03 * sp;
+      break;
+    case 'zoom-punch': {
+      const pp = Math.pow(prog, 1.5);
+      scale *= 1 + 0.20 * pp;
+      tx += -15 + 30 * pp;
+      break;
+    }
     case 'handheld':
-      // Subtle organic handheld motion (only when not settled)
       if (prog > 0.1 && prog < 0.9) {
-        const shakeAmount = 2.5 * Math.sin(frame * 0.7) * (1 - Math.abs(prog - 0.5) * 2);
-        tx += Math.sin(frame * 0.53) * shakeAmount;
-        ty += Math.cos(frame * 0.47) * shakeAmount * 0.7;
+        const amt = 2.5 * Math.sin(frame * 0.7) * (1 - Math.abs(prog - 0.5) * 2);
+        tx += Math.sin(frame * 0.53) * amt;
+        ty += Math.cos(frame * 0.47) * amt * 0.7;
+        rot += Math.sin(frame * 0.31) * 0.15;
       }
       break;
     default:
       break;
   }
 
-  return (
+  const inner = (
     <AbsoluteFill
       style={{
-        transform: `scale(${scale}) translate(${tx}px, ${ty}px) rotate(${sh.rot}deg)`,
+        transform: `scale(${scale.toFixed(5)}) translate(${tx.toFixed(2)}px, ${ty.toFixed(2)}px) rotate(${rot.toFixed(3)}deg)`,
+        transformOrigin: 'center center',
         ...style,
       }}
     >
       {children}
     </AbsoluteFill>
   );
+
+  if (motionBlur) {
+    return (
+      <AbsoluteFill>
+        <Trail layers={motionBlurLayers} lagInFrames={1} trailOpacity={motionBlurOpacity}>
+          {inner}
+        </Trail>
+      </AbsoluteFill>
+    );
+  }
+  return inner;
 };
 
-/**
- * Zoom-to-city SVG wrapper.
- * Applies an animated scale that starts wide (zoomOut) and eases in to 1.0.
- * Usage: wrap the <svg> inside MapBeat with this when you want a fly-in feel.
- */
+// ─── SvgZoomIn (kept for map beats) ──────────────────────────────────────────
 export const SvgZoomIn: React.FC<{
   originX: number;
   originY: number;
   fromScale?: number;
-  dur?: number;   // frames
+  dur?: number;
   children: React.ReactNode;
-}> = ({originX, children, originY, fromScale = 0.45, dur = 40}) => {
+}> = ({originX, originY, children, fromScale = 0.45, dur = 40}) => {
   const frame = useCurrentFrame();
-  // ease-out cubic
   const t = Math.min(1, frame / dur);
   const eased = 1 - Math.pow(1 - t, 3);
   const sc = fromScale + (1 - fromScale) * eased;
