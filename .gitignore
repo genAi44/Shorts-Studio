@@ -36,5 +36,5 @@ __pycache__/
 outputs/
 cache/
 frames/
-graphify-out/cache/
+graphify-out/
 remotion/src/generated/.tsx_cache.json
