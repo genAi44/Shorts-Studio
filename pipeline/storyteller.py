@@ -219,9 +219,40 @@ def _extract_phrases(narration: str) -> List[str]:
     return phrases[:5] if phrases else [_words(text, 5)]
 
 
+_AR_WORD_NUMBERS = {
+    "\u0635\u0641\u0631": 0, "\u0648\u0627\u062d\u062f": 1, "\u0627\u062b\u0646\u064a\u0646": 2, "\u0627\u062b\u0646\u0627\u0646": 2, "\u062b\u0644\u0627\u062b\u0629": 3, "\u0623\u0631\u0628\u0639\u0629": 4, "\u0623\u0631\u0628\u0639": 4,
+    "\u062e\u0645\u0633\u0629": 5, "\u062e\u0645\u0633": 5, "\u0633\u062a\u0629": 6, "\u0633\u062a": 6, "\u0633\u0628\u0639\u0629": 7, "\u0633\u0628\u0639": 7, "\u062b\u0645\u0627\u0646\u064a\u0629": 8,
+    "\u062b\u0645\u0627\u0646": 8, "\u062a\u0633\u0639\u0629": 9, "\u062a\u0633\u0639": 9, "\u0639\u0634\u0631\u0629": 10, "\u0639\u0634\u0631": 10, "\u0623\u062d\u062f \u0639\u0634\u0631": 11, "\u0627\u062b\u0646\u0627 \u0639\u0634\u0631": 12,
+    "\u062e\u0645\u0633\u0629 \u0639\u0634\u0631": 15, "\u0633\u062a\u0629 \u0639\u0634\u0631": 16, "\u0633\u0628\u0639\u0629 \u0639\u0634\u0631": 17, "\u062b\u0645\u0627\u0646\u064a\u0629 \u0639\u0634\u0631": 18, "\u062a\u0633\u0639\u0629 \u0639\u0634\u0631": 19,
+    "\u0639\u0634\u0631\u0648\u0646": 20, "\u0639\u0634\u0631\u064a\u0646": 20, "\u062b\u0644\u0627\u062b\u0648\u0646": 30, "\u062b\u0644\u0627\u062b\u064a\u0646": 30, "\u062e\u0645\u0633\u0648\u0646": 50, "\u062e\u0645\u0633\u064a\u0646": 50,
+    "\u0645\u0626\u0629": 100, "\u0645\u0627\u0626\u0629": 100, "\u0623\u0644\u0641": 1_000, "\u0623\u0644\u0641\u064a\u0646": 2_000, "\u0645\u0644\u064a\u0648\u0646": 1_000_000,
+    "\u0645\u0644\u064a\u0627\u0631": 1_000_000_000,
+}
+_AR_MULTIPLIERS = {"\u0645\u0644\u064a\u0648\u0646": 1_000_000, "\u0645\u0644\u064a\u0627\u0631": 1_000_000_000, "\u0623\u0644\u0641": 1_000, "\u0645\u0626\u0629": 100, "\u0645\u0627\u0626\u0629": 100}
+
+
+def _parse_arabic_word_number(text: str) -> Optional[float]:
+    """Try to parse a simple Arabic word-form number like '\u0633\u0628\u0639\u0629 \u0639\u0634\u0631 \u0645\u0644\u064a\u0648\u0646'."""
+    t = text.strip()
+    for multi_word, val in sorted(_AR_WORD_NUMBERS.items(), key=lambda x: -len(x[0])):
+        if multi_word in t:
+            base = val
+            for mult_word, mult_val in _AR_MULTIPLIERS.items():
+                if mult_word in t and mult_word != multi_word:
+                    return base * mult_val
+            return float(base)
+    return None
+
+
 def _extract_numbers(text: str) -> List[Dict[str, Any]]:
-    """Extracts numbers and their surrounding context label from text."""
+    """Extracts numbers (digit or Arabic word-form) and their surrounding context label from text."""
     results: List[Dict[str, Any]] = []
+    # First pass: Arabic word-numbers (e.g. "\u0633\u0628\u0639\u0629 \u0639\u0634\u0631 \u0645\u0644\u064a\u0648\u0646")
+    for phrase, val in sorted(_AR_WORD_NUMBERS.items(), key=lambda x: -len(x[0])):
+        if phrase in text:
+            after = text[text.index(phrase) + len(phrase):].strip().split()[:3]
+            label = " ".join(after) if after else phrase
+            results.append({"display": phrase, "value": float(val), "label": _words(label, 3) or "\u0642\u064a\u0645\u0629"})
     for m in re.finditer(r"(\d[\d,.\u0660-\u0669]*)", text):
         raw_num = m.group(1)
         arabic_map = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
@@ -275,8 +306,9 @@ def classify_narration_intent(narration: str, role: str = "body") -> Dict[str, A
         w in t for w in ["عام", "سنة", "قرن", "تاريخ", "تأسست", "الحرب", "الإمبراطورية", "القديمة", "العصور", "ملك", "دستور"]
     )
     has_process = any(
-        w in t for w in ["مراحل", "خطوات", "تنتقل", "مسار", "رحلة", "تطور", "بناء", "نظام", "شبكة", "شبكات", "تدفق", "منظومات"]
+        w in t for w in ["مراحل", "خطوات", "تنتقل", "تدفق", "منظومة المراحل", "خطوة بخطوة"]
     )
+    # ponytail: removed "شبكة","نظام","مسار","رحلة" — too broad, caused network-diagram false positives on geo content
     has_population = any(
         w in t for w in ["سكان", "نسمة", "مليون", "تعداد", "شعب", "بشر", "مدن", "مدينة", "عاصمة"]
     )
@@ -1124,9 +1156,31 @@ def _resolve_beat_geo_context(beat: Dict[str, Any]) -> Dict[str, Any]:
 
 def generate_scene_tsx(beat: Dict[str, Any], scene_index: int, total_scenes: int = 8) -> str:
     tsx_id = _clean_id(beat.get("tsx_id") or f"DynamicScene_{scene_index}")
-    return f"""export const {tsx_id}: React.FC<{{frame?: number; fps?: number; dur?: number}}> = () => (
-  <AbsoluteFill style={{{{background: '#0a0a0a'}}}} />
-);"""
+    narration = beat.get("narration") or ""
+    intent = classify_narration_intent(narration, role=beat.get("role", "body"))
+    approach = beat.get("scene_spec", {}).get("visual_concept", {}).get("approach") or intent["visual_approach"]
+
+    generators = [
+        _generate_metropolis_tsx,
+        _generate_comparative_tsx,
+        _generate_data_metric_tsx,
+        _generate_chronicle_tsx,
+        _generate_process_network_tsx,
+        _generate_cinematic_aperture_tsx,
+    ]
+    if intent.get("has_comparison") or approach in ("comparative_duel_stage", "visual_metaphor_equilibrium", "equilibrium_duel_stage"):
+        return _generate_comparative_tsx(beat, scene_index, tsx_id)
+    if intent.get("has_history") or approach in ("animated_timeline_expedition", "chronicle_conduit"):
+        return _generate_chronicle_tsx(beat, scene_index, tsx_id)
+    if intent.get("numbers") or approach in ("data_driven_elevation_spire", "interactive_infographic_monument"):
+        return _generate_data_metric_tsx(beat, scene_index, tsx_id)
+    if intent.get("has_process") or approach in ("cause_and_effect_demonstration", "exploded_isometric_core"):
+        return _generate_process_network_tsx(beat, scene_index, tsx_id)
+    if intent.get("has_urban") or approach in ("animated_city_environment", "layered_historical_citadel", "metropolis_skyline"):
+        return _generate_metropolis_tsx(beat, scene_index, tsx_id)
+    # Avoid repeating process_network (index 4) in geo/historical content — skip it in fallback
+    safe_generators = [g for g in generators if g is not _generate_process_network_tsx]
+    return safe_generators[scene_index % len(safe_generators)](beat, scene_index, tsx_id)
 
 # ---------------------------------------------------------------------------
 # AI LLM Original TSX Synthesis + TypeScript Compilation Gate

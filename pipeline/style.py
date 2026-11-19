@@ -28,7 +28,7 @@ ENUMS = {
     "stat.layout": ["ring", "bar", "plain", "stack"],
     "text.layout": ["center", "stack", "diag", "left"],
     "deco.frame": ["none", "corners", "border", "ticks"],
-    "deco.progress": ["none", "top", "bottom", "side"],
+    "deco.progress": ["none", "top", "bottom"],  # "side" removed: creates edge-bleed artifact in 9:16
     "edit.photo": ["bleed", "polaroid", "arch", "tilt", "circle"],
     "edit.cutout": ["ring", "glow", "blob", "plain"],
     "edit.mixpat": ["alt", "tail", "head", "none"],

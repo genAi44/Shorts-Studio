@@ -150,7 +150,7 @@ export const Deco: React.FC<{total: number}> = ({total}) => {
       )}
       {deco.progress === 'top' && <div style={{position: 'absolute', left: 0, top: 0, height: 12, width: `${f * 100}%`, background: rgba(p.accent)}} />}
       {deco.progress === 'bottom' && <div style={{position: 'absolute', left: 0, bottom: 0, height: 12, width: `${f * 100}%`, background: rgba(p.accent)}} />}
-      {deco.progress === 'side' && <div style={{position: 'absolute', right: 0, top: 0, width: 12, height: `${f * 100}%`, background: rgba(p.accent)}} />}
+      {deco.progress === 'side' && <div style={{position: 'absolute', right: 60, top: 0, width: 8, height: `${f * 100}%`, background: rgba(p.accent, 0.75), borderRadius: 4}} />}
     </AbsoluteFill>
   );
 };
