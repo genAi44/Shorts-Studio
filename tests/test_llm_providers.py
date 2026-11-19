@@ -18,13 +18,9 @@ from unittest.mock import patch, MagicMock
 import json
 import requests
 import app
-from pipeline import llm_providers
 from pipeline import llm_router
 from pipeline.llm_providers import (
     FreeLLMAPIProvider,
-    DeepSeekProvider,
-    GeminiProvider,
-    OpenAICompatibleProvider,
     LLMError,
     LLMResponse,
     LLMUsage,

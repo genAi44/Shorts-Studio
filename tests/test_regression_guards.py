@@ -3,7 +3,6 @@ tests/test_regression_guards.py
 قائمة التحقق التلقائية لمنع تكرار جميع الأخطاء المرصودة عبر دورات التطوير (Cycles 1-11).
 أي تعديل مستقبلي يكسر أياً من هذه القواعد سيفشل هنا فوراً قبل الرندر.
 """
-import json
 import unittest
 from pathlib import Path
 from unittest.mock import patch
