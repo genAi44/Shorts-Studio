@@ -11,7 +11,7 @@ import io
 from flask import Flask, jsonify, request, send_file, send_from_directory
 
 from pipeline import direct, llm, llm_providers, llm_router, media, rem, scriptspec as sp, style as stl, tts, visual_tools
-from pipeline.config import OUT, ROOT, SAMPLE, cfg, flag, get_last_warnings
+from pipeline.config import OUT, ROOT, SAMPLE, cfg, get_last_warnings
 from pipeline.geo import get_geo
 from pipeline.render import preview_frame
 from pipeline.run import pick_engine, plan_scenes, produce
