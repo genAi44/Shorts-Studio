@@ -201,7 +201,6 @@ class LLMRouter:
         providers_to_try = [primary_provider_id] + [p for p in fallback_chain if p != primary_provider_id]
 
         messages = [{"role": "user", "content": user}]
-        last_error = None
         attempt_errors = []
 
         if session_id:
@@ -281,7 +280,6 @@ class LLMRouter:
                     error=err_msg,
                     session_id=session_id,
                 )
-                last_error = le
             except Exception as ge:
                 latency = int((time.time() - t0) * 1000)
                 err_msg = sanitize_text(str(ge))

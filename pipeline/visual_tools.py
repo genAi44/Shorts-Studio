@@ -618,7 +618,6 @@ def enrich_scene_visuals(
 
     # 1. Check if a country is mentioned or in map visual -> add <Flag /> ONLY if validated
     countries = (vis.get("countries") or []) + (vis.get("highlight") or [])
-    flag_added = False
     if countries:
         fl = resolve_flag(str(countries[0]), shape="round" if scene_index % 2 else "rect")
         if fl.get("found") and fl.get("code"):
@@ -627,7 +626,6 @@ def enrich_scene_visuals(
                 "placement": "badge-row",
                 "spec": {"code": fl["code"], "shape": fl["shape"], "size": 84, "animation": "pop"},
             })
-            flag_added = True
     else:
         for ar_name, iso3 in sorted(AR_ISO3.items(), key=lambda x: len(x[0]), reverse=True):
             if len(ar_name) < 3:
@@ -644,7 +642,6 @@ def enrich_scene_visuals(
                         "placement": "badge-row",
                         "spec": {"code": fl["code"], "shape": "rect", "size": 84, "animation": "pop"},
                     })
-                    flag_added = True
                     break
 
     # 2. Pick 1 matching Iconify icon if text has a meaningful concept and no flag was found

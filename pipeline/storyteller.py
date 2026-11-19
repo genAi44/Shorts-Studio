@@ -1155,32 +1155,13 @@ def _resolve_beat_geo_context(beat: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def generate_scene_tsx(beat: Dict[str, Any], scene_index: int, total_scenes: int = 8) -> str:
+    """Fallback TSX stub used when LLM synthesis fails. Returns a valid, renderable component."""
     tsx_id = _clean_id(beat.get("tsx_id") or f"DynamicScene_{scene_index}")
-    narration = beat.get("narration") or ""
-    intent = classify_narration_intent(narration, role=beat.get("role", "body"))
-    approach = beat.get("scene_spec", {}).get("visual_concept", {}).get("approach") or intent["visual_approach"]
-
-    generators = [
-        _generate_metropolis_tsx,
-        _generate_comparative_tsx,
-        _generate_data_metric_tsx,
-        _generate_chronicle_tsx,
-        _generate_process_network_tsx,
-        _generate_cinematic_aperture_tsx,
-    ]
-    if intent.get("has_comparison") or approach in ("comparative_duel_stage", "visual_metaphor_equilibrium", "equilibrium_duel_stage"):
-        return _generate_comparative_tsx(beat, scene_index, tsx_id)
-    if intent.get("has_history") or approach in ("animated_timeline_expedition", "chronicle_conduit"):
-        return _generate_chronicle_tsx(beat, scene_index, tsx_id)
-    if intent.get("numbers") or approach in ("data_driven_elevation_spire", "interactive_infographic_monument"):
-        return _generate_data_metric_tsx(beat, scene_index, tsx_id)
-    if intent.get("has_process") or approach in ("cause_and_effect_demonstration", "exploded_isometric_core"):
-        return _generate_process_network_tsx(beat, scene_index, tsx_id)
-    if intent.get("has_urban") or approach in ("animated_city_environment", "layered_historical_citadel", "metropolis_skyline"):
-        return _generate_metropolis_tsx(beat, scene_index, tsx_id)
-    # Avoid repeating process_network (index 4) in geo/historical content — skip it in fallback
-    safe_generators = [g for g in generators if g is not _generate_process_network_tsx]
-    return safe_generators[scene_index % len(safe_generators)](beat, scene_index, tsx_id)
+    return (
+        f"export const {tsx_id}: React.FC<{{frame?: number; fps?: number; dur?: number}}> = () => (\n"
+        f"  <AbsoluteFill style={{{{background: '#0a0a0a'}}}} />\n"
+        f");"
+    )
 
 # ---------------------------------------------------------------------------
 # AI LLM Original TSX Synthesis + TypeScript Compilation Gate
