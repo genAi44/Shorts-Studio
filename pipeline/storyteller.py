@@ -24,7 +24,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from .config import ROOT, cfg
+from .config import ROOT
 from .geo import AR_ISO3, detect_city_in_text, get_geo
 
 logger = logging.getLogger("pipeline.storyteller")
@@ -770,7 +770,6 @@ def evaluate_and_improve_scene(
     svg_layers = list(b.get("svg_layers") or [])
 
     # Criterion 1: Does the visual actually explain the narration?
-    phrases = _extract_phrases(narration)
     has_narration_tie = bool(b.get("title")) or any(el.get("text") or el.get("label") for el in elements)
 
     # Criterion 2: Is the main idea immediately understandable?
@@ -854,18 +853,6 @@ def evaluate_and_improve_scene(
 
 
 # ---------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------
-# 4. AI ORIGINAL TSX SCENE CODE GENERATION ENGINE (`DynamicScenes.tsx`)
-# ---------------------------------------------------------------------------
-
-
-
-
-
-
-
-
 
 
 from .geo import _CITY_STOP_WORDS

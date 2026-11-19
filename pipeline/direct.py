@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 from .config import ROOT, record_fallback
-from .icons import pick_icons_for_beat, get_icon_path, _has_whole_word
+from .icons import pick_icons_for_beat, _has_whole_word
 
 _SPEC_SCHEMA_PATH = ROOT / "spec_schema.json"
 _SPEC_SCHEMA: Dict[str, Any] = json.loads(_SPEC_SCHEMA_PATH.read_text(encoding="utf-8")) if _SPEC_SCHEMA_PATH.exists() else {"common_fields": {}, "beats": {}}

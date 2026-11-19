@@ -134,20 +134,6 @@ def lookup_city(city: str) -> Optional[tuple[str, str, float, float]]:
     return CITY_DB.get(_norm(city))
 
 
-def validate_continent(city: str, claimed_continent: str) -> tuple[bool, str]:
-    """Returns (ok, message). ok=True if claimed matches known."""
-    info = lookup_city(city)
-    if info is None:
-        return True, f"city '{city}' not in DB, skipping"
-    country, real_continent, _, _ = info
-    claimed = _norm(claimed_continent)
-    if claimed != real_continent:
-        return False, (
-            f"'{city}' is in {real_continent.upper()} (country: {country}), "
-            f"not {claimed_continent.upper()}"
-        )
-    return True, "ok"
-
 
 def check_script(script: dict) -> list[str]:
     """Scan a script dict for geo errors. Returns list of error strings."""
@@ -176,7 +162,3 @@ def check_script(script: dict) -> list[str]:
     return errors
 
 
-def get_city_coords(city: str) -> Optional[tuple[float, float]]:
-    """Quick lat/lon lookup for director hints."""
-    info = lookup_city(city)
-    return (info[2], info[3]) if info else None
