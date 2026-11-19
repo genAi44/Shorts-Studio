@@ -11,7 +11,6 @@ from pipeline.storyteller import (
     classify_narration_intent,
     design_scene_specification,
     evaluate_and_improve_scene,
-    generate_dynamic_tsx_file,
 )
 from pipeline.direct import apply_beats
 

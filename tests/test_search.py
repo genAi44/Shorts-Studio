@@ -1,20 +1,15 @@
-import json
-import os
 import sys
 from pathlib import Path
-import tempfile
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from pipeline.search import (
-    _cache_path,
     _get_cached,
     _set_cached,
     generate_queries,
     search_facts,
-    search_query,
 )
 from pipeline.llm import write_script_with_facts
 
@@ -89,7 +84,7 @@ class TestSearchFacts(unittest.TestCase):
         self.assertIn("cta", script)
         # Verify system prompt contained the rule
         args, kwargs = mock_call.call_args
-        role, system, user = args[0], args[1], args[2]
+        _, system, user = args[0], args[1], args[2]
         self.assertIn("Use ONLY the facts provided below", system)
         self.assertIn(facts, user)
 
