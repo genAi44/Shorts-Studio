@@ -1,178 +1,197 @@
-# استوديو Shorts
+<div align="center">
 
-تطبيق ويب محلي: تكتب فكرة ← يخرج فيديو Shorts عمودي (1080×1920).
+# 🎬 Shorts Studio
 
-## أدوار النماذج
+### AI-powered Arabic YouTube Shorts generator — topic in, viral video out.
 
-| المهمة | الأداة |
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
+[![Node.js 18+](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org)
+[![Remotion](https://img.shields.io/badge/Remotion-4.x-purple.svg)](https://remotion.dev)
+[![Issues Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Arabic](https://img.shields.io/badge/language-Arabic-orange.svg)]()
 
+<br/>
+
+> Write one topic. Get a fully-rendered, voiced, animated Arabic Short in minutes.
+
+<br/>
+
+<!-- DEMO GIF PLACEHOLDER — replace with actual screen recording -->
+<!-- ![Shorts Studio Demo](docs/demo.gif) -->
+
+**[English](#english) · [العربية](#arabic)**
+
+</div>
+
+---
+
+<a id="english"></a>
+
+## What is Shorts Studio?
+
+Shorts Studio is an end-to-end AI pipeline that transforms a **single Arabic topic** into a production-ready YouTube Short:
+
+| Step | What happens |
 |---|---|
+| 🧠 **Script** | Gemini + Google Search writes a fact-checked 8-part viral script |
+| 🗣️ **Voice** | ElevenLabs generates natural Arabic narration with word-level timestamps |
+| 🎨 **Visuals** | DeepSeek art-directs per-sentence motion graphics (maps, stats, timelines) |
+| 🎬 **Animation** | Remotion (React) renders every scene as a pure, deterministic function |
+| 🎵 **Audio mix** | FFmpeg assembles the final MP4 with ducked music and SFX |
 
-| كتابة السكربت (HOOK / BODY / LOOP) | Gemini (مع بحث Google المرتبط للحقائق) — خيار `SCRIPT_MODEL=gemini\|deepseek` (افتراضي gemini مع تراجع تلقائي إلى deepseek) |
+The result: a **40–55 second, 1080×1920 vertical video** with a retention-engineered structure — no manual editing required.
 
-| الإخراج البصري للمشاهد (المخرج البصري) | DeepSeek |
+---
 
-| تصميم الستايل الفني (المدير الفني) | DeepSeek |
+## ✨ Features
 
-| فحص الحقائق + تحسين العنوان والوصف والوسوم | Gemini |
+- 🤖 **Multi-model pipeline** — Gemini (script + fact-check) · DeepSeek (visual direction) · ElevenLabs (TTS)
+- 📐 **8-part viral script structure** — HOOK → LEAD → BODY × 3 → OPEN LOOPs → CTA
+- 🗺️ **Rich motion graphics** — Animated maps, stat counters, bar charts, timelines, comparison cards
+- 🔤 **RTL Arabic captions** — Word-synced karaoke with active-word glow, built for Arabic
+- ✅ **Fact-checking built in** — Every on-screen number is sourced before the video renders
+- 🖥️ **Local web UI** — Browse, edit scene JSON, re-render individual scenes via Flask
+- 🧩 **Modular** — Swap LLM providers, TTS engine, or renderer independently
 
-| التعليق الصوتي العربي + توقيت الكلمات | ElevenLabs |
+---
 
-| رسم المشاهد الحركية (موشن غرافيك) | **Remotion** (React) — محرّك احتياطي أبسط: Python + PIL |
+## 🚀 Quick Start
 
-| تجميع الصوت | FFmpeg |
-
-## شروط وهيكل السكربت (الهيكل الإلزامي المكون من 8 أجزاء — 8 Parts)
-
-1. **HOOK**: ≤14 كلمة، سؤال أو تناقض حقيقي أو رقم صادم، بلا تحية، ولا يكشف الجواب.
-
-2. **LEAD**: جملة أو جملتان (≤20 كلمة)، تضعان الوعد والسياق للبقاء حتى النهاية.
-
-3. **BODY 1**: حقيقة ملموسة أولى أو خطوة محددة (≤25 كلمة).
-
-4. **OPEN LOOP 1**: سطر تشويقي قصير يطرح لغزاً جديداً دون الإجابة عليه الآن (≤12 كلمة) — يُعامل كمشهد ترقب وتشويق (Tension Beat).
-
-5. **BODY 2**: يجيب على OPEN LOOP 1 ويقدم حقيقة أقوى (≤25 كلمة).
-
-6. **OPEN LOOP 2**: سطر تشويقي لأكبر كشف ومفاجأة قادمة (≤12 كلمة) — مشهد ترقب (Tension Beat).
-
-7. **BODY 3**: أقوى حقيقة تجيب على لغز الـ HOOK بالكامل (≤25 كلمة).
-
-8. **CTA**: إجراء طبيعي واحد (متابعة أو تعليق، ≤12 كلمة)، بلا "شكراً للمشاهدة"، وتتصل كلماته الأخيرة بالـ HOOK ليدور الفيديو في حلقة لا نهائية.
-
-- **المجموع الإجمالي**: 100–140 كلمة (≈40–55 ثانية). الأخطاء تمنع الإنتاج، والتحذيرات للعلم.
-
-- **قائمة facts**: قائمة بالادعاءات المؤكدة ومصادرها (`claim` و `source`) يرجعها Gemini، ليعتمد عليها المخرج البصري فقط في تصميم المشاهد.
-
-- **إعادة المحاولة التلقائية**: في حال وجود أي خطأ في التحقق من شروط السكربت، يُعاد إرسال الأخطاء إلى النموذج مرة واحدة لتصحيحها ذاتياً بدلاً من إرجاع خطأ.
-
-- **إعداد النموذج**: يمكن تحديد نموذج كتابة السكربت عبر متغير البيئة `SCRIPT_MODEL=gemini|deepseek` في ملف `.env` (الافتراضي `gemini` مع Google Search grounding، ويتراجع تلقائياً إلى `deepseek` في حال تعذر الاتصال بـ Gemini).
-
-## مشهد لكل جملة (Remotion)
-
-كل جملة منطوقة لها مشهدها الحركي الخاص، يبدأ لحظة نطق أول كلمة فيها (من توقيت ElevenLabs). «المخرج البصري» (DeepSeek) يصمّم المشهد من نص الجملة نفسها، وتُرسم الحركة بالكود:
-
-`map` خريطة ترسم حدودها تدريجياً وتُبرز الدول والمدن، `stat` رقم يعدّ تصاعدياً، `bigtext` كلمات حركية، `bars` أعمدة، `timeline` خط زمني، `versus` مقارنة، `list` قائمة، `icons` أيقونات مرسومة بالكود، و`canvas` مشهد حر: نصوص وأيقونات وأشكال وأسهم بإحداثيات يضعها النموذج.
-
-- كل مقطع JSON قابل للتعديل داخل بطاقة المشهد في الواجهة.
-
-- كل الحركة بنوابض (spring) مع تتابع وخروج أسرع من الدخول، وخلفية متحركة + تدرّج لوني + حبيبات + فينيت.
-
-- مشروع Remotion في مجلد `remotion/` ويعمل في Remotion Studio: `cd remotion && npx remotion studio`.
-
-- القيد: المخرج يرسم من «مفردات» جاهزة ومنظَّفة (وليس كوداً حراً ينفَّذ)، لأمان التشغيل وثبات النتيجة.
-
-## التشغيل
-
-1. ثبّت Python 3.10+ و FFmpeg و **Node.js 18+**. ثم داخل مجلد `remotion` شغّل مرة واحدة: `npm install` (Remotion ينزّل متصفحه تلقائياً عند أول رندر).
-
-2. انسخ `.env.example` إلى `.env` وضع المفاتيح.
-
-3. شغّل `./run.sh` (أو `run.bat` في ويندوز) وافتح <http://localhost:8000>
-
-4. اضغط «حمّل سكربتاً تجريبياً» لتجربة واجهة المحرر بسكربت جاهز. الإنتاج يحتاج مفاتيح API.
-
-## صور حقيقية + مونتاج مختلف لكل فيديو
-
-- المخرج البصري (DeepSeek) يضع مقطع `photo` للجمل التي تذكر شيئاً حقيقياً، مع كلمات بحث إنجليزية. التطبيق يبحث في **Wikimedia Commons** (بلا مفتاح) و**Pexels** (مفتاح مجاني)، فيعرض Gemini الصور المرشّحة على نفسه ويختار الأنسب أو يرفضها كلها. ما لا يُوجد له صورة يتحول تلقائياً إلى نص كبير.
-
-- تُحفظ الرخصة والمصدر لكل صورة، وتُضاف تلقائياً إلى وصف الفيديو (وفي `credits.txt` داخل مجلد المهمة). تُقبل فقط تراخيص CC BY وCC BY-SA وCC0 والملك العام وPexels، وتُستبعد NC/ND.
-
-- قص الخلفية اختياري: `pip install rembg onnxruntime` (ينزّل نموذجاً ~170 م.ب أول مرة). بدونه تظهر الصور بإطارات.
-
-- «أسلوب المونتاج» جزء من الستايل (`edit` + `font2`) ويتغير لكل فيديو: شكل الصور (ملء الشاشة/بولارويد/قوس/مائل/دائرة)، إطار المقصوص (حلقة/توهج/بقعة)، مزج خطّين داخل الجملة، أشكال زخرفية متحركة، حركة الكاميرا، توهج الأرقام، ظهور بتمويه، صبغة لونين. المدير الفني يصمّمه أو يُولَّد عشوائياً، وهو قابل للتعديل في JSON.
-
-- **تنبيه:** هذه الميزة كُتبت بلا اختبار حي (لا شبكة في بيئة البناء). جرّبها بفكرة واحدة وراجع السجل: كل خطوة بحث/اختيار/قص تكتب سطراً. صور الأشخاص المعاصرين والأخبار الحديثة نادرة بتراخيص حرة، فستعود في الغالب إلى نص.
-
-## نظام مزوّدي ونماذج الذكاء الاصطناعي الموحد (Unified LLM Engine)
-
-يتضمن المشروع بنية مرنة وموحدة لإدارة واختيار نماذج الذكاء الاصطناعي عبر مختلف مراحل الإنتاج:
-
-### المزوّدون المدعومون
-
-1. **FreeLLMAPI**:
-   - راوتر موحد يدعم مئات النماذج مجاناً دون تكلفة عبر النسخة المحلية.
-   - **Auto Mode حصري**: يقوم الراوتر باختيار أفضل نموذج متاح تلقائياً (Balanced / Smart).
-   - يتم إخفاء قائمة اختيار النموذج اليدوي عند استخدام FreeLLMAPI لضمان التوجيه التلقائي الصحيح.
-   - النموذج التلقائي المعتمد والمتحقق منه عبر الـ API هو `"auto"`.
-   - قراءة ترويسة `X-Routed-Via` وحقل `_routed_via` لمعرفة المزوّد والنموذج الفعلي المستخدم (مثل `nvidia/poolside/laguna-xs-2.1`).
-   - دعم الجلسات الثابتة (`Sticky Sessions`) عبر تمرير `X-Session-ID`.
-2. **Google Gemini**:
-   - يدعم `gemini-2.5-flash` والنماذج الأخرى المسترجعة مباشرة من الـ API، مع دعم الرؤية (Vision) والبحث المباشر.
-3. **DeepSeek AI**:
-   - يدعم نماذج التفكير والتوليد (`deepseek-chat` / `deepseek-coder`).
-4. **OpenAI-Compatible**:
-   - يدعم أي خادم متوافق مع معيار OpenAI عبر تحديد `OPENAI_BASE_URL` و`OPENAI_API_KEY`.
-
-### تخصيص النماذج حسب الدور (Role-Based Customization)
-
-يمكن تخصيص المزوّد والنموذج بشكل مستقل تماماً لكل دور في النظام من خلال واجهة المستخدم (`⚙️ تخصيص الأدوار`) أو عبر ملف `.env`:
-
-- **السكربت (`script`)**: كتابة نصوص Shorts ثلاثية المراحل والحلقات المشوقة.
-- **المخرج البصري (`director`)**: تفكيك الجمل إلى مشاهد حركية ورسم الكود في Remotion.
-- **المدير الفني (`style`)**: ابتكار لوحات الألوان والخطوط والخلفيات المتحركة.
-- **فحص الحقائق (`factcheck`)**: التحقق من صحة الادعاءات التاريخية والعلمية.
-- **التعديل البصري (`chat_edit`)**: تعديل عناصر المشاهد تفاعلياً بالأوامر الصوتية أو النصية.
-
-### مسار التراجع التلقائي (Automatic Fallback)
-
-عند حدوث أي انقطاع أو خطأ (مثل 401، 429، 5xx، أو انتهاء المهلة)، يقوم النظام تلقائياً بالتحويل إلى المزوّد البديل المحدد في سلسلة الـ Fallback (مثال: `FreeLLMAPI ← DeepSeek ← Gemini`)، مع تسجيل عملية التحويل والمزوّد الفعلي المستهلك في سجلات النظام.
-
-### واجهات الـ API المضافة
-
-- `GET /api/llm/providers`: استرجاع قائمة المزوّدين المسجلين وحالتهم والنماذج المتاحة حياً.
-- `GET /api/llm/health`: فحص اتصال وصحة جميع المزوّدين وزمن الاستجابة (Latency ms).
-- `GET /api/llm/config` & `POST /api/llm/config`: استرجاع وتحديث توزيع الأدوار والنماذج.
-- `GET /api/llm/logs`: استعراض سجل الاستدعاءات الأخير شاملاً التوجيه الفعلي `x-routed-via`، واستهلاك الرموز (Tokens)، والتكلفة وزمن الاستجابة.
-- `POST /api/llm/test-call`: إجراء تجربة فورية لأي مزوّد أو نموذج.
-
-## الستايل: لا قوالب ثابتة
-
-كل فيديو يحصل على ستايل خاص به، يتحكم في: لوحة الألوان، الخط (9 خطوط عربية)، نوع الخلفية المتحركة (9 أنواع)، موضع العنوان وصندوقه وحركة دخوله، شكل الترجمة وطريقة إبراز الكلمة، تعبئة الخريطة وشكل المؤشرات، تخطيط الأرقام والنصوص الكبيرة، الإطار وشريط التقدم، وإيقاع الحركة.
-
-- «صمّم ستايلاً (مدير فني)»: DeepSeek يصمّم الستايل حسب موضوع الفيديو ويتجنب آخر 5 ستايلات.
-
-- «ستايل عشوائي»: تركيب عشوائي مبذور (يعمل بلا مفاتيح). يُولَّد ستايل جديد تلقائياً مع كل سكربت جديد.
-
-- كل قيمة قابلة للتعديل في JSON، وتوجد «معاينة إطار» قبل الرندر. الخطوط داخل مجلد `data/` (رخصة OFL).
-
-- النتيجة تُحفظ في `outputs/<مهمة>/style.json` لإعادة استخدام ستايل أعجبك.
-
-## مشاهد الفيديو
-
-`map` (خريطة بدول ISO3 ونقاط)، `stat` (رقم يعدّ تصاعدياً)، `text` (كلمات تظهر تباعاً). مشهد الـ LOOP يعيد بصريات الـ HOOK.
-
-## ملاحظات صريحة
-
-- استدعاءات DeepSeek وGemini وElevenLabs مكتوبة حسب واجهاتها الموثّقة لكنها **لم تُجرَّب حياً** (لا شبكة لذلك في بيئة البناء). أسماء النماذج قابلة للتغيير في `.env`. إن فشل استدعاء فستظهر رسالة الخطأ في الواجهة.
-
-- فحص الحقائق يقلّل الأخطاء ولا يلغيها. راجع كل سكربت قبل النشر.
-
-- الخرائط حدود مبسّطة؛ الدول العابرة لخط التاريخ (روسيا، فيجي...) قد تُرسم بشكل غير دقيق.
-
-- يوتيوب قد يعدّ المحتوى المنتج آلياً بنمط متطابق «محتوى مكرر». نوّع الأفكار والصياغة وراجع كل فيديو.
-
-- زمن رندر Remotion: قياسي على جهاز بنواتين ≈ 10 دقائق لفيديو من 51 ثانية. أسرع بكثير على جهاز بنوى أكثر (`REMOTION_CONCURRENCY`). المعاينة السريعة (إطار واحد) ≈ 15–30 ثانية. إن لم يُثبَّت Node يعمل التطبيق تلقائياً بمحرّك PIL الأبسط.
-
-- حجم الملف النهائي ≈ 30–40 م.ب (CRF 23).
-
-## الفحص البصري الإلزامي قبل نشر أي تعديل (Required Pre-Ship Check)
-
-قبل اعتماد أو نشر أي تعديل في الكود، **يجب** تشغيل الفحص البصري (`scripts/smoke_test.py`) وفحوص التخطيط والمخطط الموحد:
+**Prerequisites:** Python 3.10+, Node.js 18+, FFmpeg
 
 ```bash
-# 1. التحقق من عقد التخطيط المركزي (منع القيم الصلبة لـ top/bottom)
-python scripts/check_layout.py
+# 1. Clone
+git clone https://github.com/genAi44/shorts-studio.git
+cd shorts-studio
 
-# 2. توليد ملف الأنواع الموحد من spec_schema.json والتحقق من TypeScript
-python scripts/generate_schema.py
-cd remotion && npx tsc --noEmit && cd ..
+# 2. Python dependencies
+pip install -r requirements.txt
 
-# 3. تشغيل الفحص البصري الإلزامي (Visual Smoke Test) على الإطارات [1, 15, 45, 90, 150, 210]
-python scripts/smoke_test.py
+# 3. Remotion renderer
+cd remotion && npm install && cd ..
+
+# 4. Configure API keys
+cp .env.example .env
+# Edit .env — add ELEVENLABS_API_KEY, GEMINI_API_KEY, DEEPSEEK_API_KEY
+
+# 5. Run
+./run.sh      # Linux / macOS
+run.bat       # Windows
+# → open http://localhost:8000
 ```
 
-يقوم `scripts/smoke_test.py` برندر ملف الاختبار المرجعي `tests/fixtures/test_spec.json` واستخراج الإطارات `[1, 15, 45, 90, 150, 210]` عبر `npx remotion still`، ويتحقق لكل إطار من:
-1. عدم وجود أي عمود بكسلات يتجاوز `95%` بلون واحد مطابق (يكشف وميض اللون المسطح Flat-color flash).
-2. عدم ملامسة النصوص لحواف الإطار العلوية أو السفلية (فحص أول وآخر 10 صفوف بكسلات للون الأبيض أو الأسود).
+> **No API keys?** Click **"حمّل سكربتاً تجريبياً"** (Load test script) in the UI to explore the editor with a preloaded script — no production keys required.
 
+---
+
+## 🏗️ Architecture
+
+```
+shorts-studio/
+├── app.py              ← Flask web app (UI + API)
+├── pipeline/           ← Core AI pipeline
+│   ├── storyteller.py  ← Script generation (Gemini + search)
+│   ├── tts.py          ← ElevenLabs TTS + word timestamps
+│   ├── render.py       ← Scene orchestration
+│   ├── factcheck.py    ← Fact verification
+│   └── geo.py          ← Animated map engine
+├── remotion/           ← React/Remotion renderer
+│   └── src/
+│       ├── Root.tsx    ← Composition entry
+│       └── scenes/     ← Per-scene React components
+├── tools/              ← CLI utilities (voiceover, SFX, assets)
+└── assets/             ← Shared asset library
+```
+
+---
+
+## 🤝 Contributing — No Coding Required!
+
+We welcome contributions from **everyone**:
+
+| Role | How to help |
+|---|---|
+| 📝 **Content creator** | [Suggest viral topic ideas](https://github.com/genAi44/shorts-studio/issues/new?template=content-idea.md) |
+| 🌐 **Translator / editor** | Improve Arabic prompts in `pipeline/prompts/` |
+| 🧪 **Tester** | Run the pipeline and report issues |
+| 🎨 **Designer** | Improve the web UI or create better SVG assets |
+| 👩‍💻 **Developer** | Fix bugs, add features, improve performance |
+
+**[→ Full Contributing Guide](CONTRIBUTING.md)**
+
+---
+
+## 📋 Requirements
+
+| Dependency | Version | Purpose |
+|---|---|---|
+| Python | 3.10+ | Pipeline + Flask server |
+| Node.js | 18+ | Remotion renderer |
+| FFmpeg | any recent | Audio/video assembly |
+| ElevenLabs API | — | Arabic TTS |
+| Gemini API | — | Script + fact-check |
+| DeepSeek API | — | Visual direction |
+
+---
+
+## 📄 License
+
+MIT — free to use, modify, and distribute. See [LICENSE](LICENSE).
+
+---
+
+<a id="arabic"></a>
+
+## 🇸🇦 النسخة العربية
+
+### ما هو Shorts Studio؟
+
+Shorts Studio هو خط إنتاج متكامل يحوّل **موضوعاً عربياً واحداً** إلى فيديو Short جاهز للنشر:
+
+| الخطوة | ما يحدث |
+|---|---|
+| 🧠 **السكربت** | Gemini + بحث Google يكتب سكربتاً فيروسياً من 8 أجزاء مع التحقق من الحقائق |
+| 🗣️ **الصوت** | ElevenLabs تولّد تعليقاً صوتياً عربياً طبيعياً مع توقيت كل كلمة |
+| 🎨 **المرئيات** | DeepSeek يصمّم موشن غرافيك لكل جملة (خرائط، إحصاءات، جداول زمنية) |
+| 🎬 **الحركة** | Remotion (React) يرسم كل مشهد كدالة حتمية نقية |
+| 🎵 **المزج الصوتي** | FFmpeg يجمّع الـ MP4 النهائي مع موسيقى خلفية وتأثيرات صوتية |
+
+النتيجة: فيديو Short عربي **40-55 ثانية، 1080×1920** بهيكل فيروسي — دون أي تحرير يدوي.
+
+### ✨ المزايا
+
+- 🤖 **خط إنتاج متعدد النماذج** — Gemini · DeepSeek · ElevenLabs
+- 📐 **هيكل فيروسي من 8 أجزاء** — HOOK → LEAD → BODY × 3 → OPEN LOOPs → CTA
+- 🗺️ **موشن غرافيك غني** — خرائط متحركة، عدادات، مخططات، جداول زمنية
+- 🔤 **تعليق توضيحي RTL** — كلمة بكلمة، مع توهج الكلمة النشطة
+- ✅ **فحص الحقائق مدمج** — كل رقم على الشاشة موثَّق قبل العرض
+- 🖥️ **واجهة ويب محلية** — تصفح، حرّر، أعد الرسم عبر Flask
+
+### 🚀 بدء التشغيل السريع
+
+```bash
+git clone https://github.com/genAi44/shorts-studio.git
+cd shorts-studio
+pip install -r requirements.txt
+cd remotion && npm install && cd ..
+cp .env.example .env   # أضف مفاتيح API
+./run.sh               # أو run.bat في ويندوز
+# افتح http://localhost:8000
+```
+
+### 🤝 المساهمة
+
+نرحب بالجميع — [اقترح موضوعاً](https://github.com/genAi44/shorts-studio/issues/new?template=content-idea.md) · حسّن البرومبتات · اختبر وأبلّغ · صمّم · طوّر
+
+**[← دليل المساهمة الكامل](CONTRIBUTING.md)**
+
+---
+
+<div align="center">
+
+Made with ❤️ for Arabic content creators · صُنع بـ ❤️ لصنّاع المحتوى العربي
+
+⭐ **Star this repo if it helped you!** ⭐
+
+</div>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import {AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig} from 'remotion';
 import {Audio} from '@remotion/media';
 import {linearTiming, TransitionSeries} from '@remotion/transitions';
@@ -14,6 +14,167 @@ import {ding, pageTurn, uiSwitch, whip, whoosh} from '@remotion/sfx';
 import type {SceneTransitionSpec} from './schema';
 
 export {TransitionSeries, linearTiming, Trail, Circle, Polygon, Rect, Star, noise2D};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CUSTOM TRANSITIONS (SVG-based, vector-only, no GLSL dependency)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * InkReveal — SVG feTurbulence + feDisplacementMap mask that makes the new scene
+ * "bleed" in like ink on paper. Template B aesthetic.
+ *
+ * Usage inside TransitionSeries:
+ *   <InkReveal progress={progress} from="#FBF3E4" seed={3} />
+ */
+export const InkReveal: React.FC<{
+  progress: number;   // 0 → 1
+  from?: string;      // color of the outgoing scene overlay
+  seed?: number;
+  direction?: 'vertical' | 'horizontal';
+}> = ({progress, from = '#FBF3E4', seed = 7, direction = 'vertical'}) => {
+  const {width, height} = useVideoConfig();
+  // feTurbulence baseFrequency drives organic edge; feDisplacementMap pushes the mask
+  const disp = interpolate(progress, [0, 1], [260, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+  const maskY = interpolate(progress, [0, 1], [-height, height * 0.05], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+  const maskX = interpolate(progress, [0, 1], [-width, width * 0.05], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+  const id = `ink-${seed}`;
+  return (
+    <AbsoluteFill style={{pointerEvents: 'none'}}>
+      <svg width={width} height={height} style={{position: 'absolute', inset: 0}}>
+        <defs>
+          <filter id={`${id}-f`} x="-20%" y="-20%" width="140%" height="140%">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.012 0.018"
+              numOctaves={4}
+              seed={seed}
+              result="noise"
+            />
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="noise"
+              scale={disp}
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
+          </filter>
+          <mask id={`${id}-m`}>
+            <rect
+              x={direction === 'horizontal' ? maskX : 0}
+              y={direction === 'vertical'   ? maskY : 0}
+              width={width  + Math.abs(maskX)}
+              height={height + Math.abs(maskY)}
+              fill="white"
+              filter={`url(#${id}-f)`}
+            />
+          </mask>
+        </defs>
+        {/* outgoing scene overlay — fades out as the new scene bleeds in */}
+        <rect
+          width={width}
+          height={height}
+          fill={from}
+          opacity={interpolate(progress, [0.4, 1], [0.9, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'})}
+          mask={`url(#${id}-m)`}
+        />
+      </svg>
+    </AbsoluteFill>
+  );
+};
+
+/**
+ * HalftoneWipe — SVG dot-pattern mask that wipes across the frame.
+ * Template A aesthetic (comic / pop-art).
+ */
+export const HalftoneWipe: React.FC<{
+  progress: number;
+  direction?: 'from-right' | 'from-left' | 'from-top' | 'from-bottom';
+  dotSize?: number;
+  color?: string;
+}> = ({progress, direction = 'from-right', dotSize = 28, color = '#141210'}) => {
+  const {width, height} = useVideoConfig();
+  const cols = Math.ceil(width  / dotSize) + 1;
+  const rows = Math.ceil(height / dotSize) + 1;
+
+  // Each dot's reveal time is staggered by its position in the wipe direction
+  const dots = useMemo(() => {
+    const out: React.ReactNode[] = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        let pos: number;
+        if (direction === 'from-right')  pos = 1 - c / cols;
+        else if (direction === 'from-left')  pos = c / cols;
+        else if (direction === 'from-bottom') pos = 1 - r / rows;
+        else                                  pos = r / rows;
+
+        const threshold = pos * 0.8; // stagger: 0 → 0.8
+        const r0 = dotSize * 0.52 * interpolate(
+          progress,
+          [threshold, Math.min(1, threshold + 0.2)],
+          [0, 1],
+          {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'},
+        );
+        if (r0 <= 0) continue;
+        out.push(
+          <circle
+            key={`${r}-${c}`}
+            cx={c * dotSize + dotSize / 2}
+            cy={r * dotSize + dotSize / 2}
+            r={r0}
+            fill={color}
+          />,
+        );
+      }
+    }
+    return out;
+  }, [progress, direction, cols, rows, dotSize, color]);
+
+  return (
+    <AbsoluteFill style={{pointerEvents: 'none'}}>
+      <svg width={width} height={height} style={{position: 'absolute', inset: 0}}>
+        {dots}
+      </svg>
+    </AbsoluteFill>
+  );
+};
+
+/**
+ * ZoomThrough — scales up into the next scene (zoom into a card/element).
+ * Gives the effect of "drilling into" a concept.
+ */
+export const ZoomThrough: React.FC<{
+  progress: number;
+  fromScale?: number;
+  toScale?: number;
+  originX?: number; // 0–1
+  originY?: number; // 0–1
+  tint?: string;
+}> = ({progress, fromScale = 1, toScale = 2.4, originX = 0.5, originY = 0.5, tint = '#000'}) => {
+  const {width, height} = useVideoConfig();
+  const scale = interpolate(progress, [0, 1], [fromScale, toScale], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+    easing: (t) => t * t,
+  });
+  const opacity = interpolate(progress, [0.5, 1], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+  return (
+    <AbsoluteFill
+      style={{
+        pointerEvents: 'none',
+        transformOrigin: `${originX * 100}% ${originY * 100}%`,
+        transform: `scale(${scale})`,
+        background: tint,
+        opacity,
+      }}
+    />
+  );
+};
 
 export const SFX_MAP: Record<string, string | null> = {
   none: null,

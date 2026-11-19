@@ -548,7 +548,7 @@ export const PhotoBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
       {hasNum ? <CountNum text={String(beat.number)} size={150} y={textY - 20} /> : null}
 
-      {!splitBottom && beat.text && beat.text.trim().length > 0 ? (
+      {!splitBottom && beat.text && beat.text.trim().length > 0 && !(beat.narration && beat.narration.includes(beat.text.trim())) ? (
 
         <div style={{
 

@@ -2,18 +2,14 @@
 يدعم FreeLLMAPI و DeepSeek و Gemini و OpenAI-compatible مع التخصيص الكامل لكل دور.
 """
 import base64
-import json
 import logging
-import re
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 import requests
 
 from .config import cfg
 from .llm_providers import (
     LLMError,
-    LLMResponse,
-    LLMUsage,
     extract_json,
     sanitize_text as _sanitize,
 )
@@ -68,111 +64,6 @@ def _post(url: str, headers: dict, payload: dict, timeout: int = 120) -> dict:
         raise LLMError("ردّ غير مفهوم من الخدمة.")
 
 
-def deepseek_json(system: str, user: str, temperature: float = 0.8, session_id: Optional[str] = None) -> Any:
-    """دالة التوافقية السابقة لـ DeepSeek؛ تستخدم الموجه الذكي مع Fallback."""
-    try:
-        return call_llm_json("director", system, user, temperature=temperature, session_id=session_id)
-    except Exception as e:
-        logger.warning("فشل الموجه الذكي لدور director، تجربة استدعاء DeepSeek المباشر: %s", e)
-
-    key = cfg("DEEPSEEK_API_KEY")
-    if not key:
-        raise LLMError("مفتاح DEEPSEEK_API_KEY غير مضبوط في ملف .env", provider="deepseek")
-    base = cfg("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/")
-    url = base + "/chat/completions"
-    hdrs = {"Authorization": "Bearer " + key, "Content-Type": "application/json"}
-    model = cfg("DEEPSEEK_MODEL", "deepseek-chat")
-    data = _post(url, hdrs, {
-        "model": model,
-        "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
-        "response_format": {"type": "json_object"},
-        "temperature": temperature,
-    })
-    try:
-        raw = data["choices"][0]["message"]["content"]
-    except (KeyError, IndexError):
-        raise LLMError("ردّ DeepSeek بلا محتوى.", provider="deepseek")
-
-    def repair(bad):
-        r = _post(url, hdrs, {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-                {"role": "assistant", "content": bad},
-                {"role": "user", "content": "الرد ليس JSON صالحاً. أعده كـ JSON فقط بلا نص إضافي."},
-            ],
-            "response_format": {"type": "json_object"},
-            "temperature": 0.0,
-        })
-        try:
-            return r["choices"][0]["message"]["content"]
-        except (KeyError, IndexError):
-            raise LLMError("ردّ DeepSeek بلا محتوى في الإصلاح.", provider="deepseek")
-
-    return _parse_with_repair(raw, repair)
-
-
-def gemini_json(system: str, user: str, grounding: Optional[bool] = None, temperature: float = 0.2, session_id: Optional[str] = None) -> Any:
-    """دالة التوافقية السابقة لـ Gemini؛ تستخدم الموجه الذكي مع Fallback."""
-    key = cfg("GEMINI_API_KEY")
-    grounding_val = grounding if grounding is not None else (cfg("GEMINI_GROUNDING", "1") not in ("0", "false", "no"))
-
-    if not grounding_val or not key:
-        try:
-            return call_llm_json("script", system, user, temperature=temperature, session_id=session_id)
-        except Exception as e:
-            logger.warning("فشل الموجه الذكي لدور script، تجربة استدعاء Gemini المباشر: %s", e)
-
-    if not key:
-        return call_llm_json("script", system, user, temperature=temperature, session_id=session_id)
-
-    model = cfg("GEMINI_MODEL", "gemini-2.5-flash")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-    headers = {"x-goog-api-key": key, "Content-Type": "application/json"}
-    base_body = {
-        "systemInstruction": {"parts": [{"text": system}]},
-        "contents": [{"role": "user", "parts": [{"text": user}]}],
-    }
-
-    def call(use_ground):
-        p = json.loads(json.dumps(base_body))
-        if use_ground:
-            p["tools"] = [{"google_search": {}}]
-            p["generationConfig"] = {"temperature": temperature}
-        else:
-            p["generationConfig"] = {"temperature": temperature, "responseMimeType": "application/json"}
-        return _post(url, headers, p, timeout=150)
-
-    try:
-        data = call(grounding_val)
-    except LLMError:
-        if not grounding_val:
-            raise
-        data = call(False)
-    try:
-        parts = data["candidates"][0]["content"]["parts"]
-        raw = "".join(p.get("text", "") for p in parts)
-    except (KeyError, IndexError):
-        raise LLMError("ردّ Gemini بلا محتوى (ربما حجبه فلتر الأمان).", provider="gemini")
-
-    def repair(bad):
-        p = {
-            "systemInstruction": {"parts": [{"text": system}]},
-            "contents": [
-                {"role": "user", "parts": [{"text": user}]},
-                {"role": "model", "parts": [{"text": bad}]},
-                {"role": "user", "parts": [{"text": "الرد ليس JSON صالحاً. أعده كـ JSON فقط."}]},
-            ],
-            "generationConfig": {"temperature": 0.0, "responseMimeType": "application/json"},
-        }
-        r = _post(url, headers, p, timeout=150)
-        try:
-            return "".join(x.get("text", "") for x in r["candidates"][0]["content"]["parts"])
-        except (KeyError, IndexError):
-            raise LLMError("ردّ Gemini بلا محتوى في الإصلاح.", provider="gemini")
-
-    return _parse_with_repair(raw, repair)
 
 
 def gemini_vision_json(system: str, user: str, images: List[bytes]) -> Any:

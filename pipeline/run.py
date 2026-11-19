@@ -1,10 +1,9 @@
 """خط الإنتاج: سكربت + ستايل ← صوت لكل مشهد ← رسم المشاهد (Remotion أو PIL احتياطاً) ← mp4."""
 import json
 import os
-import time
 
 from . import assemble, factcheck, llm, media, rem, tts
-from .config import FPS, cfg, clear_warnings, get_last_warnings
+from .config import FPS, cfg, clear_warnings
 from .geo import get_geo
 from .render import render_scene
 from .search import search_facts
@@ -110,6 +109,12 @@ def produce(script, style, voice_id, job_dir, log=print, progress=lambda f: None
         audios.append(tts.synth(sc["narration"], voice_id, os.path.join(job_dir, f"a_{i}")))
         progress(0.08 * (i + 1) / n)
     plan, total = plan_scenes(script, audios)
+    if total > 60.0:
+        scale = 60.0 / total
+        for p in plan:
+            p["dur"] *= scale
+            p["t0"] *= scale
+        total = 60.0
 
     wavs = []
     for i, p in enumerate(plan):

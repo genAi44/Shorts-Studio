@@ -155,8 +155,8 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
   const effectiveMode = mode || (splitBottom ? 'split-bottom' : 'hud');
   const isWide = effectiveMode === 'split-bottom' || effectiveMode === 'full-stage';
   const placement = overlay.placement === 'top-right' ? 'top-right' : 'top-left';
-  const cardWidth = isWide ? 984 : Math.min(420, vw);
-  const svgRenderHeight = effectiveMode === 'full-stage' ? 980 : effectiveMode === 'split-bottom' ? 620 : Math.min(260, vh);
+  const cardWidth = isWide ? 984 : Math.min(520, vw);
+  const svgRenderHeight = effectiveMode === 'full-stage' ? 980 : effectiveMode === 'split-bottom' ? 620 : Math.min(340, vh);
   const slotName = effectiveMode === 'split-bottom' ? 'STAGE_B' : effectiveMode === 'full-stage' ? 'FULL_STAGE' : 'HUD';
   const posStyle: React.CSSProperties =
     effectiveMode === 'full-stage'
@@ -164,8 +164,8 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
       : effectiveMode === 'split-bottom'
       ? {left: 48, top: 710}
       : placement === 'top-right'
-      ? {right: 48, top: 256}
-      : {left: 48, top: 256};
+      ? {right: 48, top: 290}
+      : {left: 48, top: 290};
 
   const slideOffsetX = isWide ? 0 : placement === 'top-right' ? (1 - enterSpring) * 65 : -(1 - enterSpring) * 65;
   const slideOffsetY = isWide ? (1 - enterSpring) * 44 : (1 - enterSpring) * 24;
