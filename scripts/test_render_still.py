@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from pipeline import rem, geo, style
+from pipeline import rem, geo
 job_dir = ROOT / "outputs" / "20261102-231124-13360"
 script = json.load(open(job_dir / "script.json", encoding="utf-8"))
 st = json.load(open(job_dir / "style.json", encoding="utf-8"))

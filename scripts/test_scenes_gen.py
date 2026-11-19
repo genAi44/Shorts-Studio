@@ -1,6 +1,4 @@
 """Test script for TSX scene generator."""
-import json
-import re
 import sys
 from pathlib import Path
 
