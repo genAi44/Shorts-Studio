@@ -58,11 +58,6 @@ def _audit_scene(scene: Dict[str, Any]) -> Dict[str, Any]:
 
     # 0b. Rule 1.2 — scene must have at least one non-text visual element
     beats = scene.get("beats") or []
-    visual_beats = [
-        b for b in beats
-        if b.get("kind") not in ("text", "text_reveal", "text_only", "caption", None)
-        or b.get("elements") or b.get("icon") or b.get("hero_icon") or b.get("nodes")
-    ]
     all_elements = []
     for b in beats:
         all_elements.extend(b.get("elements") or [])

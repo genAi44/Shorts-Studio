@@ -827,7 +827,6 @@ def fallback_beat(scene, i, sentence):
     if scene.get("role") == "open_loop":
         from .generative_visuals import compose_generative_canvas
         return compose_generative_canvas(sentence, context=scene.get("on_screen") or "لغز وتساؤل")
-    ty = v.get("type")
     pts = v.get("points") or []
     cs = v.get("countries") or []
     cou_iso = cs[0] if cs else ""
