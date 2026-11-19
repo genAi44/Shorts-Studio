@@ -1,7 +1,6 @@
 """Generate and bundle simplified public-domain SVG maps for regions and countries.
 Stored in remotion/public/maps/{name}.svg.
 """
-import os
 import sys
 from pathlib import Path
 

@@ -4,7 +4,6 @@ Includes offline fallback so every icon is guaranteed to exist.
 """
 import os
 import sys
-import time
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 import requests

@@ -1,5 +1,4 @@
 import requests
-from pathlib import Path
 from fetch_icons import ICONS_SPEC, DEST_DIR
 
 session = requests.Session()
