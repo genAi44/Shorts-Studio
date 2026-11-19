@@ -3,48 +3,48 @@
     "provider": "freellmapi",
     "model": "auto",
     "fallback_chain": [
-      "deepseek",
       "freellmapi",
+      "deepseek",
       "gemini"
     ],
     "temperature": 0.4
   },
   "director": {
-    "provider": "deepseek",
-    "model": "deepseek-chat",
+    "provider": "freellmapi",
+    "model": "auto",
     "fallback_chain": [
-      "deepseek",
       "freellmapi",
+      "deepseek",
       "gemini"
     ],
     "temperature": 0.7
   },
   "style": {
-    "provider": "deepseek",
-    "model": "deepseek-chat",
+    "provider": "freellmapi",
+    "model": "auto",
     "fallback_chain": [
-      "deepseek",
       "freellmapi",
+      "deepseek",
       "gemini"
     ],
     "temperature": 0.8
   },
   "factcheck": {
-    "provider": "deepseek",
-    "model": "deepseek-chat",
+    "provider": "gemini",
+    "model": "gemini-2.5-flash",
     "fallback_chain": [
-      "deepseek",
+      "gemini",
       "freellmapi",
-      "gemini"
+      "deepseek"
     ],
     "temperature": 0.2
   },
   "chat_edit": {
-    "provider": "deepseek",
-    "model": "deepseek-chat",
+    "provider": "freellmapi",
+    "model": "auto",
     "fallback_chain": [
-      "deepseek",
       "freellmapi",
+      "deepseek",
       "gemini"
     ],
     "temperature": 0.5
