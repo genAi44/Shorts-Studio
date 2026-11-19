@@ -5,19 +5,14 @@
 import copy
 import json
 import logging
-import os
-import pathlib
 from pathlib import Path
 import time
 from typing import Any, Dict, List, Optional
 
 from .config import ROOT, cfg
 from .llm_providers import (
-    BaseLLMProvider,
     LLMError,
     LLMResponse,
-    LLMUsage,
-    extract_json,
     get_all_providers,
     get_provider,
     sanitize_text,
@@ -306,7 +301,6 @@ class LLMRouter:
                     error=err_msg,
                     session_id=session_id,
                 )
-                last_error = ge
 
         # إذا فشلت جميع المحاولات
         summary_err = " | ".join(attempt_errors)
