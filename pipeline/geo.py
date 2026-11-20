@@ -220,6 +220,8 @@ class GeoEngine:
         feature_codes: Optional[List[str]] = None,
         min_pop: int = 0
     ) -> Optional[GeoPlace]:
+        if not self._ensure_db():
+            return None
         cur = self._db.cursor()
         sql = "SELECT * FROM places WHERE name_ar = ?"
         params: List[Any] = [q]
@@ -244,6 +246,8 @@ class GeoEngine:
         feature_codes: Optional[List[str]] = None,
         min_pop: int = 0
     ) -> Optional[GeoPlace]:
+        if not self._ensure_db():
+            return None
         cur = self._db.cursor()
         sql = """
             SELECT p.* FROM alt_names a
@@ -274,6 +278,8 @@ class GeoEngine:
         feature_codes: Optional[List[str]] = None,
         min_pop: int = 0
     ) -> Optional[GeoPlace]:
+        if not self._ensure_db():
+            return None
         cur = self._db.cursor()
         sql = "SELECT * FROM places WHERE (name_en = ? COLLATE NOCASE OR name_ascii = ? COLLATE NOCASE OR name_local = ? COLLATE NOCASE)"
         params: List[Any] = [q, q, q]
@@ -297,6 +303,8 @@ class GeoEngine:
         feature_codes: Optional[List[str]] = None,
         min_pop: int = 0
     ) -> Optional[GeoPlace]:
+        if not self._ensure_db():
+            return None
         cur = self._db.cursor()
         clean_q = re.sub(r"[^\w\s]", " ", q).strip()
         if not clean_q:

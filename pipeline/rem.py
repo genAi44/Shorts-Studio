@@ -421,6 +421,7 @@ def _run(cmd, progress=None):
     b = find_browser()
     if b:
         env["REMOTION_BROWSER"] = b
+    env.setdefault("REMOTION_CONCURRENCY", "1")
     p = subprocess.Popen(cmd, cwd=str(REM), env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace")
     tail = []
     for line in p.stdout:
