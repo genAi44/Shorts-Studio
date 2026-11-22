@@ -391,6 +391,8 @@ def extract_timed_geo_mentions(
             pat = re.compile(rf"(?:^|[\s،؟!.,:؛\-وبلفك]){re.escape(cont_key)}(?:$|[\s،؟!.,:؛\-])")
             if pat.search(clean_text):
                 cinfo = _CURATED_CONTINENTS_AR[cont_key]
+                if cinfo.get("is_region") and mentions:
+                    continue  # specific places already named: a region view would shrink them to specks
                 _register_mention(
                     matched_str=cont_key,
                     kind="continent",
@@ -665,10 +667,15 @@ def build_scene_map_overlay(
             else:
                 target_zoom = 1.12 + zoom_variety if m["kind"] in ("capital", "city") else 1.06 + zoom_variety
         else:
+            # Multi-country scene: the view is fitted to ALL countries, so a small one (UAE next to Saudi) would be
+            # a speck. Zoom until the active country's main bbox fills ~70% of the 688x412 view.
             target_zoom = 1.65 + zoom_variety if m["kind"] in ("capital", "city") else 1.38 + zoom_variety
-            if S < 5.0:
-                scale_boost = min(1.55, max(1.0, 4.5 / max(S, 1.8)))
-                target_zoom = round(min(2.4, target_zoom * scale_boost), 2)
+            if iso_m and geo.has(iso_m):
+                bb = geo.main_bbox(iso_m)
+                w_px = max((bb[2] - bb[0]) * S * K, 1.0)
+                h_px = max((bb[3] - bb[1]) * S, 1.0)
+                fit = 0.7 * min(688.0 / w_px, 412.0 / h_px)
+                target_zoom = round(max(1.0, min(4.0, fit)) + zoom_variety, 2)
 
         waypoints.append({
             "id": f"wp_{scene_idx}_{idx_m}",

@@ -144,7 +144,8 @@ def produce(script, style, voice_id, job_dir, log=print, progress=lambda f: None
             pass
         try:
             from . import visual_qa
-            qa_rep = visual_qa.audit_spec(spec, job_dir=job_dir, check_pixels=(cfg("VISUAL_QA", "0") == "1"))
+            facts_txt = json.dumps(script.get("_facts_data") or script.get("facts") or "", ensure_ascii=False)
+            qa_rep = visual_qa.audit_spec(spec, job_dir=job_dir, check_pixels=(cfg("VISUAL_QA", "0") == "1"), sourced_text=facts_txt)
             if not qa_rep.get("passed"):
                 log(f"تحذير QA: متوسط الدرجة {qa_rep.get('average_score')}/100 — راجع qa_report.json")
         except Exception:

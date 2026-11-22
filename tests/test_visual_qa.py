@@ -54,3 +54,12 @@ class TestVisualQA(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_unsourced_number_flagged():
+    from pipeline.visual_qa import _audit_unsourced_numbers as au
+    sc = {"id": "s1", "words": [{"t": "الرياض"}, {"t": "٤٠"}, {"t": "مدينة"}],
+          "beats": [{"kind": "stat", "number": "40", "label": "مدينة"}, {"kind": "stat", "number": "1,379,000", "label": "x"}]}
+    issues = au({"scenes": [sc]})
+    assert len(issues) == 1 and "1379000" in issues[0]["detail"] and "40" not in issues[0]["detail"].split(":")[-1]
+    assert au({"scenes": [sc]}, sourced_text="سكان 1,379,000") == []

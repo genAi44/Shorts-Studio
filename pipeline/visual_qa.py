@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import json
 import os
+import re
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .layout_planner import SLOTS
@@ -154,15 +156,80 @@ def _audit_design_repetition(spec: Dict[str, Any]) -> List[Dict[str, str]]:
     return issues
 
 
+_NUM_RE = re.compile(r"\d[\d,.٫٬]*\d|\d")
+_DENY_KEYS = {"img", "query", "alt_queries", "must_show", "avoid", "tsx_id", "kind", "camera", "slot", "narration",
+              "role", "cues", "concept", "scene_spec", "id", "layout", "view", "words", "entity_iso3"}
+_TSX_TEXT_RE = re.compile(
+    r"""(?:>([^<>{}]*[؀-ۿ][^<>{}]*)<)|(?:['"`]([^'"`
+]*[؀-ۿ][^'"`
+]*)['"`])"""
+)
+_AR_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩٫٬", "0123456789.,")
+
+
+def _norm_nums(text: str, min_digits: int = 2) -> set:
+    out = set()
+    for m in _NUM_RE.findall(str(text).translate(_AR_DIGITS)):
+        n = re.sub(r"[,.]", "", m)
+        if len(n) >= min_digits:
+            out.add(n)
+    return out
+
+
+def _shown_strings(obj: Any) -> List[str]:
+    if isinstance(obj, str):
+        return [obj]
+    if isinstance(obj, dict):
+        return [t for k, v in obj.items() if k not in _DENY_KEYS for t in _shown_strings(v)]
+    if isinstance(obj, list):
+        return [t for v in obj for t in _shown_strings(v)]
+    return []
+
+
+def _tsx_shown_numbers(tsx_id: str) -> set:
+    """Numbers inside Arabic text literals of a generated TSX scene (ignores colors/pixel values)."""
+    try:
+        src = (Path(__file__).resolve().parent.parent / "remotion" / "src" / "generated" / "DynamicScenes.tsx").read_text(encoding="utf-8")
+        i = src.index(f"export const {tsx_id}:")
+        j = src.find("/* @llm_verified:", i)
+        body = src[i: j if j > 0 else len(src)]
+    except (OSError, ValueError):
+        return set()
+    nums = set()
+    for lit in _TSX_TEXT_RE.findall(body):
+        nums |= _norm_nums(lit[0] or lit[1])
+    return nums
+
+
+def _audit_unsourced_numbers(spec: Dict[str, Any], sourced_text: str = "") -> List[Dict[str, str]]:
+    """Rule 1.4: a number shown on screen must come from the narration or the researched facts."""
+    allowed = _norm_nums(sourced_text)
+    issues: List[Dict[str, str]] = []
+    for sc in spec.get("scenes") or []:
+        narr = " ".join(str(w.get("t", "")) for w in (sc.get("words") or []) if isinstance(w, dict))
+        ok = allowed | _norm_nums(narr)
+        shown = set()
+        for b in sc.get("beats") or []:
+            shown |= _norm_nums(" ".join(_shown_strings(b)))
+            if b.get("tsx_id"):
+                shown |= _tsx_shown_numbers(str(b["tsx_id"]))
+        bad = sorted(shown - ok)
+        if bad:
+            issues.append({"type": "unsourced_number", "severity": "warning",
+                           "detail": f"{sc.get('id')}: أرقام ظاهرة بلا مصدر في السرد/الحقائق: {', '.join(bad[:5])}"})
+    return issues
+
+
 def audit_spec(
     spec: Dict[str, Any],
     job_dir: Optional[str] = None,
     check_pixels: bool = False,
+    sourced_text: str = "",
 ) -> Dict[str, Any]:
     """يفحص كل مشاهد الـ spec ويكتب `qa_report.json` إذا حُدّد `job_dir`."""
     scenes_rep = [_audit_scene(sc) for sc in (spec.get("scenes") or [])]
     avg_score = round(sum(r["score"] for r in scenes_rep) / max(1, len(scenes_rep)), 1)
-    design_issues = _audit_design_repetition(spec)
+    design_issues = _audit_design_repetition(spec) + _audit_unsourced_numbers(spec, sourced_text)
     report: Dict[str, Any] = {
         "passed": all(r["passed"] for r in scenes_rep) and not any(i["severity"] == "error" for i in design_issues),
         "average_score": avg_score,

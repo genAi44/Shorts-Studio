@@ -594,7 +594,7 @@ const StatBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
           </svg>
 
-          <div style={{position: 'absolute', left: 0, right: 0, top: cy - 80 - 85, textAlign: 'center', ...enterStyle(a, 'pop'), ...num(170, th.p.accent)}}>{show}</div>
+          <div style={{position: 'absolute', left: 0, right: 0, top: cy - 80 - 85, textAlign: 'center', ...enterStyle(a, 'pop'), ...num(Math.min(170, Math.floor(500 / (0.62 * Math.max(3, s.length)))), th.p.accent)}}>{show}</div>
 
           {labelEl(cy + 270)}
 
@@ -2200,6 +2200,9 @@ const PieChartBeat: React.FC<{beat: Beat}> = ({beat}) => {
 // The scene's own opaque background gets scaled/shifted above; feather its edges so no hard rectangle shows.
 const EDGE_FADE = 'linear-gradient(to right, transparent, #000 5%, #000 95%, transparent), linear-gradient(to bottom, transparent, #000 4%, #000 96%, transparent)';
 
+// Legacy chart/stat beats anchor around y~650 and leave the rest of BEAT_ZONE (280..1380) empty: re-center + enlarge.
+const FILL_KINDS = new Set(['bars', 'pie_chart', 'line_chart', 'stat', 'stat_ring_v2', 'list', 'timeline']);
+
 export const BeatView: React.FC<{beat: Beat}> = ({beat}) => {
   const {hudMap} = useContext(MapLayoutCtx);
   const frame = useCurrentFrame();
@@ -2287,7 +2290,7 @@ export const BeatView: React.FC<{beat: Beat}> = ({beat}) => {
 
   return (
     <BeatShell beat={beat}>
-      {body}
+      {FILL_KINDS.has(beat.kind) ? <AbsoluteFill style={{transformOrigin: '50% 34%', transform: 'translateY(170px) scale(1.12)'}}>{body}</AbsoluteFill> : body}
       {beat.kind !== 'visuals' && beat.visuals && beat.visuals.length > 0 ? (
         <SceneVisualsLayer visuals={beat.visuals} />
       ) : null}
