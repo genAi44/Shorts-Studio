@@ -122,6 +122,22 @@ We welcome contributions from **everyone**:
 
 ---
 
+## 🔬 Visual smoke test
+
+Renders one scene per beat kind (plus map-overlay and LLM-scene cases) and checks every frame automatically.
+
+```bash
+cd remotion && npm install && cd ..
+python scripts/build_fixture.py        # tests/fixtures/all_beats_spec.json (every beat goes through direct.normalize_beat)
+python scripts/smoke_test.py           # frames 1, 15, 45, 90, 149 of every scene (--quick: 15 and 90; --scenes a,b)
+```
+
+- **FAIL**: flat frame, text touching the canvas edge, two text boxes overlapping >25%.
+  Edge/overlap in the first 30 frames (entrance animations) and text under 22 px are warnings.
+- Output in `outputs/smoke/`: `report.json` and `contact_NN.jpg` contact sheets (red = fail, amber = warning).
+- The DOM audit is `remotion/src/layoutAudit.tsx`, enabled by `AUDIT=1` in `remotion/still.mjs`.
+- Contracts checked in CI-style tests: `python -m pytest tests/test_contracts.py` (schema ⇄ renderer ⇄ director kinds, generated `schema.ts`, layout constants).
+
 ## 📋 Requirements
 
 | Dependency | Version | Purpose |

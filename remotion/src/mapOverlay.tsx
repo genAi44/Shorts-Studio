@@ -2,6 +2,7 @@ import React from 'react';
 import {AbsoluteFill, Easing, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {SafeImg} from './SafeImg';
 import {rgba, useTheme} from './theme';
+import {HUD_MAP_ZONE, MAP_STAGE_ZONE} from './layout';
 
 export type MapWaypoint = {
   id: string;
@@ -154,15 +155,15 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
   // Placement: panoramic split-bottom stage below photo, full-stage map, or corner HUD
   const effectiveMode = mode || (splitBottom ? 'split-bottom' : 'hud');
   const isWide = effectiveMode === 'split-bottom' || effectiveMode === 'full-stage';
-  const cardWidth = isWide ? 984 : 600;
-  const svgRenderHeight = effectiveMode === 'full-stage' ? 980 : effectiveMode === 'split-bottom' ? 620 : 330;
+  const cardWidth = isWide ? MAP_STAGE_ZONE.width : HUD_MAP_ZONE.width;
+  const svgRenderHeight = effectiveMode === 'full-stage' ? MAP_STAGE_ZONE.full_svg_height : effectiveMode === 'split-bottom' ? MAP_STAGE_ZONE.split_svg_height : HUD_MAP_ZONE.svg_height;
   const slotName = effectiveMode === 'split-bottom' ? 'STAGE_B' : effectiveMode === 'full-stage' ? 'FULL_STAGE' : 'HUD';
   const posStyle: React.CSSProperties =
     effectiveMode === 'full-stage'
-      ? {left: 48, top: 200}
+      ? {left: 48, top: MAP_STAGE_ZONE.full_top}
       : effectiveMode === 'split-bottom'
-      ? {left: 48, top: 710}
-      : {left: 240, top: 995}; // HUD sits in the bottom band (above CAPTION_ZONE) so it never covers the scene content
+      ? {left: 48, top: MAP_STAGE_ZONE.split_top}
+      : {left: HUD_MAP_ZONE.left, top: HUD_MAP_ZONE.top}; // bottom band above CAPTION_ZONE: never covers scene content
 
   const slideOffsetX = 0;
   const slideOffsetY = (1 - enterSpring) * 44;

@@ -226,11 +226,20 @@ def normalize_beat(b, sentence="", geo=None):
     out = {"kind": kind, "title": _words(b.get("title"), 7)}
     fallback_text = _words(b.get("text") or b.get("title") or " ".join(sentence.split()[:4]), 6).strip(".!؟?،:؛ ")
     def bigtext():
+        # A beat the director asked for (kind != bigtext) that cannot be drawn: never degrade silently.
+        degraded = raw_kind not in (None, "bigtext")
+        if degraded:
+            why = f"{raw_kind} beat failed its preconditions" if raw_kind in KINDS else f"unknown beat kind {raw_kind!r}"
+            record_fallback(why + " -> bigtext/photo", beat_id=str(raw_kind))
         # إذا كانت الجملة تشير لكائن حقيقي ملموس، فضّل صورة بطلة
         photo_beat = detect_photo_beat(sentence)
         if photo_beat:
+            if degraded:
+                photo_beat["_fallback"] = True
             return photo_beat
         o = {"kind": "bigtext", "title": "", "text": fallback_text or "…"}
+        if degraded:
+            o["_fallback"] = True
         if b.get("sub"):
             o["sub"] = _words(b.get("sub"), 8)
         if b.get("layout") in ("center", "stack", "diag", "left"):
@@ -326,6 +335,17 @@ def normalize_beat(b, sentence="", geo=None):
             o["approach"] = _s(b["approach"], 40)
         if b.get("subtitle"):
             o["subtitle"] = _words(b["subtitle"], 7)
+        return _add_camera(o, b)
+
+    if kind in ("cinematic_dramatic", "architectural_blueprint", "celestial_constellation",
+                "kinetic_wave_field", "radial_light_cathedral", "topographic_contour"):
+        # These kinds were in KINDS but had no handler, so every one silently became bigtext. The renderer
+        # draws them through GenerativeCanvasBeat (scene_spec.cinematic selects the lighting).
+        spec_in = dict(b.get("scene_spec")) if isinstance(b.get("scene_spec"), dict) else {}
+        spec_in.setdefault("cinematic", kind)
+        o = {"kind": kind, "title": _words(b.get("title") or fallback_text, 6), "scene_spec": spec_in}
+        if b.get("subtitle") or b.get("sub"):
+            o["subtitle"] = _words(b.get("subtitle") or b.get("sub"), 7)
         return _add_camera(o, b)
 
     if kind == "generative_canvas":
@@ -980,20 +1000,33 @@ def _pred_elevation_profile(b: dict, sentence: str = "", geo=None) -> bool:
     return True
 
 
+def _real_point(p: Any) -> bool:
+    """A point is real if it has numeric lat/lon in range or its name resolves to a known city."""
+    if not isinstance(p, dict):
+        return False
+    try:
+        if -90 <= float(p.get("lat")) <= 90 and -180 <= float(p.get("lon")) <= 180:
+            return True
+    except (TypeError, ValueError):
+        pass
+    name = str(p.get("name") or "").strip()
+    return bool(name) and bool(detect_city_in_text(name)[0])
+
+
 def _pred_map(b: dict, sentence: str = "", geo=None) -> bool:
+    """A map needs a real place: a valid country code, or a point with coordinates / a known city."""
     pts = b.get("points") or []
     cs = [str(c).upper() for c in (b.get("countries") or []) if isinstance(c, str)]
     hl = [str(c).upper() for c in (b.get("highlight") or cs) if isinstance(c, str)]
     if geo is not None:
         cs = [c for c in cs if geo.has(c)]
         hl = [c for c in hl if geo.has(c)]
-    has_place_name = any(isinstance(p, dict) and bool(str(p.get("name") or "").strip()) for p in pts) or bool(cs) or bool(hl)
-    return has_place_name
+    return any(_real_point(p) for p in pts) or bool(cs) or bool(hl)
 
 
 def _pred_map_pin(b: dict, sentence: str = "", geo=None) -> bool:
     pts = b.get("points") or []
-    return isinstance(pts, list) and len(pts) >= 1 and any(isinstance(p, dict) and bool(str(p.get("name") or "").strip()) for p in pts)
+    return isinstance(pts, list) and any(_real_point(p) for p in pts)
 
 
 def _pred_stat(b: dict, sentence: str = "", geo=None) -> bool:
@@ -1041,6 +1074,9 @@ def _pred_always_true(b: dict, sentence: str = "", geo=None) -> bool:
 
 
 BEAT_RULES: Dict[str, Dict[str, Any]] = {
+    "city_skyline": {"predicate": lambda b, s="", g=None: bool(str(b.get("title") or "").strip()), "reason": "city_skyline requires a title naming the city"},
+    "architecture": {"predicate": lambda b, s="", g=None: bool(str(b.get("title") or "").strip()), "reason": "architecture requires a title naming the building"},
+    "mystery_scene": {"predicate": lambda b, s="", g=None: bool(str(b.get("question") or b.get("text") or "").strip()), "reason": "mystery_scene requires a question"},
     "elevation_profile": {
         "predicate": _pred_elevation_profile,
         "reason": "elevation_profile requires numeric altitude data and geographic elevation context",

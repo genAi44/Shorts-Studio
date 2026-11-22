@@ -10,7 +10,8 @@ import { NoiseShapesLayer, SceneTransitionEffect, pickSceneTransitions } from '.
 import { SceneVisualsLayer } from './visualLayer';
 import { MapOverlayLayer } from './mapOverlay';
 import { SoundDesignLayer } from './sfx';
-import { CANVAS_HEIGHT, CANVAS_WIDTH, SAFE_TOP, SAFE_BOTTOM, HEADLINE_ZONE, BEAT_ZONE, CAPTION_ZONE } from './layout';
+import { LayoutAudit } from './layoutAudit';
+import { CANVAS_HEIGHT, CANVAS_WIDTH, SAFE_TOP, SAFE_BOTTOM, HEADLINE_ZONE, BEAT_ZONE, CAPTION_ZONE, BEAT_LEAD_FRAMES } from './layout';
 import { SceneSpec, Spec } from './types';
 
 const Scene: React.FC<{ scene: SceneSpec; index: number; fallbackTransition?: any }> = ({
@@ -70,8 +71,8 @@ const Scene: React.FC<{ scene: SceneSpec; index: number; fallbackTransition?: an
           }}
         >
           {!hasCustomTsx && <NoiseShapesLayer seed={th.st.seed + index} />}
-          {!(isLegacyFullMap && hasMapOverlay) && scene.beats.map((b, i) => (
-            <Sequence key={i} from={b.from} durationInFrames={b.dur} layout="none" name={`${scene.id}:${b.kind}`}>
+          {!(isLegacyFullMap && hasMapOverlay) && !(hasMapOverlay && mapMode === 'full-stage') && scene.beats.map((b, i) => (
+            <Sequence key={i} from={b.from - BEAT_LEAD_FRAMES} durationInFrames={b.dur + BEAT_LEAD_FRAMES} layout="none" name={`${scene.id}:${b.kind}`}>
               <MotionCtx.Provider value={{ speed, settled: !!b.settled }}>
                 <BeatView beat={b} />
               </MotionCtx.Provider>
@@ -92,7 +93,7 @@ const Scene: React.FC<{ scene: SceneSpec; index: number; fallbackTransition?: an
   );
 };
 
-export const Short: React.FC<{ spec?: Spec } & Partial<Spec>> = (props) => {
+export const Short: React.FC<{ spec?: Spec; audit?: boolean } & Partial<Spec>> = (props) => {
   const spec = (props.spec ?? (props as unknown as Spec))!;
   const theme = useMemo(() => makeTheme(spec.style), [spec.style]);
   const transitions = useMemo(
@@ -132,6 +133,7 @@ export const Short: React.FC<{ spec?: Spec } & Partial<Spec>> = (props) => {
         <Finish />
         {spec.audio ? <Audio src={staticFile(spec.audio)} volume={0.78} /> : null}
         {spec.audio ? <SoundDesignLayer spec={spec} /> : null}
+        {props.audit ? <LayoutAudit /> : null}
       </AbsoluteFill>
     </ThemeCtx.Provider>
   );

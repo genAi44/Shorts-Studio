@@ -59,6 +59,7 @@ Every Lottie animation in `packages/assets/lottie/` is stored with its full meta
 | :--- | :--- | :--- |
 | `d3-scale`, `d3-shape`, `d3-array`, `d3-geo` | **ISC License** | Pure SVG calculation only |
 | `world-atlas`, `topojson-client` | **ISC License** | Natural Earth public domain map vectors |
+| `data/world.geojson` (+ `world-atlas`) | **Public Domain** (Natural Earth 10m `admin_0_countries`) | Country outlines for the vector map engine; no network at render time |
 | `zod` | **MIT License** | Schema validation |
 | `@remotion/google-fonts` & Bundled Arabic/English Fonts (`Cairo`, `Noto Kufi Arabic`, `Tajawal`, `Amiri`, `Changa`, `El Messiri`, `Reem Kufi`, `Markazi Text`, `Lalezar`, `Inter`, `Montserrat`) | **SIL Open Font License 1.1 (OFL-1.1)** | Bundled locally in `data/` and `remotion/public/fonts/` |
 | `remotion` & `@remotion/*` (`4.0.539`) | **Remotion License** (Free for individuals and companies ≤ 3 people; see https://www.remotion.dev/license) | Pinned to exact version `4.0.539` |

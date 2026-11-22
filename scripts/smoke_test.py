@@ -1,121 +1,127 @@
-"""
-Visual Smoke Test — Renders tests/fixtures/test_spec.json at frames [1, 15, 45, 90, 150, 210]
-with `npx remotion still` and verifies:
-  1. No pixel column is >95% the same color (catches flat-color flash)
-  2. Text is not touching the frame edges (samples top/bottom 10px rows for white/black pixels)
-Prints PASS or FAIL with the frame number.
+"""Visual smoke test.
+
+Renders tests/fixtures/all_beats_spec.json (one scene per beat kind + map-overlay + LLM-scene cases, built by
+scripts/build_fixture.py) at frames 1, 15, 45, 90 and 149 of every scene (the first and last frame of a scene are
+its boundaries), then checks every frame:
+
+  pixels   flat/near-uniform frame (nothing drawn)                          -> FAIL
+  dom      text touching the canvas edge                                    -> FAIL   (remotion/src/layoutAudit.tsx)
+  dom      two unrelated text boxes overlapping by > 25%                    -> FAIL
+  dom      effective font size < 22 px (unreadable on a phone)              -> WARN
+
+Writes outputs/smoke/report.json and contact sheets outputs/smoke/contact_NN.jpg.
+
+Usage:  python scripts/smoke_test.py [--quick] [--scenes beat_stat,beat_bars] [--rebuild]
+        --quick   frames 15 and 90 only
+Exit code 1 if any FAIL.
 """
 from __future__ import annotations
 
+import argparse
+import json
 import os
-import shutil
 import subprocess
 import sys
-import tempfile
-from collections import Counter
 from pathlib import Path
-from PIL import Image
+
+from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent
-REMOTION_DIR = ROOT / "remotion"
-SPEC_PATH = ROOT / "tests" / "fixtures" / "test_spec.json"
-FRAMES = [1, 15, 45, 90, 150, 210]
+REMOTION = ROOT / "remotion"
+FIXTURE = ROOT / "tests" / "fixtures" / "all_beats_spec.json"
+OUT = ROOT / "outputs" / "smoke"
+FRAMES = [1, 15, 45, 90, 149]
+ENTRANCE_FRAMES = 30  # frames 1 and 15 are inside the entrance: edge/overlap there are warnings
+FLAT_STD = 5.0  # grayscale std-dev of the beat zone below which a frame counts as flat
 
 
-def check_frame_image(img_path: Path, frame_num: int) -> tuple[bool, str]:
-    img = Image.open(img_path).convert("RGB")
-    width, height = img.size
-    pixels = img.load()
+def pixel_check(path: Path) -> str | None:
+    import numpy as np
 
-    # 1. Check that no pixel column is >95% the same color (catches flat-color flash)
-    threshold_col = int(height * 0.95)
-    for x in range(width):
-        col_counts: Counter[tuple[int, int, int]] = Counter()
-        for y in range(height):
-            col_counts[pixels[x, y]] += 1
-        most_common_color, count = col_counts.most_common(1)[0]
-        if count > threshold_col:
-            pct = (count / height) * 100.0
-            return (
-                False,
-                f"column x={x} is {pct:.1f}% identical color {most_common_color} (>95% limit)",
-            )
-
-    # 2. Sample top/bottom 10px rows for white/black pixels (text touching frame edges)
-    edge_ys = list(range(0, 10)) + list(range(height - 10, height))
-    white_black_count = 0
-    total_edge_pixels = len(edge_ys) * width
-    for y in edge_ys:
-        for x in range(width):
-            r, g, b = pixels[x, y]
-            is_white = r >= 250 and g >= 250 and b >= 250
-            is_black = r <= 5 and g <= 5 and b <= 5
-            if is_white or is_black:
-                white_black_count += 1
-
-    # Allow 0 white/black text pixels touching the top/bottom 10px edge strip
-    if white_black_count > 0:
-        return (
-            False,
-            f"detected {white_black_count}/{total_edge_pixels} pure white/black pixels in top/bottom 10px rows",
-        )
-
-    return True, "ok"
+    arr = np.asarray(Image.open(path).convert("L"), dtype="float32")
+    zone = arr[280:1380, :]
+    if float(zone.std()) < FLAT_STD:
+        return f"flat frame (beat-zone std {zone.std():.1f} < {FLAT_STD})"
+    return None
 
 
 def main() -> int:
-    if not SPEC_PATH.exists():
-        print(f"FAIL: missing test fixture {SPEC_PATH}")
-        return 1
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--quick", action="store_true")
+    ap.add_argument("--rebuild", action="store_true")
+    ap.add_argument("--scenes", default="")
+    args = ap.parse_args()
 
-    npx_cmd = "npx.cmd" if os.name == "nt" else "npx"
-    if not shutil.which(npx_cmd):
-        print(f"FAIL: {npx_cmd} not found in PATH")
-        return 1
+    if args.rebuild or not FIXTURE.exists():
+        subprocess.run([sys.executable, str(ROOT / "scripts" / "build_fixture.py")], check=True, cwd=ROOT)
+    spec = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    only = {s for s in args.scenes.split(",") if s}
+    scenes = [s for s in spec["scenes"] if not only or s["id"] in only]
+    rel = [15, 90] if args.quick else FRAMES
 
-    out_dir = Path(tempfile.mkdtemp(prefix="shorts_smoke_"))
-    all_passed = True
+    jobs = [(sc["id"], r, sc["from"] + r) for sc in scenes for r in rel]
+    OUT.mkdir(parents=True, exist_ok=True)
+    for old in OUT.glob("f_*"):
+        old.unlink()
+    out_pat = str(OUT / "f_%d.jpg")
+    print(f"rendering {len(jobs)} frames from {len(scenes)} scenes (audit on)...")
+    env = dict(os.environ, AUDIT="1")
+    proc = subprocess.run(["node", "still.mjs", str(FIXTURE), out_pat, ",".join(str(j[2]) for j in jobs), str(REMOTION / "public")],
+                          cwd=REMOTION, env=env, capture_output=True, text=True)
+    if proc.returncode != 0:
+        print(proc.stdout[-1500:], proc.stderr[-1500:])
+        return 2
 
-    try:
-        for frame in FRAMES:
-            out_png = out_dir / f"frame_{frame}.png"
-            cmd = [
-                npx_cmd,
-                "remotion",
-                "still",
-                "src/index.ts",
-                "Short",
-                str(out_png),
-                f"--props={SPEC_PATH}",
-                f"--frame={frame}",
-                "--quiet",
-            ]
-            proc = subprocess.run(
-                cmd,
-                cwd=str(REMOTION_DIR),
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-            )
-            if proc.returncode != 0 or not out_png.exists():
-                err = (proc.stderr or proc.stdout or "").strip()
-                print(f"FAIL frame {frame}: remotion still failed ({err})")
-                all_passed = False
-                continue
+    report, fails, warns = [], 0, 0
+    for sid, rel_frame, abs_frame in jobs:
+        img = OUT / f"f_{abs_frame}.jpg"
+        entry = {"scene": sid, "frame": rel_frame, "abs": abs_frame, "fail": [], "warn": []}
+        if not img.exists():
+            entry["fail"].append("frame not rendered")
+        else:
+            flat = pixel_check(img)
+            if flat:
+                entry["fail"].append(flat)
+            audit_file = Path(str(img) + ".audit.json")
+            if audit_file.exists():
+                aud = json.loads(audit_file.read_text(encoding="utf-8"))
+                if aud.get("missing"):
+                    entry["warn"].append("DOM audit produced no data")
+                for it in aud.get("issues", []):
+                    msg = f"{it['type']}: {it['text']!r}" + (f" x {it['other']!r}" if it.get("other") else "") + f" @{it['box']}" + (f" fs={it['fs']}" if it.get("fs") else "")
+                    # entrance animations (first ~second) legitimately cross edges / overlap: judge settled frames only
+                    soft = it["type"] == "tiny" or rel_frame < ENTRANCE_FRAMES
+                    (entry["warn"] if soft else entry["fail"]).append(msg)
+        fails += len(entry["fail"])
+        warns += len(entry["warn"])
+        report.append(entry)
 
-            ok, detail = check_frame_image(out_png, frame)
-            if ok:
-                print(f"PASS frame {frame}")
-            else:
-                print(f"FAIL frame {frame}: {detail}")
-                all_passed = False
-    finally:
-        shutil.rmtree(out_dir, ignore_errors=True)
+    (OUT / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
 
-    return 0 if all_passed else 1
+    # contact sheets: 10 columns x 4 rows of 108x192 thumbnails per sheet, flagged frames outlined red
+    tw, th, cols, rows = 216, 384, 8, 3
+    per = cols * rows
+    for si in range(0, len(report), per):
+        sheet = Image.new("RGB", (tw * cols, th * rows), (12, 12, 12))
+        d = ImageDraw.Draw(sheet)
+        for k, e in enumerate(report[si: si + per]):
+            p = OUT / f"f_{e['abs']}.jpg"
+            if p.exists():
+                sheet.paste(Image.open(p).resize((tw, th)), ((k % cols) * tw, (k // cols) * th))
+            col = (255, 60, 60) if e["fail"] else (255, 200, 0) if e["warn"] else (80, 220, 120)
+            x, y = (k % cols) * tw, (k // cols) * th
+            d.rectangle([x, y, x + tw - 1, y + th - 1], outline=col, width=3)
+            d.text((x + 6, y + 6), f"{e['scene'][:22]}@{e['frame']}", fill=col)
+        sheet.save(OUT / f"contact_{si // per:02d}.jpg", quality=85)
+
+    bad = [e for e in report if e["fail"]]
+    print(f"\n{len(report)} frames | FAIL items: {fails} in {len(bad)} frames | WARN items: {warns}")
+    for e in bad[:60]:
+        print(f"FAIL {e['scene']}@{e['frame']}: " + " | ".join(m.encode('ascii', 'replace').decode() for m in e["fail"][:3]))
+    print(f"report: {OUT / 'report.json'}\ncontact sheets: {OUT}")
+    print("PASS" if not bad else "FAIL")
+    return 1 if bad else 0
 
 
 if __name__ == "__main__":
     sys.exit(main())
-

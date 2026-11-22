@@ -236,6 +236,13 @@ def audit_spec(
         "scenes": scenes_rep,
         "design_issues": design_issues,
     }
+    # No silent fallbacks: every degraded beat is marked `_fallback` in the spec and listed here.
+    from .config import get_last_warnings
+    report["fallback_beats"] = [
+        {"scene": sc.get("id"), "kind": b.get("kind")}
+        for sc in (spec.get("scenes") or []) for b in (sc.get("beats") or []) if b.get("_fallback")
+    ]
+    report["fallback_warnings"] = get_last_warnings()
     if check_pixels and job_dir:
         px = _check_still_darkness(spec, job_dir)
         if px:

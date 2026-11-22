@@ -33,7 +33,10 @@
   },
   "beats": {
     "generative_canvas": {
-      "required": ["kind", "elements"],
+      "required": [
+        "kind",
+        "elements"
+      ],
       "fields": {
         "background": "string",
         "bg_mood": "string",
@@ -49,7 +52,10 @@
       }
     },
     "custom_scene": {
-      "required": ["kind", "scene_spec"],
+      "required": [
+        "kind",
+        "scene_spec"
+      ],
       "fields": {
         "background": "string",
         "bg_mood": "string",
@@ -65,7 +71,9 @@
       }
     },
     "map": {
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "fields": {
         "countries": "array",
         "highlight": "array",
@@ -75,7 +83,10 @@
       }
     },
     "map_pin": {
-      "required": ["kind", "points"],
+      "required": [
+        "kind",
+        "points"
+      ],
       "fields": {
         "region": "string",
         "points": "array",
@@ -83,7 +94,10 @@
       }
     },
     "photo": {
-      "required": ["kind", "query"],
+      "required": [
+        "kind",
+        "query"
+      ],
       "fields": {
         "query": "string",
         "text": "string",
@@ -97,7 +111,10 @@
       }
     },
     "stat": {
-      "required": ["kind", "number"],
+      "required": [
+        "kind",
+        "number"
+      ],
       "fields": {
         "number": "string",
         "label": "string",
@@ -105,7 +122,10 @@
       }
     },
     "stat_ring_v2": {
-      "required": ["kind", "number"],
+      "required": [
+        "kind",
+        "number"
+      ],
       "fields": {
         "number": "string",
         "label": "string",
@@ -114,7 +134,10 @@
       }
     },
     "bigtext": {
-      "required": ["kind", "text"],
+      "required": [
+        "kind",
+        "text"
+      ],
       "fields": {
         "text": "string",
         "sub": "string",
@@ -122,45 +145,68 @@
       }
     },
     "bars": {
-      "required": ["kind", "items"],
+      "required": [
+        "kind",
+        "items"
+      ],
       "fields": {
         "items": "array"
       }
     },
     "timeline": {
-      "required": ["kind", "items"],
+      "required": [
+        "kind",
+        "items"
+      ],
       "fields": {
         "items": "array"
       }
     },
     "timeline_card": {
-      "required": ["kind", "items"],
+      "required": [
+        "kind",
+        "items"
+      ],
       "fields": {
         "items": "array"
       }
     },
     "versus": {
-      "required": ["kind", "left", "right"],
+      "required": [
+        "kind",
+        "left",
+        "right"
+      ],
       "fields": {
         "left": "object",
         "right": "object"
       }
     },
     "split": {
-      "required": ["kind", "left", "right"],
+      "required": [
+        "kind",
+        "left",
+        "right"
+      ],
       "fields": {
         "left": "object",
         "right": "object"
       }
     },
     "list": {
-      "required": ["kind", "items"],
+      "required": [
+        "kind",
+        "items"
+      ],
       "fields": {
         "items": "array"
       }
     },
     "icons": {
-      "required": ["kind", "items"],
+      "required": [
+        "kind",
+        "items"
+      ],
       "fields": {
         "items": "array",
         "badges": "array",
@@ -172,25 +218,37 @@
       }
     },
     "canvas": {
-      "required": ["kind", "elements"],
+      "required": [
+        "kind",
+        "elements"
+      ],
       "fields": {
         "elements": "array"
       }
     },
     "ticker": {
-      "required": ["kind", "items"],
+      "required": [
+        "kind",
+        "items"
+      ],
       "fields": {
         "items": "array"
       }
     },
     "cardstack": {
-      "required": ["kind", "items"],
+      "required": [
+        "kind",
+        "items"
+      ],
       "fields": {
         "items": "array"
       }
     },
     "elevation_profile": {
-      "required": ["kind", "height"],
+      "required": [
+        "kind",
+        "height"
+      ],
       "fields": {
         "capital": "string",
         "height": "string",
@@ -201,7 +259,10 @@
       }
     },
     "line_chart": {
-      "required": ["kind", "points"],
+      "required": [
+        "kind",
+        "points"
+      ],
       "fields": {
         "points": "array",
         "y_label": "string",
@@ -209,13 +270,18 @@
       }
     },
     "pie_chart": {
-      "required": ["kind", "items"],
+      "required": [
+        "kind",
+        "items"
+      ],
       "fields": {
         "items": "array"
       }
     },
     "versus_battle": {
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "fields": {
         "right": "object",
         "left": "object",
@@ -224,7 +290,9 @@
       }
     },
     "animated_route": {
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "fields": {
         "from_city": "string",
         "to_city": "string",
@@ -236,7 +304,9 @@
       }
     },
     "balance_meter": {
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "fields": {
         "right_label": "string",
         "left_label": "string",
@@ -249,7 +319,9 @@
       }
     },
     "deep_time_slider": {
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "fields": {
         "from_year": "string",
         "to_year": "string",
@@ -261,7 +333,9 @@
       }
     },
     "stack_pyramid": {
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "fields": {
         "tiers": "array",
         "items": "array",
@@ -269,7 +343,9 @@
       }
     },
     "macro_zoom_globe": {
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "fields": {
         "region_label": "string",
         "city_label": "string",
@@ -281,7 +357,9 @@
       }
     },
     "subsurface_mine": {
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "fields": {
         "depth": "string",
         "mineral": "string",
@@ -291,7 +369,9 @@
       }
     },
     "dot_matrix_population": {
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "fields": {
         "total_dots": "number",
         "highlighted_dots": "number",
@@ -304,7 +384,9 @@
       }
     },
     "money_waterfall": {
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "fields": {
         "amount": "string",
         "direction": "string",
@@ -316,7 +398,9 @@
       }
     },
     "frontline_clash": {
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "fields": {
         "side_a": "string",
         "side_b": "string",
@@ -329,14 +413,18 @@
       }
     },
     "chart": {
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "fields": {
         "spec": "object",
         "items": "array"
       }
     },
     "typography": {
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "fields": {
         "spec": "object",
         "text": "string",
@@ -344,13 +432,18 @@
       }
     },
     "visuals": {
-      "required": ["kind", "visuals"],
+      "required": [
+        "kind",
+        "visuals"
+      ],
       "fields": {
         "visuals": "array"
       }
     },
     "city_skyline": {
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "fields": {
         "title": "string",
         "subtitle": "string",
@@ -359,7 +452,9 @@
       }
     },
     "architecture": {
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "fields": {
         "title": "string",
         "subtitle": "string",
@@ -368,13 +463,123 @@
       }
     },
     "mystery_scene": {
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "fields": {
         "question": "string",
         "text": "string",
         "subtitle": "string",
         "variant": "number",
         "seed": "number"
+      }
+    },
+    "architectural_blueprint": {
+      "required": [
+        "kind"
+      ],
+      "fields": {
+        "background": "string",
+        "bg_mood": "string",
+        "accent": "string",
+        "secondary_accent": "string",
+        "approach": "string",
+        "environment": "string",
+        "elements": "array",
+        "svg_layers": "array",
+        "scene_spec": "object",
+        "narration_cues": "array",
+        "tsx_id": "string"
+      }
+    },
+    "celestial_constellation": {
+      "required": [
+        "kind"
+      ],
+      "fields": {
+        "background": "string",
+        "bg_mood": "string",
+        "accent": "string",
+        "secondary_accent": "string",
+        "approach": "string",
+        "environment": "string",
+        "elements": "array",
+        "svg_layers": "array",
+        "scene_spec": "object",
+        "narration_cues": "array",
+        "tsx_id": "string"
+      }
+    },
+    "cinematic_dramatic": {
+      "required": [
+        "kind"
+      ],
+      "fields": {
+        "background": "string",
+        "bg_mood": "string",
+        "accent": "string",
+        "secondary_accent": "string",
+        "approach": "string",
+        "environment": "string",
+        "elements": "array",
+        "svg_layers": "array",
+        "scene_spec": "object",
+        "narration_cues": "array",
+        "tsx_id": "string"
+      }
+    },
+    "kinetic_wave_field": {
+      "required": [
+        "kind"
+      ],
+      "fields": {
+        "background": "string",
+        "bg_mood": "string",
+        "accent": "string",
+        "secondary_accent": "string",
+        "approach": "string",
+        "environment": "string",
+        "elements": "array",
+        "svg_layers": "array",
+        "scene_spec": "object",
+        "narration_cues": "array",
+        "tsx_id": "string"
+      }
+    },
+    "radial_light_cathedral": {
+      "required": [
+        "kind"
+      ],
+      "fields": {
+        "background": "string",
+        "bg_mood": "string",
+        "accent": "string",
+        "secondary_accent": "string",
+        "approach": "string",
+        "environment": "string",
+        "elements": "array",
+        "svg_layers": "array",
+        "scene_spec": "object",
+        "narration_cues": "array",
+        "tsx_id": "string"
+      }
+    },
+    "topographic_contour": {
+      "required": [
+        "kind"
+      ],
+      "fields": {
+        "background": "string",
+        "bg_mood": "string",
+        "accent": "string",
+        "secondary_accent": "string",
+        "approach": "string",
+        "environment": "string",
+        "elements": "array",
+        "svg_layers": "array",
+        "scene_spec": "object",
+        "narration_cues": "array",
+        "tsx_id": "string"
       }
     }
   }

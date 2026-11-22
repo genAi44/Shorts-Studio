@@ -8,7 +8,7 @@ import React, {useId, useMemo} from 'react';
 import {AbsoluteFill, useCurrentFrame, useVideoConfig} from 'remotion';
 import {useTheme, rgba} from './theme';
 import {clamp01, enterStyle, useFont, useIdle, useProgress, useSpring} from './hooks';
-import {BEAT_ZONE} from './layout';
+import {BEAT_ZONE, CAPTION_ZONE} from './layout';
 import type {Beat} from './types';
 
 // ── Deterministic LCG PRNG ────────────────────────────────────────────────────
@@ -368,6 +368,27 @@ export const ArchitectureBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
 // ── Shared: Question text block ───────────────────────────────────────────────
 
+// Panel behind a scene: confined to the beat zone with feathered top/bottom so it never shows as a hard rectangle
+// and never reaches the caption zone.
+const SoftBg: React.FC<{id: string}> = ({id}) => {
+  const y = BEAT_ZONE.top - 60;
+  const h = BEAT_ZONE.bottom - BEAT_ZONE.top + 120;
+  return (
+    <>
+      <defs>
+        <linearGradient id={`${id}fy`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff" stopOpacity="0" />
+          <stop offset="0.14" stopColor="#fff" />
+          <stop offset="0.86" stopColor="#fff" />
+          <stop offset="1" stopColor="#fff" stopOpacity="0" />
+        </linearGradient>
+        <mask id={`${id}fm`}><rect x={0} y={y} width={1080} height={h} fill={`url(#${id}fy)`} /></mask>
+      </defs>
+      <rect x={0} y={y} width={1080} height={h} fill={`url(#${id}bg)`} mask={`url(#${id}fm)`} />
+    </>
+  );
+};
+
 const QuestionText: React.FC<{
   question: string; subtitle: string; textProg: number;
   th: ReturnType<typeof useTheme>; font: React.CSSProperties;
@@ -381,7 +402,7 @@ const QuestionText: React.FC<{
     <div style={{
       position: 'absolute',
       left: 80, right: 80,
-      bottom: 320,
+      bottom: 1920 - CAPTION_ZONE.top + 20, // sits just above the captions, never under them
       ...enterStyle(textProg, 'rise', 44),
       textAlign: 'center',
       direction: 'rtl',
@@ -448,7 +469,7 @@ export const MysterySceneBeat: React.FC<{beat: Beat}> = ({beat}) => {
               <stop offset="100%" stopColor="#05090f" />
             </radialGradient>
           </defs>
-          <rect x={0} y={BEAT_ZONE.top} width={1080} height={1920 - BEAT_ZONE.top} fill={`url(#${id}bg)`} />
+          <SoftBg id={id} />
 
           {[300, 230, 170, 110].map((r, i) => {
             const delay = i * 0.08;
@@ -519,7 +540,7 @@ export const MysterySceneBeat: React.FC<{beat: Beat}> = ({beat}) => {
               <stop offset="100%" stopColor="#060910" />
             </radialGradient>
           </defs>
-          <rect x={0} y={BEAT_ZONE.top} width={1080} height={1920 - BEAT_ZONE.top} fill={`url(#${id}bg)`} />
+          <SoftBg id={id} />
 
           <polygon points={hexPts(HEX_R + 25)}
             fill="none"
@@ -579,7 +600,7 @@ export const MysterySceneBeat: React.FC<{beat: Beat}> = ({beat}) => {
             <stop offset="100%" stopColor="#050810" />
           </radialGradient>
         </defs>
-        <rect x={0} y={BEAT_ZONE.top} width={1080} height={1920 - BEAT_ZONE.top} fill={`url(#${id}bg)`} />
+        <SoftBg id={id} />
 
         {Array.from({length: 24}, (_, i) => {
           const ang = (i / 24) * Math.PI * 2 + (frame / fps) * 0.15;

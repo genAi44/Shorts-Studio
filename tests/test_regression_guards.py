@@ -242,7 +242,8 @@ class TestRegressionGuards(unittest.TestCase):
         self.assertNotIn("<AccentShapes", photo_tsx)
         self.assertIn("<Background spec={spec} />", short_tsx)
         self.assertNotIn("{!anyCustomTsx && <Background", short_tsx)
-        self.assertIn("effectiveMode === 'split-bottom' ? 620", map_tsx)
+        self.assertIn("effectiveMode === 'split-bottom' ? MAP_STAGE_ZONE.split_svg_height", map_tsx)
+        self.assertIn("split_svg_height: 620", (ROOT / "remotion" / "src" / "layout.ts").read_text(encoding="utf-8"))
 
     def test_18_direct_detect_photo_beat_prefers_sentence_country_over_scene_country(self):
         from pipeline.direct import detect_photo_beat

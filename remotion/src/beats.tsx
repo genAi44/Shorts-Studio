@@ -35,7 +35,7 @@ import {AccentShapes, PhotoBeat, isAlt, useFont2} from './photo';
 import {CitySceneBeat, ArchitectureBeat, MysterySceneBeat} from './sceneBeats';
 
 import {MapLayoutCtx, MotionCtx, on, rgba, useTheme} from './theme';
-import {BEAT_ZONE, CAPTION_ZONE, HEADLINE_ZONE, SAFE_BOTTOM, SAFE_TOP} from './layout';
+import {BEAT_ZONE, CAPTION_ZONE, HEADLINE_ZONE, SAFE_BOTTOM, SAFE_TOP, SCENE_FIT} from './layout';
 import {Beat, RGB} from './types';
 
 
@@ -1389,6 +1389,10 @@ const TickerBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
 // ------------------------------------------------------------------ مكدّس بطاقات (card stack)
 
+// Stacked cards must never overlap: height shrinks with the count so they all fit the beat zone.
+const CARD_GAP = 24;
+const CARD_H = (n: number) => Math.min(196, Math.floor((BEAT_ZONE.bottom - BEAT_ZONE.top - 40 - (n - 1) * CARD_GAP) / Math.max(1, n)));
+
 const CardItem: React.FC<{item: any; i: number; n: number}> = ({item, i, n}) => {
 
   const th = useTheme();
@@ -1401,7 +1405,7 @@ const CardItem: React.FC<{item: any; i: number; n: number}> = ({item, i, n}) => 
 
   return (
 
-    <div style={{position: 'absolute', left: 80, right: 80, top: th.zoneCy - 300 + i * 58, height: 196, borderRadius: 32, background: rgba(th.p.c1, Math.max(0.35, 0.82 - i * 0.1)), border: `3px solid ${rgba(col, 0.8)}`, display: 'flex', alignItems: 'center', gap: 28, padding: '0 36px', zIndex: n - i, ...enterStyle(p, 'rise', 40 + i * 18)}}>
+    <div style={{position: 'absolute', left: 80, right: 80, top: th.zoneCy - (n * CARD_H(n) + (n - 1) * CARD_GAP) / 2 + i * (CARD_H(n) + CARD_GAP), height: CARD_H(n), borderRadius: 32, background: rgba(th.p.c1, Math.max(0.35, 0.82 - i * 0.1)), border: `3px solid ${rgba(col, 0.8)}`, display: 'flex', alignItems: 'center', gap: 28, padding: '0 36px', zIndex: n - i, ...enterStyle(p, 'rise', 40 + i * 18)}}>
 
       {item.icon ? <div style={{flex: '0 0 auto'}}><Icon name={item.icon} size={78} color={rgba(col)} /></div> : null}
 
@@ -1908,7 +1912,7 @@ export const ElevationProfileBeat: React.FC<{beat: Beat}> = ({beat}) => {
         {seaProg > 0.3 && (
           <text x={96} y={SEA_Y - 14} fontSize={34} fontWeight={700}
             fill={accent2C} opacity={Math.min(1, (seaProg - 0.3) * 4)}
-            fontFamily={th.family} textAnchor="start">
+            fontFamily={th.family} textAnchor="end" direction="rtl">
             {seaLabel} = 0 م
           </text>
         )}
@@ -1917,7 +1921,7 @@ export const ElevationProfileBeat: React.FC<{beat: Beat}> = ({beat}) => {
       {/* Peak name */}
       {beat.title && mountainProg > 0.72 && (
         <div style={{
-          position: 'absolute', left: 80, right: 80, top: PEAK_Y - 90,
+          position: 'absolute', left: 80, right: 80, top: PEAK_Y - 170,
           textAlign: 'center', ...font, fontSize: 60, fontWeight: 900,
           color: textC, textShadow: th.shadow, direction: 'rtl',
           opacity: Math.min(1, (mountainProg - 0.72) * 4),
@@ -1969,7 +1973,8 @@ const LineChartBeat: React.FC<{beat: Beat}> = ({beat}) => {
   const range = maxVal - minVal || 1;
 
   // Canvas area inside the full 1080×1920 frame
-  const PAD_L = 120, PAD_R = 60, PAD_T = 580, PAD_B = 1300;
+  // plot box derived from the layout contract: value labels past the first/last point stay inside the safe margins
+  const PAD_L = BEAT_ZONE.left + 60, PAD_R = BEAT_ZONE.right + 60, PAD_T = BEAT_ZONE.chart_title_top + 160, PAD_B = BEAT_ZONE.bottom - 80;
   const W = 1080 - PAD_L - PAD_R;  // 900
   const H = PAD_B - PAD_T;          // 720
 
@@ -2065,7 +2070,7 @@ const LineChartBeat: React.FC<{beat: Beat}> = ({beat}) => {
               {/* X-axis label */}
               <text x={px} y={PAD_B + 40} fontSize={30} fill={textC} textAnchor="middle" fontFamily={th.family}>{p.label}</text>
               {/* Value label above/below dot */}
-              <text x={px} y={above ? py - 20 : py + 48} fontSize={32} fontWeight={700} fill={accentC} textAnchor="middle" fontFamily={th.family}>
+              <text x={i === 0 ? px + 22 : px} y={above ? py - 20 : py + 48} fontSize={32} fontWeight={700} fill={accentC} textAnchor={i === 0 ? 'start' : 'middle'} fontFamily={th.family}>
                 {p.value % 1 === 0 ? p.value.toFixed(0) : p.value.toFixed(1)}
                 {beat.y_label ? ` ${beat.y_label}` : ''}
               </text>
@@ -2208,9 +2213,6 @@ class SceneBoundary extends React.Component<{children: React.ReactNode}, {failed
   render() { return this.state.failed ? null : this.props.children; }
 }
 
-// Legacy chart/stat beats anchor around y~650 and leave the rest of BEAT_ZONE (280..1380) empty: re-center + enlarge.
-const FILL_KINDS = new Set(['bars', 'pie_chart', 'line_chart', 'stat', 'stat_ring_v2', 'list', 'timeline']);
-
 export const BeatView: React.FC<{beat: Beat}> = ({beat}) => {
   const {hudMap} = useContext(MapLayoutCtx);
   const frame = useCurrentFrame();
@@ -2225,10 +2227,10 @@ export const BeatView: React.FC<{beat: Beat}> = ({beat}) => {
       <SlotContainer slot="FULL_STAGE" fullCanvas clip>
         {/* Backdrop: a blurred, enlarged copy of the scene fills the edges the transform below uncovers,
             so the scene's own opaque background never shows as a rectangle. */}
-        <div aria-hidden style={{position: 'absolute', inset: 0, transform: 'scale(1.35)', filter: 'blur(40px)', opacity: 0.95}}>
+        <div aria-hidden data-audit-ignore style={{position: 'absolute', inset: 0, transform: 'scale(1.35)', filter: 'blur(40px)', opacity: 0.95}}>
           <SceneBoundary><DynamicComp frame={frame} fps={fps} dur={beat.dur || 90} /></SceneBoundary>
         </div>
-        <div style={{position: 'absolute', inset: 0, transformOrigin: '50% 6%', transform: hudMap ? 'scale(0.82)' : 'translateY(100px) scale(1.05)', WebkitMaskImage: EDGE_FADE, maskImage: EDGE_FADE, WebkitMaskComposite: 'source-in', maskComposite: 'intersect'}}>
+        <div style={{position: 'absolute', inset: 0, transformOrigin: `50% ${SCENE_FIT.origin_y_pct}%`, transform: hudMap ? `scale(${SCENE_FIT.compress_pct / 100})` : `translateY(${SCENE_FIT.plain_shift_px}px) scale(${SCENE_FIT.plain_scale_pct / 100})`, WebkitMaskImage: EDGE_FADE, maskImage: EDGE_FADE, WebkitMaskComposite: 'source-in', maskComposite: 'intersect'}}>
           <SceneBoundary><DynamicComp frame={frame} fps={fps} dur={beat.dur || 90} /></SceneBoundary>
         </div>
       </SlotContainer>
@@ -2303,7 +2305,7 @@ export const BeatView: React.FC<{beat: Beat}> = ({beat}) => {
 
   return (
     <BeatShell beat={beat}>
-      {FILL_KINDS.has(beat.kind) ? <AbsoluteFill style={{transformOrigin: '50% 34%', transform: 'translateY(170px) scale(1.12)'}}>{body}</AbsoluteFill> : body}
+      {body}
       {beat.kind !== 'visuals' && beat.visuals && beat.visuals.length > 0 ? (
         <SceneVisualsLayer visuals={beat.visuals} />
       ) : null}

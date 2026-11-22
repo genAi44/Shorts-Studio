@@ -185,17 +185,18 @@ export const SceneWipe: React.FC<{index: number}> = ({index}) => {
     );
   }
 
-  // 2. Wipe: مسح تدريجي قطري متحرك مع خط فاصل أنيق
+  // 2. Light sweep: a soft, blurred, additive diagonal band of light (replaces the flat hard-edged polygon flash)
   if (kind === 1) {
-    const pos = interpolate(p, [0, 1], [0, 120]);
+    const x = interpolate(p, [0, 1], [-520, 1500]);
     return (
       <AbsoluteFill style={{pointerEvents: 'none', overflow: 'hidden'}}>
         <div style={{
-          position: 'absolute', inset: 0,
-          clipPath: `polygon(${pos}% 0%, ${pos + 12}% 0%, ${pos - 18}% 100%, ${pos - 30}% 100%)`,
-          background: `linear-gradient(135deg, ${col}, ${col2})`,
-          opacity: (1 - p) * 0.9,
-          boxShadow: '0 0 40px rgba(0,0,0,0.4)'
+          position: 'absolute', top: -200, bottom: -200, left: x, width: 300,
+          transform: 'skewX(-18deg)',
+          background: `linear-gradient(90deg, transparent 0%, ${col} 35%, rgba(255,255,255,0.95) 50%, ${col2} 65%, transparent 100%)`,
+          filter: 'blur(22px)',
+          mixBlendMode: 'screen',
+          opacity: Math.sin(Math.PI * Math.min(1, p)) * 0.75,
         }} />
       </AbsoluteFill>
     );

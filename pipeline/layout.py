@@ -30,7 +30,7 @@ BEAT_ZONE = {
     "corner_top": 240,
     "corner_bottom": 1220,
     "peak_y": 420,
-    "sea_y": 1480,
+    "sea_y": 1340,
     "list_top_with_headline": 440,
     "list_top_no_headline": 340,
     "zero": 0,
@@ -45,3 +45,18 @@ CAPTION_ZONE = {
     "left": 40,
     "right": 40,
 }
+
+# Inset map ("HUD") shown over LLM-generated scenes: bottom band, above the caption zone.
+HUD_MAP_ZONE = {"top": 995, "left": 240, "width": 600, "svg_height": 330}
+
+# Map stage placements (wide card) used when a map is the main subject.
+MAP_STAGE_ZONE = {"full_top": 200, "split_top": 710, "width": 984, "full_svg_height": 980, "split_svg_height": 620}
+
+# LLM scenes are top-heavy: compress above the HUD map, or shift down/enlarge slightly when there is no map (percent / px / ratio x100).
+SCENE_FIT = {"compress_pct": 82, "plain_shift_px": 100, "plain_scale_pct": 105, "origin_y_pct": 6}
+
+# Content box that generative-canvas elements are scaled up to fill.
+CANVAS_FIT_BOX = {"w": 920, "h": 900, "cx": 540, "cy": 860, "max_pct": 190}
+
+# Beats start their entrance this many frames BEFORE their cut, so the first frame of a scene is never empty.
+BEAT_LEAD_FRAMES = 6

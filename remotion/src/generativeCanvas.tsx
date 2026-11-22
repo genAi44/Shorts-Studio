@@ -6,6 +6,7 @@ import { Emoji } from './emoji';
 import { Flag } from './flag';
 import { LottieVisual } from './lottie';
 import { useTheme, rgba } from './theme';
+import { BEAT_ZONE, CANVAS_FIT_BOX } from './layout';
 import { useFont } from './hooks';
 import { DYNAMIC_SCENE_REGISTRY } from './generated/DynamicScenes';
 
@@ -996,7 +997,7 @@ const CustomSvgIllustrationLayer: React.FC<{
 // ------------------------------------------------------------------ Generative Canvas Beat Main
 // Templates place small fixed-size primitives around the canvas centre, leaving most of the 9:16 frame dark.
 // Measure the content bbox (rough per-type size estimates) and scale it up to fill the beat zone.
-const FIT_BOX = {w: 920, h: 900, cx: 540, cy: 860, max: 1.9};
+const FIT_BOX = {w: CANVAS_FIT_BOX.w, h: CANVAS_FIT_BOX.h, cx: CANVAS_FIT_BOX.cx, cy: CANVAS_FIT_BOX.cy, max: CANVAS_FIT_BOX.max_pct / 100};
 export const computeFit = (els: any[]): {k: number; cx: number; cy: number} => {
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
   for (const el of els) {
@@ -1088,7 +1089,7 @@ export const GenerativeCanvasBeat: React.FC<{ beat: any }> = ({ beat }) => {
           dir="rtl"
           style={{
             position: 'absolute',
-            top: 235,
+            top: BEAT_ZONE.title_top,
             left: '50%',
             transform: 'translateX(-50%)',
             textAlign: 'center',
