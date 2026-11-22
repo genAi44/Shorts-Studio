@@ -40,8 +40,10 @@ const Scene: React.FC<{ scene: SceneSpec; index: number; fallbackTransition?: an
   const enterSpr = index === 0 ? 1 : spring({ frame, fps, config: { damping: 16, stiffness: 180, mass: 0.7 } });
   const enterScale = index === 0 ? 1 : interpolate(enterSpr, [0, 1], [1.06, 1.0]);
   const enterY = index === 0 ? 0 : interpolate(enterSpr, [0, 1], [index % 2 === 0 ? 28 : -24, 0]);
-  const enterOp = index === 0 ? 1 : interpolate(frame, [0, 7], [0.25, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const exitOp = dur > 10 ? interpolate(frame, [dur - 6, dur], [1, 0.72], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }) : 1;
+  // Scenes are butt-joined (no overlap), so any opacity dip at the edges shows as a dark flash on every cut
+  // (0.72 exit -> 0.25 enter measured). Hard cut + spring settle + SceneWipe carry the transition instead.
+  const enterOp = 1;
+  const exitOp = 1;
   // ponytail: scene-level Ken Burns removed — BeatShell already applies per-beat camera; compounding caused ~1.27× over-zoom
   const camScale = enterScale;
   const sceneOpacity = Math.min(enterOp, exitOp);

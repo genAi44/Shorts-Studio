@@ -597,6 +597,8 @@ def enrich_scene_visuals(
             n_el = normalize_visual_element(el, preferred_icon_set=preferred_icon_set)
             if not n_el:
                 continue
+            if n_el["kind"] == "flag" and len(expected_flag_codes) > 1:
+                continue  # multi-country scene: one country's flag would mislabel the rest
             if n_el["kind"] == "flag" and expected_flag_codes:
                 cur_code = str((n_el.get("spec") or {}).get("code") or "").upper()
                 if cur_code not in expected_flag_codes:
@@ -618,7 +620,9 @@ def enrich_scene_visuals(
 
     # 1. Check if a country is mentioned or in map visual -> add <Flag /> ONLY if validated
     countries = (vis.get("countries") or []) + (vis.get("highlight") or [])
-    if countries:
+    if len(expected_flag_codes) > 1:
+        pass  # multi-country scene: no flag badge
+    elif countries:
         fl = resolve_flag(str(countries[0]), shape="round" if scene_index % 2 else "rect")
         if fl.get("found") and fl.get("code"):
             out.append({
@@ -626,7 +630,7 @@ def enrich_scene_visuals(
                 "placement": "badge-row",
                 "spec": {"code": fl["code"], "shape": fl["shape"], "size": 84, "animation": "pop"},
             })
-    else:
+    elif not countries:
         for ar_name, iso3 in sorted(AR_ISO3.items(), key=lambda x: len(x[0]), reverse=True):
             if len(ar_name) < 3:
                 continue

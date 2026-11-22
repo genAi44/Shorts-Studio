@@ -718,6 +718,14 @@ _PHOTO_PATTERNS = [
     (r"غابة|طبيعة|أشجار|أدغال", "dense ancient rainforest jungle nature landscape", "rainforest jungle landscape", "watermark text"),
 ]
 
+def _number_in_text(num, text: str) -> bool:
+    """True if the digits of `num` occur in `text` (Arabic-Indic digits and separators normalized)."""
+    tr = str.maketrans("٠١٢٣٤٥٦٧٨٩٫٬", "0123456789.,")
+    norm = lambda x: re.sub(r"[,\s]", "", str(x).translate(tr))
+    n = norm(num)
+    return bool(n) and n in norm(text)
+
+
 def detect_photo_beat(sentence: str, pt_name: str = "", cou_iso: str = "") -> Optional[Dict[str, Any]]:
     clean_pt = re.sub(r"\(.*?\)", "", pt_name).strip() if pt_name else ""
     try:
@@ -1430,6 +1438,11 @@ def apply_beats(script, result, geo=None, llm_retry_fn: Optional[Callable[[List[
         for bi, b in enumerate(beats):
             cur_kind = b.get("kind")
             sent = sents[bi] if bi < len(sents) else ""
+
+            # رقم على صورة لا يظهر في سرد المشهد = رقم لكيان آخر (مثل صورة باريس برقم ميلانو): احذفه
+            if cur_kind == "photo" and b.get("number") and not _number_in_text(b["number"], target.get("narration", "")):
+                b = {k: v for k, v in b.items() if k != "number"}
+                beats[bi] = b
 
             # في مشهد الخاتمة (cta): حوّل أي photo عشوائي إلى generative_canvas نظيف
             if (target.get("role") == "cta" or target == targets[-1]) and cur_kind == "photo":

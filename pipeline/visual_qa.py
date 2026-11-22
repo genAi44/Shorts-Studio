@@ -15,46 +15,10 @@ from typing import Any, Dict, List, Optional
 from .layout_planner import SLOTS
 
 
-_RASTER_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tiff"}
-
-
-def _has_raster(value: Any) -> bool:
-    """Returns True if value is a string path pointing to a raster image."""
-    if not isinstance(value, str):
-        return False
-    lower = value.lower().strip()
-    return any(lower.endswith(ext) for ext in _RASTER_EXTS)
-
-
-def _scan_rasters(obj: Any) -> List[str]:
-    """Recursively find all raster image paths in a spec dict/list."""
-    hits: List[str] = []
-    if isinstance(obj, dict):
-        for k, v in obj.items():
-            if _has_raster(v):
-                hits.append(f"{k}={v}")
-            else:
-                hits.extend(_scan_rasters(v))
-    elif isinstance(obj, list):
-        for item in obj:
-            hits.extend(_scan_rasters(item))
-    return hits
-
-
 def _audit_scene(scene: Dict[str, Any]) -> Dict[str, Any]:
     sid = str(scene.get("id") or "scene")
     issues: List[Dict[str, str]] = []
     score = 100
-
-    # 0a. Rule 1.1 — no raster images anywhere in the scene
-    raster_hits = _scan_rasters(scene)
-    for hit in raster_hits[:3]:  # cap to 3 to avoid flooding
-        issues.append({
-            "type": "raster_image",
-            "severity": "error",
-            "detail": f"صورة نقطية محظورة (القاعدة 1.1): {hit[:80]}",
-        })
-        score -= 30
 
     # 0b. Rule 1.2 — scene must have at least one non-text visual element
     beats = scene.get("beats") or []

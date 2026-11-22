@@ -56,15 +56,9 @@ Source: frame-by-frame audit of V1, V2, V3 (71 frames) documented in `docs/FRAME
 
 ---
 
-## L-05: Raster Images in Spec (Rule 1.1 Violation)
+## L-05: Raster Images in Spec (superseded)
 
-**What happened:** Photo references appeared in some scene specs despite the vector-only rule.
-
-**Root cause:** No automated scan for raster file extensions in spec JSON.
-
-**Fix applied:** `pipeline/visual_qa.py::_scan_rasters()` recursively finds any value ending in `.jpg/.png/.webp/.gif/.jpeg` and fails the scene with score -30.
-
-**Prevention rule:** Never pass raster paths to scene specs. Use SVG or CSS/SVG gradients only.
+**Decision:** shorts-studio uses licensed photos (`photo` beat). The raster scan in `visual_qa.py` was removed; see `CLAUDE.md`.
 
 ---
 
