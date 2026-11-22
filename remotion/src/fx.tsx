@@ -409,22 +409,30 @@ export const CaptionScrim: React.FC<{
   captionY?: number; // top of caption zone (matches theme.capY - fontSize)
   height?: number;
   opacity?: number;
-}> = ({captionY = 1380, height = 540, opacity = 1}) => (
-  <div
-    style={{
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      top: captionY,
-      height,
-      background:
-        'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.72) 35%, rgba(0,0,0,0.88) 100%)',
-      pointerEvents: 'none',
-      opacity,
-      zIndex: 18,
-    }}
-  />
-);
+}> = ({captionY = 1380, height = 540, opacity = 1}) => {
+  const th = useTheme();
+  // plain grounds: fade into the ground colour itself (a black scrim turned paper/colour backgrounds muddy grey)
+  const plain = th.st.bg.type !== 'cinematic' && th.st.bg.type !== 'waves';
+  const c = th.st.palette.c1;
+  const bg = plain
+    ? `linear-gradient(to bottom, rgba(${c[0]},${c[1]},${c[2]},0) 0%, rgba(${c[0]},${c[1]},${c[2]},0.9) 35%, rgba(${c[0]},${c[1]},${c[2]},0.97) 100%)`
+    : 'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.72) 35%, rgba(0,0,0,0.88) 100%)';
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: captionY,
+        height,
+        background: bg,
+        pointerEvents: 'none',
+        opacity,
+        zIndex: 18,
+      }}
+    />
+  );
+};
 
 /**
  * 6b. MapOverlay: Dark vignette and subtle background texture layer for map compositions.

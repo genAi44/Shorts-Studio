@@ -8,7 +8,7 @@ import {FireSparks} from './fx';
 const mixc = (a: RGB, b: RGB, t: number): RGB => [0, 1, 2].map((i) => Math.round(a[i] + (b[i] - a[i]) * t)) as RGB;
 
 // الطبقة 1: خلفية سينمائية مع إضاءة محيطية وتظليل داكن للأطراف وشرارات صاعدة
-export const Background: React.FC<{spec?: Spec}> = ({spec}) => {
+const CinematicBackground: React.FC<{spec?: Spec}> = ({spec}) => {
   const th = useTheme();
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
@@ -82,6 +82,48 @@ export const Background: React.FC<{spec?: Spec}> = ({spec}) => {
   );
 };
 
+// Plain, flat backgrounds (default look). The palette's c1 IS the background colour, so contrast with text is
+// guaranteed by the palette; each type only adds a very light texture. No glow, sparks, vignette or colour wash.
+const PlainBackground: React.FC<{type: string}> = ({type}) => {
+  const th = useTheme();
+  const {palette: p} = th.st;
+  const base = rgba(p.c1);
+  const ink = th.dark ? p.text : p.text;
+  const line = (a: number) => rgba(ink, a);
+  const common: React.CSSProperties = {backgroundColor: base};
+  let layers: React.ReactNode = null;
+  if (type === 'grid') {
+    layers = <AbsoluteFill style={{backgroundImage: `linear-gradient(${line(0.07)} 1.5px, transparent 1.5px), linear-gradient(90deg, ${line(0.07)} 1.5px, transparent 1.5px), linear-gradient(${line(0.13)} 2px, transparent 2px), linear-gradient(90deg, ${line(0.13)} 2px, transparent 2px)`, backgroundSize: '60px 60px, 60px 60px, 240px 240px, 240px 240px'}} />;
+  } else if (type === 'dots') {
+    layers = <AbsoluteFill style={{backgroundImage: `radial-gradient(${line(0.2)} 2.4px, transparent 3px)`, backgroundSize: '54px 54px'}} />;
+  } else if (type === 'stripes') {
+    layers = <AbsoluteFill style={{backgroundImage: `repeating-linear-gradient(135deg, transparent 0px, transparent 46px, ${line(0.05)} 46px, ${line(0.05)} 92px)`}} />;
+  } else if (type === 'gradient' || type === 'radial' || type === 'map' || type === 'aurora' || type === 'rays') {
+    layers = <AbsoluteFill style={{background: `linear-gradient(180deg, ${rgba(p.c1)} 0%, ${rgba(p.c2)} 100%)`}} />;
+  }
+  const paperLike = type === 'paper' || type === 'kraft';
+  return (
+    <AbsoluteFill style={common}>
+      {layers}
+      {paperLike && (
+        <>
+          {/* paper: fibre grain (multiply) + a barely-there lighter centre, like a sheet lit from the front */}
+          <AbsoluteFill style={{background: `radial-gradient(ellipse 80% 60% at 50% 40%, rgba(255,255,255,0.14), transparent 70%)`}} />
+          <AbsoluteFill style={{backgroundImage: `url(${staticFile('grain.png')})`, backgroundSize: '512px 512px', opacity: type === 'kraft' ? 0.2 : 0.14, mixBlendMode: 'multiply'}} />
+        </>
+      )}
+    </AbsoluteFill>
+  );
+};
+
+export const Background: React.FC<{spec?: Spec}> = ({spec}) => {
+  const th = useTheme();
+  const type = th.st.bg.type || 'cinematic';
+  if (type === 'cinematic') return <CinematicBackground spec={spec} />;
+  if (type === 'waves') return <CinematicBackground spec={spec} />; // legacy animated look
+  return <PlainBackground type={type} />;
+};
+
 const Waves: React.FC<{color: string; s: number}> = ({color, s}) => {
   const d = useMemo(() => {
     const out: string[] = [];
@@ -113,6 +155,10 @@ export const Finish: React.FC = () => {
   const {palette: p} = th.st;
   const gx = (frame * 97) % 512;
   const gy = (frame * 61) % 512;
+  if (th.st.bg.type !== 'cinematic' && th.st.bg.type !== 'waves') {
+    // plain grounds: no colour wash, no vignette (they made the picture look faded) - just a faint static grain
+    return <AbsoluteFill style={{backgroundImage: `url(${staticFile('grain.png')})`, backgroundSize: '512px 512px', opacity: th.dark ? 0.06 : 0.045, mixBlendMode: th.dark ? 'overlay' : 'multiply', pointerEvents: 'none'}} />;
+  }
   return (
     <>
       <AbsoluteFill style={{background: `linear-gradient(160deg, ${rgba(p.accent, 0.14)}, ${rgba(p.accent2, 0.14)})`, mixBlendMode: th.dark ? 'soft-light' : 'multiply', pointerEvents: 'none'}} />

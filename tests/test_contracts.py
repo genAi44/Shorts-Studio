@@ -55,3 +55,21 @@ def test_map_precondition_requires_a_real_place():
     assert direct.BEAT_RULES["map"]["predicate"]({"countries": ["SAU"]}, "", g) is True
     assert direct.BEAT_RULES["map"]["predicate"]({"points": [{"name": "x", "lat": 24.7, "lon": 46.7}]}, "", g) is True
     assert direct.BEAT_RULES["map_pin"]["predicate"]({"points": [{"name": "الدوحة"}]}, "", g) is True
+
+
+def test_plain_backgrounds_are_varied_and_readable():
+    import collections
+    from pipeline import style as st
+
+    lum = lambda c: 0.2126 * (c[0] / 255) ** 2.2 + 0.7152 * (c[1] / 255) ** 2.2 + 0.0722 * (c[2] / 255) ** 2.2
+    ratio = lambda a, b: (max(lum(a), lum(b)) + 0.05) / (min(lum(a), lum(b)) + 0.05)
+    types = collections.Counter()
+    for seed in range(300):
+        s = st.random_style(seed)
+        types[s["bg"]["type"]] += 1
+        assert ratio(s["palette"]["text"], s["palette"]["c1"]) >= 4.5, s["name"]
+        assert s["headline"]["pos"] != "lower"
+    assert len(types) >= 6 and types["cinematic"] < 60  # varied, and the old glow look is the exception
+    assert set(["paper", "kraft", "solid", "ink"]) <= set(types)
+    # legacy names stay valid
+    assert st.normalize({"bg": {"type": "waves"}})["bg"]["type"] == "waves"

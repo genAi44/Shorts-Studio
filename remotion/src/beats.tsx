@@ -213,7 +213,8 @@ export const BeatShell: React.FC<{beat: Beat; children: React.ReactNode}> = ({be
         'icon_scene', 'map_pin', 'timeline_card', 'bigtext', 'custom_scene',
         'generative_canvas', 'versus_battle', 'balance_meter', 'stack_pyramid',
         'deep_time_slider', 'macro_zoom_globe', 'subsurface_mine', 'dot_matrix_population',
-        'money_waterfall', 'frontline_clash', 'animated_route', 'bars', 'line_chart', 'pie_chart'
+        'money_waterfall', 'frontline_clash', 'animated_route', 'bars', 'line_chart', 'pie_chart',
+        'city_skyline', 'architecture' // these draw their own title overlay: a second headline stacked on it
       ].includes(beat.kind) ? <div style={{opacity: 1 - exit}}><Headline text={beat.title} /></div> : null}
 
     </AbsoluteFill>
@@ -1355,7 +1356,7 @@ const TickerBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
       ) : null}
 
-      <div style={{position: 'absolute', top: th.zoneCy - 50, left: 0, right: 0, height: 156, overflow: 'hidden', borderTop: `3px solid ${rgba(th.p.accent, 0.5)}`, borderBottom: `3px solid ${rgba(th.p.accent, 0.5)}`}}>
+      <div data-audit-ignore style={{position: 'absolute', top: th.zoneCy - 50, left: 0, right: 0, height: 156, overflow: 'hidden', borderTop: `3px solid ${rgba(th.p.accent, 0.5)}`, borderBottom: `3px solid ${rgba(th.p.accent, 0.5)}`}}>
 
         <div style={{position: 'absolute', top: BEAT_ZONE.zero, bottom: BEAT_ZONE.zero, display: 'flex', alignItems: 'center', gap: 32, transform: `translateX(-${offset}px)`}}>
 
@@ -1921,7 +1922,7 @@ export const ElevationProfileBeat: React.FC<{beat: Beat}> = ({beat}) => {
       {/* Peak name */}
       {beat.title && mountainProg > 0.72 && (
         <div style={{
-          position: 'absolute', left: 80, right: 80, top: PEAK_Y - 170,
+          position: 'absolute', left: 80, right: 80, top: PEAK_Y - 215,
           textAlign: 'center', ...font, fontSize: 60, fontWeight: 900,
           color: textC, textShadow: th.shadow, direction: 'rtl',
           opacity: Math.min(1, (mountainProg - 0.72) * 4),

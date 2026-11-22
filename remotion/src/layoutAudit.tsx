@@ -67,6 +67,7 @@ export const auditItems = (items: Item[]) => {
     for (let j = i + 1; j < items.length; j++) {
       const a = items[i], b = items[j];
       if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
+      if (a.fs < MIN_FONT || b.fs < MIN_FONT) continue; // unreadable text is already reported as 'tiny'
       // Range rects include the font's tall ascent/descent: compare the ink core (12% trimmed top and bottom)
       const ta = a.t + (a.b - a.t) * 0.12, ba = a.b - (a.b - a.t) * 0.12, tb = b.t + (b.b - b.t) * 0.12, bb = b.b - (b.b - b.t) * 0.12;
       const w = Math.min(a.r, b.r) - Math.max(a.l, b.l);

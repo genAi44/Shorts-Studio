@@ -277,7 +277,7 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
             ctxPath={ctx_path} countries={countries} waypoints={waypoints} activeIdx={activeIdx}
             prevWp={prevWp} camTransition={camTransition}
             main={{tx, ty, z: mainZoom}} lens={useLens ? lensCam : null} lensC={lensC}
-            colors={{accent: accentSolid, accent2: accent2Solid, text: '#e2e8f0', sea0: rgba(th.st.palette.c2, 0.95), sea1: '#040914'}}
+            colors={{accent: accentSolid, accent2: accent2Solid, text: '#e2e8f0', sea0: rgba(th.st.palette.c2, 0.95), sea1: th.dark ? '#040914' : rgba(th.st.palette.c2, 1)}}
             font={arabicFont} uid="mp"
           />
         </div>

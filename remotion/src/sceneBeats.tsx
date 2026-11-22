@@ -176,11 +176,11 @@ export const CitySceneBeat: React.FC<{beat: Beat}> = ({beat}) => {
           textAlign: 'center',
           direction: 'rtl',
         }}>
-          <div style={{...font, fontSize: 88, fontWeight: 900, color: rgba(th.p.accent), textShadow: th.shadow, lineHeight: 1.15}}>
+          <div style={{...font, fontSize: 88, fontWeight: 900, color: rgba(th.p.accent), textShadow: th.shadow, lineHeight: 1.3}}>
             {title}
           </div>
           {subtitle && (
-            <div style={{...font, fontSize: 50, fontWeight: 600, color: rgba(th.p.text, 0.82), marginTop: 10}}>
+            <div style={{...font, fontSize: 50, fontWeight: 600, color: rgba(th.p.text, 0.82), marginTop: 24}}>
               {subtitle}
             </div>
           )}
@@ -352,11 +352,11 @@ export const ArchitectureBeat: React.FC<{beat: Beat}> = ({beat}) => {
           textAlign: 'center',
           direction: 'rtl',
         }}>
-          <div style={{...font, fontSize: 80, fontWeight: 900, color: rgba(th.p.accent), textShadow: th.shadow, lineHeight: 1.2}}>
+          <div style={{...font, fontSize: 80, fontWeight: 900, color: rgba(th.p.accent), textShadow: th.shadow, lineHeight: 1.35}}>
             {title}
           </div>
           {subtitle && (
-            <div style={{...font, fontSize: 46, fontWeight: 600, color: rgba(th.p.text, 0.85), marginTop: 10}}>
+            <div style={{...font, fontSize: 46, fontWeight: 600, color: rgba(th.p.text, 0.85), marginTop: 24}}>
               {subtitle}
             </div>
           )}

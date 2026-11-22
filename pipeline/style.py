@@ -17,7 +17,8 @@ FONTS = {  # الاسم -> (الملف، هل متغيّر الوزن، الأو
 }
 ENUMS = {
     "font": list(FONTS),
-    "bg.type": ["cinematic", "map", "gradient", "radial", "grid", "dots", "stripes", "waves", "paper", "aurora", "rays"],
+    # plain backgrounds first (the default look); the rest are legacy names kept valid for old specs / LLM output
+    "bg.type": ["paper", "kraft", "solid", "ink", "grid", "dots", "stripes", "cinematic", "map", "gradient", "radial", "waves", "aurora", "rays"],
     "headline.pos": ["top", "upper", "center", "lower"],
     "headline.box": ["none", "pill", "bar", "underline", "tag"],
     "headline.enter": ["rise", "drop", "pop", "fade", "wipe", "slide"],
@@ -49,7 +50,30 @@ MOODS = {
     "رمل": dict(c1=(238, 210, 160), c2=(214, 170, 110), accent=(120, 40, 24), accent2=(24, 80, 90), text=(38, 24, 14), dark=False),
     "فولاذ": dict(c1=(44, 52, 66), c2=(20, 24, 32), accent=(255, 190, 60), accent2=(120, 200, 255), text=(236, 240, 246), dark=True),
     "محيط": dict(c1=(6, 70, 110), c2=(2, 24, 52), accent=(255, 236, 150), accent2=(120, 255, 220), text=(246, 252, 255), dark=True),
+    # plain, saturated-but-flat grounds (no glow): these carry the default look
+    "ورق عاجي": dict(c1=(246, 240, 226), c2=(232, 224, 204), accent=(178, 52, 38), accent2=(22, 104, 120), text=(30, 26, 22), dark=False),
+    "كرافت": dict(c1=(205, 170, 125), c2=(186, 150, 106), accent=(96, 36, 24), accent2=(20, 70, 84), text=(36, 24, 14), dark=False),
+    "حبر": dict(c1=(20, 22, 28), c2=(12, 14, 18), accent=(255, 196, 0), accent2=(80, 190, 240), text=(250, 248, 240), dark=True),
+    "نيلي": dict(c1=(22, 40, 84), c2=(14, 26, 60), accent=(255, 205, 90), accent2=(120, 220, 255), text=(250, 250, 255), dark=True),
+    "زيتوني": dict(c1=(52, 68, 40), c2=(36, 50, 28), accent=(240, 214, 110), accent2=(210, 236, 160), text=(248, 250, 240), dark=True),
+    "طوبي": dict(c1=(168, 70, 48), c2=(140, 52, 34), accent=(255, 226, 170), accent2=(255, 255, 255), text=(255, 248, 240), dark=True),
+    "خردل": dict(c1=(232, 182, 56), c2=(210, 160, 36), accent=(40, 32, 24), accent2=(120, 40, 30), text=(34, 26, 16), dark=False),
+    "طباشير": dict(c1=(36, 44, 46), c2=(26, 32, 34), accent=(240, 236, 200), accent2=(130, 214, 190), text=(244, 244, 238), dark=True),
 }
+
+# which grounds suit which background type (the palette's c1 IS the background colour)
+BG_MOODS = {
+    "paper": ["ورق عاجي", "ورق", "باستيل"],
+    "kraft": ["كرافت", "رمل"],
+    "solid": ["نيلي", "زيتوني", "طوبي", "خردل", "غابة", "فولاذ", "ورق عاجي"],
+    "ink": ["حبر", "ذهبي سينمائي", "أحمر وأسود", "طباشير"],
+    "grid": ["ورق عاجي", "نيلي", "طباشير", "ورق"],
+    "dots": ["ورق", "خردل", "حبر", "باستيل"],
+    "stripes": ["باستيل", "كرافت", "نيلي", "ورق عاجي"],
+    "cinematic": ["ذهبي سينمائي", "ليلي", "نيون"],
+}
+# default mix of background types for new videos (weights); plain ones dominate, cinematic is rare
+BG_WEIGHTS = [("paper", 24), ("kraft", 8), ("solid", 24), ("ink", 14), ("grid", 10), ("dots", 8), ("stripes", 6), ("cinematic", 6)]
 
 
 def _rot(rgb, dh, ds=1.0, dv=1.0):
@@ -64,13 +88,28 @@ def _mix(a, b, t):
     return tuple(int(round(a[i] + (b[i] - a[i]) * t)) for i in range(3))
 
 
+def _lum(c):
+    return 0.2126 * (c[0] / 255) ** 2.2 + 0.7152 * (c[1] / 255) ** 2.2 + 0.0722 * (c[2] / 255) ** 2.2
+
+
+def _contrast(a, b):
+    return (max(_lum(a), _lum(b)) + 0.05) / (min(_lum(a), _lum(b)) + 0.05)
+
+
 def random_style(seed=None, mood=None):
     seed = random.SystemRandom().randrange(1, 10**9) if seed is None else int(seed)
     r = random.Random(seed)
-    name = mood if mood in MOODS else ("ذهبي سينمائي" if r.random() < 0.6 else r.choice(list(MOODS)))
+    bg_type = r.choices([k for k, _ in BG_WEIGHTS], weights=[w for _, w in BG_WEIGHTS])[0]
+    name = mood if mood in MOODS else r.choice(BG_MOODS[bg_type])
     m = MOODS[name]
     dh = r.uniform(-0.12, 0.12)
     c1, c2 = _rot(m["c1"], dh), _rot(m["c2"], dh)
+    # hue rotation changes luminance: keep text readable on the ground (WCAG 4.5:1), darkening/lightening c1/c2 if needed
+    for _ in range(14):
+        if _contrast(m["text"], c1) >= 4.5:
+            break
+        k = 0.9 if m["dark"] else 1.06
+        c1, c2 = _rot(c1, 0, 1.0, k), _rot(c2, 0, 1.0, k)
     acc, acc2 = _rot(m["accent"], r.uniform(-0.08, 0.08)), _rot(m["accent2"], r.uniform(-0.1, 0.1))
     text = m["text"]
     dark = m["dark"]
@@ -87,9 +126,9 @@ def random_style(seed=None, mood=None):
         "font": font,
         "weight": r.choice([w for w in (lo, (lo + hi) // 2, hi)]),
         "palette": {"c1": c1, "c2": c2, "accent": acc, "accent2": acc2, "text": text, "ctx": ctx, "ctx_edge": edge, "hl": hl},
-        "bg": {"type": r.choice(ENUMS["bg.type"]), "angle": r.randrange(0, 180), "motion": r.random() < 0.8,
+        "bg": {"type": bg_type, "angle": r.randrange(0, 180), "motion": r.random() < 0.8,
                "intensity": round(r.uniform(0.5, 1.0), 2)},
-        "headline": {"pos": r.choice(ENUMS["headline.pos"]), "size": r.choice([72, 80, 88, 96]),
+        "headline": {"pos": r.choice([p for p in ENUMS["headline.pos"] if p != "lower"]), "size": r.choice([72, 80, 88, 96]),
                      "box": r.choice(ENUMS["headline.box"]), "enter": r.choice(ENUMS["headline.enter"])},
         "caption": {"mode": r.choice(ENUMS["caption.mode"]), "y": r.choice([1350, 1400, 1450, 1490]),
                     "size": r.choice([56, 62, 68, 74]), "hl": r.choice(ENUMS["caption.hl"])},
@@ -176,7 +215,7 @@ def normalize(style, seed=None):
     return out
 
 
-ART_SYSTEM = """أنت مدير فني لفيديوهات Shorts عربية بمظهر سينمائي ذهبي داكن عالي التباين (Cinematic Dark Gold). الطابع البصري المفضل: خلفية داكنة فخمة مع جزيئات لهب متصاعدة وتأطير سينمائي (Vignette)، ونصوص عريضة بتدرج ذهبي متوهج (#D4AF37 و#38bdf8). مهمتك تصميم ستايل بصري فريد لهذا الفيديو بالذات يناسب موضوعه ومزاجه، ولا يشبه الفيديوهات السابقة. لا تستخدم ستايلاً محايداً مكرراً؛ اتخذ قراراً جريئاً ومتماسكاً (لوحة ألوان واحدة منسجمة، ونص مقروء بتباين عالٍ فوق الخلفية).
+ART_SYSTEM = """أنت مدير فني لفيديوهات Shorts عربية. الطابع البصري المفضل: خلفية سادة نظيفة غير باهتة وبلا توهج أو جزيئات: ورق عاجي (paper)، كرافت (kraft)، لون واحد مشبع (solid)، حبر داكن (ink)، أو شبكة/نقاط/خطوط خفيفة جداً فوق لون سادة، مع نصوص عريضة عالية التباين. نوّع الخلفية من فيديو لآخر (لا تكرر نفس الخلفية)؛ وc1 هو لون الخلفية نفسه. مهمتك تصميم ستايل بصري فريد لهذا الفيديو بالذات يناسب موضوعه ومزاجه، ولا يشبه الفيديوهات السابقة. لا تستخدم ستايلاً محايداً مكرراً؛ اتخذ قراراً جريئاً ومتماسكاً (لوحة ألوان واحدة منسجمة، ونص مقروء بتباين عالٍ فوق الخلفية).
 
 مبادئ الحركة: الخروج أسرع من الدخول. pace يتحكم في سرعة النوابض (0.75=هادئ، 1.3=حيوي). edit.ken يحدد حركة الكاميرا الافتراضية على الصور (in=push-in, out=zoom-out, pan=انزلاق). edit.shapes وedit.glow يضيفان بُعداً بصرياً.
 
@@ -186,7 +225,7 @@ ART_SYSTEM = """أنت مدير فني لفيديوهات Shorts عربية بم
  "font": "kufi|cairo|changa|messiri|reem|markazi|amiri|lalezar|tajawal",
  "weight": 500-900,
  "palette": {"c1":[..],"c2":[..],"accent":[..],"accent2":[..],"text":[..],"ctx":[..],"ctx_edge":[..],"hl":[[..],[..],[..]]},
- "bg": {"type":"gradient|radial|grid|dots|stripes|waves|paper|aurora|rays","angle":0-180,"motion":true,"intensity":0.2-1},
+ "bg": {"type":"paper|kraft|solid|ink|grid|dots|stripes|cinematic","angle":0-180,"motion":true,"intensity":0.2-1},
  "headline": {"pos":"top|upper|center|lower","size":60-104,"box":"none|pill|bar|underline|tag","enter":"rise|drop|pop|fade|wipe|slide"},
  "caption": {"mode":"pill|bar|stroke|underline|box_word|plain","y":1340-1500,"size":50-78,"hl":"color|scale|box"},
  "map": {"fill":"flat|gradient|hatch","edge":1-8,"ctx_alpha":0.2-1,"marker":"ring|pin|square|diamond"},
