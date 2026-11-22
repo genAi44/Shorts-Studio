@@ -71,7 +71,7 @@ const Scene: React.FC<{ scene: SceneSpec; index: number; fallbackTransition?: an
           }}
         >
           {!hasCustomTsx && <NoiseShapesLayer seed={th.st.seed + index} />}
-          {!(isLegacyFullMap && hasMapOverlay) && !(hasMapOverlay && mapMode === 'full-stage') && scene.beats.map((b, i) => (
+          {!(isLegacyFullMap && hasMapOverlay) && !(hasMapOverlay && mapMode === 'full-stage' && frame >= (scene.map_overlay?.enter_frame ?? 0) - 2) && scene.beats.map((b, i) => (
             <Sequence key={i} from={b.from - BEAT_LEAD_FRAMES} durationInFrames={b.dur + BEAT_LEAD_FRAMES} layout="none" name={`${scene.id}:${b.kind}`}>
               <MotionCtx.Provider value={{ speed, settled: !!b.settled }}>
                 <BeatView beat={b} />
