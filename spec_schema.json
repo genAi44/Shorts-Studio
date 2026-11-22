@@ -29,7 +29,10 @@
     "countries": "array",
     "highlight": "array",
     "points": "array",
-    "_fallback": "boolean"
+    "_fallback": "boolean",
+    "hide": "array",
+    "_entity": "string",
+    "img": "string"
   },
   "beats": {
     "generative_canvas": {
@@ -580,6 +583,33 @@
         "scene_spec": "object",
         "narration_cues": "array",
         "tsx_id": "string"
+      }
+    },
+    "year_counter": {
+      "required": [
+        "kind",
+        "year"
+      ],
+      "fields": {
+        "year": "number",
+        "to_year": "number",
+        "era": "string",
+        "label": "string",
+        "title": "string"
+      }
+    },
+    "person_card": {
+      "required": [
+        "kind",
+        "name"
+      ],
+      "fields": {
+        "name": "string",
+        "years": "string",
+        "role": "string",
+        "query": "string",
+        "img": "string",
+        "title": "string"
       }
     }
   }

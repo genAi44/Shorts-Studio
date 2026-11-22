@@ -335,6 +335,14 @@ def scene_beats(scene, words, dur_frames, geo, hook_first=None, photo=None, degr
             b.pop("tsx_id", None)
         if b["kind"] == "map":
             b["view"] = map_view(geo, b)
+        elif b["kind"] == "person_card" and photo and not b.get("img"):
+            try:
+                pb = photo({"kind": "photo", "query": b.get("query") or b.get("name"), "text": b.get("name"), "must_show": b.get("query") or b.get("name")}, sent_text)
+                if isinstance(pb, dict) and pb.get("img"):
+                    b["img"] = pb["img"]
+            except Exception as _pe:  # noqa: BLE001
+                from .config import record_fallback
+                record_fallback(f"person photo unavailable ({_pe}): symbolic silhouette", beat_id="person_card")
         elif b["kind"] == "map_pin":
             # Use scene's visual data (has lat/lon + ISO codes) to build a real GeoJSON view
             vis = scene.get("visual", {})
@@ -373,6 +381,13 @@ def build_spec(script, style, plan, total_frames, geo, audio_name="audio.wav", p
         words = [{"t": w, "s": round(s, 3), "e": round(e, 3)} for (w, s, e) in p["audio"]["words"]]
         sc_vi = sc.get("_vi") if isinstance(sc.get("_vi"), dict) else {}
         beats = scene_beats(sc, words, dur, geo, hook_first, photo, degrade, visual_mode=sc_vi.get("visual_mode", ""))
+        # entity -> visual rule: every registered entity gets its visual (insert shot if the plan missed it); places go to the overlay
+        per_sentence = (script.get("_entities") or {}).get(sc["id"]) if isinstance(script, dict) else None
+        entity_mentions = None
+        if per_sentence:
+            from . import entities as _ent
+            beats = _ent.ensure_visuals(beats, per_sentence, words, dur, photo=photo)
+            entity_mentions = _ent.geo_mentions(per_sentence, words, [])
         if sc["role"] == "hook":
             # first frame must be thumbnail-quality; settle beat[0] so springs render at full state
             if beats:
@@ -395,11 +410,13 @@ def build_spec(script, style, plan, total_frames, geo, audio_name="audio.wav", p
             inh_locs = sc_vi.get("explicit_and_inherited_locations") or []
             map_overlay = build_scene_map_overlay(
                 sc, words, dur, geo=geo, scene_idx=idx, prev_overlay=prev_map_overlay,
-                inherited_locations=inh_locs,
+                inherited_locations=inh_locs, entity_mentions=entity_mentions,
             )
             if map_overlay:
                 prev_map_overlay = map_overlay
-        except Exception:
+        except Exception as _mo_err:  # noqa: BLE001
+            from .config import record_fallback
+            record_fallback(f"map overlay failed for scene {sc.get('id')}: {_mo_err}", beat_id=str(sc.get("id")))
             map_overlay = None
         sc_vi = sc.get("_vi") if isinstance(sc.get("_vi"), dict) else {}
         scene_obj = {
@@ -411,6 +428,7 @@ def build_spec(script, style, plan, total_frames, geo, audio_name="audio.wav", p
             "beats": beats,
             "visuals": visuals,
             "entities": entities,
+            "entity_plan": per_sentence or [],
             "transition": transition,
             "map_overlay": map_overlay,
             "visual_mode": sc_vi.get("visual_mode"),

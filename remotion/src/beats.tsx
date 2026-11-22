@@ -33,6 +33,7 @@ import {Headline} from './text';
 
 import {AccentShapes, PhotoBeat, isAlt, useFont2} from './photo';
 import {CitySceneBeat, ArchitectureBeat, MysterySceneBeat} from './sceneBeats';
+import {YearCounterBeat, PersonCardBeat} from './entityBeats';
 
 import {MapLayoutCtx, MotionCtx, on, rgba, useTheme} from './theme';
 import {BEAT_ZONE, CAPTION_ZONE, HEADLINE_ZONE, SAFE_BOTTOM, SAFE_TOP, SCENE_FIT} from './layout';
@@ -214,7 +215,7 @@ export const BeatShell: React.FC<{beat: Beat; children: React.ReactNode}> = ({be
         'generative_canvas', 'versus_battle', 'balance_meter', 'stack_pyramid',
         'deep_time_slider', 'macro_zoom_globe', 'subsurface_mine', 'dot_matrix_population',
         'money_waterfall', 'frontline_clash', 'animated_route', 'bars', 'line_chart', 'pie_chart',
-        'city_skyline', 'architecture' // these draw their own title overlay: a second headline stacked on it
+        'city_skyline', 'architecture', 'year_counter', 'person_card' // these draw their own title: a second headline would stack on it
       ].includes(beat.kind) ? <div style={{opacity: 1 - exit}}><Headline text={beat.title} /></div> : null}
 
     </AbsoluteFill>
@@ -2290,6 +2291,8 @@ export const BeatView: React.FC<{beat: Beat}> = ({beat}) => {
     case 'architecture': body = <ArchitectureBeat beat={beat} />; break;
 
     case 'mystery_scene': body = <MysterySceneBeat beat={beat} />; break;
+    case 'year_counter': body = <YearCounterBeat beat={beat} />; break;
+    case 'person_card': body = <PersonCardBeat beat={beat} />; break;
 
     case 'split': body = <SplitBeat beat={beat} />; break;
 

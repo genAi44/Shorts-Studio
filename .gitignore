@@ -39,3 +39,7 @@ frames/
 graphify-out/
 remotion/src/generated/.tsx_cache.json
 remotion/public/spec.json
+
+# runtime caches of the entity system
+data/entity_cache.json
+data/nominatim_cache.json

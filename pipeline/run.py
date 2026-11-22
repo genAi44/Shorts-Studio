@@ -135,6 +135,12 @@ def produce(script, style, voice_id, job_dir, log=print, progress=lambda f: None
         m = media.Media(os.path.join(job_dir, "public", "media"), log) if use_photos else None
         if m:
             log("البحث عن صور مرخّصة لكل جملة…")
+        try:
+            from . import entities
+            entities.ensure_plan(script, geo)
+        except Exception as _ee:  # noqa: BLE001
+            from .config import record_fallback
+            record_fallback(f"entity plan failed ({_ee}): legacy detection only", beat_id="entities")
         spec = rem.build_spec(script, style, plan, int(round(total * FPS)), geo,
                               photo=m.resolve if m else None, degrade=True)
         try:

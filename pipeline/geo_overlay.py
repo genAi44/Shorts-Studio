@@ -9,6 +9,8 @@ import math
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
+import json
+
 import numpy as np
 
 from .config import FPS
@@ -203,7 +205,7 @@ def _format_gps(lat: float, lon: float) -> str:
     return f"{abs(lat):.1f}°{ns} {abs(lon):.1f}°{ew}"
 
 
-def _d_svg(xy: np.ndarray, min_d: float = 1.6) -> str:
+def _d_svg(xy: np.ndarray, min_d: float = 1.6, close: bool = True) -> str:
     out, last = [], None
     for x, y in xy:
         if last is None or (x - last[0]) ** 2 + (y - last[1]) ** 2 >= min_d ** 2:
@@ -211,7 +213,7 @@ def _d_svg(xy: np.ndarray, min_d: float = 1.6) -> str:
             last = (float(x), float(y))
     if len(out) < 3:
         return ""
-    return "M" + "L".join(f"{x:.1f} {y:.1f}" for x, y in out) + "Z"
+    return "M" + "L".join(f"{x:.1f} {y:.1f}" for x, y in out) + ("Z" if close else "")
 
 
 def _find_word_timestamp(
@@ -507,6 +509,104 @@ def _fit_zoom(geo: Any, iso: Any, S: float, K: float) -> Optional[float]:
     return max(1.0, min(4.0, 0.7 * min(688.0 / w_px, 412.0 / h_px)))
 
 
+_SCALE_LABEL = {"village": "قرية", "town": "بلدة", "city": "مدينة", "capital": "عاصمة", "region": "منطقة", "country": "دولة",
+                "continent": "قارة", "ocean": "محيط", "globe": "الكرة الأرضية"}
+_TERRAIN_LABEL = {"river": "نهر", "mountain": "جبل", "desert": "صحراء", "lake": "بحيرة", "strait": "مضيق", "island": "جزيرة"}
+
+
+def _geojson_extent(gj: str) -> List[Tuple[float, float]]:
+    try:
+        geom = json.loads(gj)
+        pts: List[Tuple[float, float]] = []
+
+        def walk(c: Any) -> None:
+            if isinstance(c, (list, tuple)) and c and isinstance(c[0], (int, float)):
+                pts.append((float(c[1]), float(c[0])))
+            elif isinstance(c, (list, tuple)):
+                for x in c:
+                    walk(x)
+
+        walk(geom.get("coordinates"))
+        if not pts:
+            return []
+        lats, lons = [p[0] for p in pts], [p[1] for p in pts]
+        return [(min(lats), min(lons)), (max(lats), max(lons))]
+    except Exception:
+        return []
+
+
+def mention_from_entity(e: Dict[str, Any], words: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Validated entity (pipeline/entities.py) -> overlay mention dicts, timed on the spoken word. One entity can
+    yield several mentions (a route has one per stop, a conflict has two sides)."""
+    scene_dur = max([float(w.get("e", 0.0)) for w in words] + [3.0])
+
+    def mk(kind: str, label: str, name_ar: str, name_en: str, lat: float, lon: float, token: str, nth: int = 0, **extra: Any) -> Dict[str, Any]:
+        s, en, wi = _find_word_timestamp(token, words, scene_dur, fallback_ratio=0.15)
+        s += 0.55 * nth
+        m = {"matched_token": token, "kind": kind, "kind_label": label, "name_ar": name_ar, "name_en": name_en,
+             "country_ar": extra.pop("country_ar", "") or "", "iso3": (extra.pop("iso3", "") or "").upper(),
+             "iso2": (extra.pop("iso2", "") or "").lower(), "lat": float(lat), "lon": float(lon), "coords": _format_gps(float(lat), float(lon)),
+             "is_microstate": False, "start_sec": round(s, 3), "end_sec": round(en + 0.55 * nth, 3), "word_index": wi, "char_pos": wi}
+        m.update(extra)
+        return m
+
+    t = e.get("type")
+    token = str(e.get("text") or e.get("name_ar") or "")
+    if t == "place":
+        sc = e.get("scale") or "city"
+        label = _SCALE_LABEL.get(sc, "مدينة")
+        common = dict(country_ar=e.get("country_ar"), iso3=e.get("iso3"), iso2=e.get("iso2"), scale=sc)
+        if sc in ("village", "town", "city"):
+            return [mk("city", label, e["name_ar"], e["name_en"], e["lat"], e["lon"], token, **common)]
+        if sc == "capital":
+            return [mk("capital", label, e["name_ar"], e["name_en"], e["lat"], e["lon"], token, **common)]
+        if sc == "country":
+            return [mk("country", label, e["name_ar"], e["name_en"], e["lat"], e["lon"], token, country_ar=e["name_ar"], iso3=e.get("iso3"), iso2=e.get("iso2"), scale=sc)]
+        if sc == "continent":
+            m = mk("continent", label, e["name_ar"], e["name_en"], e["lat"], e["lon"], token, iso3=e.get("iso3"), scale=sc)
+            m["continent_isos"] = list(e.get("continent_isos") or [])
+            return [m]
+        hh, hw = float(e.get("half_h", 12.0)), float(e.get("half_w", 18.0))
+        if sc == "globe":
+            return [mk("globe", label, e["name_ar"] or "الكرة الأرضية", e["name_en"] or "Earth", 15.0, 10.0, token, scale=sc,
+                       extent=[(-58.0, -175.0), (72.0, 175.0)], feature={"shape": "area", "half_h": 0.0, "half_w": 0.0})]
+        if sc == "ocean":
+            return [mk("ocean", label, e["name_ar"], e["name_en"], e["lat"], e["lon"], token, scale=sc,
+                       extent=[(e["lat"] - hh, e["lon"] - hw), (e["lat"] + hh, e["lon"] + hw)],
+                       feature={"shape": "area", "half_h": hh, "half_w": hw})]
+        # region (administrative area without a polygon in the data): marked area around the point
+        return [mk("region", label, e["name_ar"], e["name_en"], e["lat"], e["lon"], token, scale=sc, iso3=e.get("iso3"), iso2=e.get("iso2"),
+                   extent=[(e["lat"] - 1.6, e["lon"] - 2.0), (e["lat"] + 1.6, e["lon"] + 2.0)], feature={"shape": "area", "half_h": 1.6, "half_w": 2.0})]
+    if t == "terrain":
+        sc = e.get("scale") or "river"
+        label = _TERRAIN_LABEL.get(sc, "معلم")
+        ext = _geojson_extent(e["geojson"]) if e.get("geojson") else []
+        ext = ext or [(e["lat"] - 1.4, e["lon"] - 1.8), (e["lat"] + 1.4, e["lon"] + 1.8)]
+        shape = sc if sc in ("river", "lake", "mountain") else "area"
+        if shape in ("river", "lake") and not e.get("geojson"):
+            shape = "area"
+        ft: Dict[str, Any] = {"shape": shape, "geojson": e.get("geojson"), "approx": bool(e.get("approx")),
+                              "half_h": (ext[1][0] - ext[0][0]) / 2.0, "half_w": (ext[1][1] - ext[0][1]) / 2.0}
+        return [mk("terrain", label, e["name_ar"], e["name_en"], e["lat"], e["lon"], token, scale=sc, extent=ext, feature=ft)]
+    if t == "route":
+        out = []
+        for i, s in enumerate(e["stops"]):
+            out.append(mk("city", "محطة", str(s.get("name_ar") or f"{i + 1}"), str(s.get("name_en") or ""), s["lat"], s["lon"], token, nth=i, scale="town", route=True))
+        return out
+    if t == "conflict":
+        out = []
+        for i, side in enumerate((e["a"], e["b"])):
+            lat, lon = float(side.get("lat", 0.0)), float(side.get("lon", 0.0))
+            out.append(mk("city", "طرف", str(side.get("name_ar") or ""), "", lat, lon, token, nth=i, scale="city", arrow="attack"))
+        return out
+    if t == "empire":
+        hh, hw = 7.0, 10.0
+        return [mk("empire", "إمبراطورية", e["name_ar"], e.get("name_en") or "", float(e["lat"]), float(e["lon"]), token, scale="region",
+                   extent=[(float(e["lat"]) - hh, float(e["lon"]) - hw), (float(e["lat"]) + hh, float(e["lon"]) + hw)],
+                   feature={"shape": "area", "half_h": hh, "half_w": hw, "approx": True})]
+    return []
+
+
 def build_scene_map_overlay(
     sc: Dict[str, Any],
     words: List[Dict[str, Any]],
@@ -515,6 +615,7 @@ def build_scene_map_overlay(
     scene_idx: int = 0,
     prev_overlay: Optional[Dict[str, Any]] = None,
     inherited_locations: Optional[List[Dict[str, Any]]] = None,
+    entity_mentions: Optional[List[Dict[str, Any]]] = None,
 ) -> Optional[Dict[str, Any]]:
     """
     Builds a complete, self-contained `map_overlay` specification for a Remotion Scene
@@ -527,7 +628,8 @@ def build_scene_map_overlay(
     narration = str(sc.get("narration") or sc.get("text") or "")
     on_screen = str(sc.get("on_screen") or sc.get("title") or "")
 
-    mentions = extract_timed_geo_mentions(narration, on_screen, words, dur_frames)
+    # validated entity plan (pipeline/entities.py) wins; the legacy dictionary matcher only runs when there is none
+    mentions = entity_mentions if entity_mentions is not None else extract_timed_geo_mentions(narration, on_screen, words, dur_frames)
     if not mentions and inherited_locations and role not in ("cta", "loop"):
         inh_text = " ".join(str(loc.get("name_ar") or "") for loc in inherited_locations[:2] if isinstance(loc, dict))
         if inh_text.strip():
@@ -571,6 +673,8 @@ def build_scene_map_overlay(
         # use the city coordinates so the country centroid doesn't skew the pin or bbox.
         ref_m = city_by_iso3.get(iso3, m) if m.get("kind") == "country" else m
         pts_for_view.append({"lat": float(ref_m["lat"]), "lon": float(ref_m["lon"])})
+        for (elat, elon) in (m.get("extent") or []):
+            pts_for_view.append({"lat": float(elat), "lon": float(elon)})
 
     # Include previous overlay's last point ONLY if continuing within the exact same country (iso3)
     prev_wp = None
@@ -604,6 +708,9 @@ def build_scene_map_overlay(
     def sect(b: Tuple[float, float, float, float]) -> bool:
         return not (b[2] < win[0] or b[0] > win[2] or b[3] < win[1] or b[1] > win[3])
 
+    world_view = any(m.get("kind") in ("globe", "ocean") for m in mentions)
+    ctx_budget, ctx_min_d = (160000, 3.0) if world_view else (18000, 1.6)
+
     def country_path(iso_code: str) -> str:
         if not geo.has(iso_code):
             return ""
@@ -615,7 +722,7 @@ def build_scene_map_overlay(
             if (bb[2] - bb[0]) * S * K < 1.5 and (bb[3] - bb[1]) * S < 1.5:
                 continue
             for ring in poly:
-                parts.append(_d_svg(proj_arr(ring)))
+                parts.append(_d_svg(proj_arr(ring), min_d=ctx_min_d if iso_code not in isos else 1.6))
         return "".join(p for p in parts if p)
 
     ctx_paths: List[str] = []
@@ -626,7 +733,7 @@ def build_scene_map_overlay(
         if sect(geo.main_bbox(iso_code)):
             d_str = country_path(iso_code)
             if d_str:
-                if acc_ctx_len + len(d_str) > 18000 and ctx_paths:
+                if acc_ctx_len + len(d_str) > ctx_budget and ctx_paths:
                     break
                 ctx_paths.append(d_str)
                 acc_ctx_len += len(d_str)
@@ -644,6 +751,36 @@ def build_scene_map_overlay(
             "cx": cx,
             "cy": cy,
         })
+
+    # terrain / sea / region / empire features (rivers, lakes, areas, mountains) drawn on top of the land
+    features: List[Dict[str, Any]] = []
+    for idx_f, m in enumerate(mentions):
+        ft = m.get("feature")
+        if not isinstance(ft, dict):
+            continue
+        fx, fy = proj_xy(float(m["lon"]), float(m["lat"]))
+        item: Dict[str, Any] = {"id": f"ft_{scene_idx}_{idx_f}", "shape": ft.get("shape"), "label": m["name_ar"], "kind_label": m["kind_label"],
+                                "cx": fx, "cy": fy, "approx": bool(ft.get("approx")),
+                                "trigger_frame": max(0, int(round(m["start_sec"] * FPS)) - 4), "d": "", "rx": 0.0, "ry": 0.0}
+        if ft.get("shape") in ("river", "lake") and ft.get("geojson"):
+            try:
+                geom = json.loads(ft["geojson"])
+                lines = geom["coordinates"] if geom["type"] in ("MultiLineString", "MultiPolygon") else [geom["coordinates"]]
+                parts = []
+                for ln in lines:
+                    rings = ln if geom["type"] in ("Polygon", "MultiPolygon") else [ln]
+                    if geom["type"] == "MultiPolygon":
+                        rings = [r for poly in ln for r in poly]
+                    for ring in rings:
+                        parts.append(_d_svg(proj_arr(np.asarray(ring, np.float64)[:, :2]), min_d=1.0, close=ft.get("shape") == "lake"))
+                item["d"] = "".join(p for p in parts if p)
+            except Exception:
+                item["d"] = ""
+        if ft.get("shape") in ("area",) or not item["d"] and ft.get("shape") in ("river", "lake"):
+            item["shape"] = "area" if item["shape"] in ("river", "lake") else item["shape"]
+            item["rx"] = max(14.0, float(ft.get("half_w", 3.0)) * S * K)
+            item["ry"] = max(14.0, float(ft.get("half_h", 3.0)) * S)
+        features.append(item)
 
     # Compute frame timing for each waypoint synced to the voiceover
     single_country_scene = len(isos) <= 1
@@ -667,8 +804,8 @@ def build_scene_map_overlay(
         )
         zoom_variety = 0.18 if prev_same_country else 0.0
 
-        if m.get("kind") == "continent":
-            target_zoom = 1.0  # region/continent: show the whole fitted view (all highlighted countries)
+        if m.get("kind") in ("continent", "ocean", "globe", "terrain", "empire", "region", "conflict", "route") or m.get("route") or m.get("arrow"):
+            target_zoom = 1.0  # fitted view already frames the whole subject (all highlighted countries / the feature)
         elif m.get("is_microstate"):
             target_zoom = 2.15 + zoom_variety
         elif single_country_scene:
@@ -686,10 +823,14 @@ def build_scene_map_overlay(
             fit = _fit_zoom(geo, iso_m, S, K)
             if fit:
                 target_zoom = round(fit + zoom_variety, 2)
+        if m.get("scale") in ("village", "town") and not m.get("route"):
+            target_zoom = max(target_zoom, 2.6)  # tiny place: the magnifier lens shows the close-up
 
         waypoints.append({
             "id": f"wp_{scene_idx}_{idx_m}",
             "kind": m["kind"],
+            "arrow": m.get("arrow"),
+            "scale": m.get("scale"),
             "kind_label": m["kind_label"],
             "name_ar": m["name_ar"],
             "name_en": m["name_en"],
@@ -748,6 +889,7 @@ def build_scene_map_overlay(
         "countries": countries_out,
         "waypoints": waypoints,
         "prev_waypoint": prev_projected,
+        "features": features,
         "zoom_hierarchy": zoom_hierarchy,
         "map_style": "historical" if is_hist_map else "modern",
     }

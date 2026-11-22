@@ -2,6 +2,7 @@ import React, {CSSProperties, useContext} from 'react';
 
 import {AbsoluteFill, interpolate, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {SafeImg} from './SafeImg';
+import {Icon} from './icons';
 
 import {clamp01, enterStyle, useIdle, useProgress, useSpring} from './hooks';
 
@@ -314,9 +315,10 @@ const Pic: React.FC<{beat: Beat; fit: 'cover' | 'contain'; style?: CSSProperties
 
     return (
 
-      <div style={{...style, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg, ${rgba(th.p.accent, 0.55)}, ${rgba(th.p.accent2, 0.55)})`, color: rgba(th.p.text), fontSize: 44, padding: 40, textAlign: 'center', direction: 'ltr', fontFamily: 'sans-serif'}}>
+      <div style={{...style, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg, ${rgba(th.p.accent, 0.55)}, ${rgba(th.p.accent2, 0.55)})`, color: rgba(th.p.text), fontSize: 44, padding: 40, textAlign: 'center', direction: 'ltr', fontFamily: 'sans-serif'}}>
 
-        {`[photo] ${beat.query || ''}`}
+        {beat.icon ? <Icon name={beat.icon} size={340} color={rgba(th.p.text)} strokeWidth={1.5} /> : null}
+        <div dir="rtl" style={{fontSize: 64, fontWeight: 800, marginTop: beat.icon ? 24 : 0}}>{beat.text || beat.query || ''}</div>
 
       </div>
 

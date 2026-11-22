@@ -32,7 +32,22 @@ export type MapCountryShape = {
   cy: number;
 };
 
+export type MapFeature = {
+  id: string;
+  shape: 'river' | 'lake' | 'area' | 'mountain' | string;
+  label: string;
+  kind_label: string;
+  d: string;
+  cx: number;
+  cy: number;
+  rx: number;
+  ry: number;
+  approx: boolean;
+  trigger_frame: number;
+};
+
 export type MapOverlaySpec = {
+  features?: MapFeature[];
   enabled: boolean;
   placement?: 'top-left' | 'top-right' | 'bottom-left' | string;
   enter_frame: number;
@@ -112,6 +127,9 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
     }
     if (w.kind === 'country') {
       return `دولة ${w.name_ar}`;
+    }
+    if (['ocean', 'globe', 'terrain', 'empire', 'region'].includes(w.kind)) {
+      return w.name_ar;
     }
     return w.name_ar;
   })();
@@ -275,9 +293,9 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
           <MapViewport
             frame={frame} fps={fps} vw={vw} vh={vh} height={svgRenderHeight}
             ctxPath={ctx_path} countries={countries} waypoints={waypoints} activeIdx={activeIdx}
-            prevWp={prevWp} camTransition={camTransition}
+            prevWp={prevWp} camTransition={camTransition} features={overlay.features || []}
             main={{tx, ty, z: mainZoom}} lens={useLens ? lensCam : null} lensC={lensC}
-            colors={{accent: accentSolid, accent2: accent2Solid, text: '#e2e8f0', sea0: rgba(th.st.palette.c2, 0.95), sea1: th.dark ? '#040914' : rgba(th.st.palette.c2, 1)}}
+            colors={{accent: accentSolid, accent2: accent2Solid, text: '#e2e8f0', ctxFill: rgba(th.p.text, 0.09), ctxStroke: rgba(th.p.text, 0.34), sea0: rgba(th.st.palette.c2, 0.95), sea1: th.dark ? '#040914' : rgba(th.st.palette.c2, 1)}}
             font={arabicFont} uid="mp"
           />
         </div>

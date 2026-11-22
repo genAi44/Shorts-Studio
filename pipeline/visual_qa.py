@@ -243,6 +243,10 @@ def audit_spec(
         for sc in (spec.get("scenes") or []) for b in (sc.get("beats") or []) if b.get("_fallback")
     ]
     report["fallback_warnings"] = get_last_warnings()
+    from .entities import spec_gaps
+    report["entity_gaps"] = spec_gaps(spec)
+    if report["entity_gaps"]:
+        report["passed"] = False
     if check_pixels and job_dir:
         px = _check_still_darkness(spec, job_dir)
         if px:

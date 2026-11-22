@@ -468,6 +468,7 @@ def render():
         "result": None,
         "error": None,
         "facts_count": initial_facts_count,
+        "warnings": [],
     }
     with LOCK:
         JOBS[jid] = job
@@ -476,7 +477,8 @@ def render():
         try:
             res = produce(script, style, b.get("voice_id", ""), str(OUT / jid), engine=b.get("engine"), photos=b.get("photos"),
                           log=lambda m: job["log"].append(m),
-                          progress=lambda f: job.__setitem__("progress", round(f, 3)))
+                          progress=lambda f: (job.__setitem__("progress", round(f, 3)), job.__setitem__("warnings", get_last_warnings())))
+            res["warnings"] = get_last_warnings()  # every fallback the pipeline took, visible to the UI
             res["url"] = f"/outputs/{jid}/{res['video']}"
             if res.get("facts_count"):
                 job["facts_count"] = res["facts_count"]

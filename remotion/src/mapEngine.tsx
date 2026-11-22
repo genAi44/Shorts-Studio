@@ -2,7 +2,7 @@ import React, {useMemo} from 'react';
 import {interpolate, spring} from 'remotion';
 import {rgba} from './theme';
 import {MAP_LENS} from './layout';
-import type {MapCountryShape, MapWaypoint} from './mapOverlay';
+import type {MapCountryShape, MapFeature, MapWaypoint} from './mapOverlay';
 
 /**
  * Vector map engine (SVG, offline, deterministic).
@@ -14,7 +14,7 @@ import type {MapCountryShape, MapWaypoint} from './mapOverlay';
 
 export type MapCam = {tx: number; ty: number; z: number};
 
-type Colors = {accent: string; accent2: string; text: string; sea0: string; sea1: string};
+type Colors = {accent: string; accent2: string; text: string; sea0: string; sea1: string; ctxFill: string; ctxStroke: string};
 
 export type MapViewportProps = {
   frame: number;
@@ -28,6 +28,7 @@ export type MapViewportProps = {
   activeIdx: number;
   prevWp: {x: number; y: number; name_ar?: string} | null;
   camTransition: number;
+  features: MapFeature[];
   main: MapCam;
   lens: MapCam | null; // zoomed view shown in the magnifier when the place is tiny
   lensC: {cx: number; cy: number}; // lens centre inside the VISIBLE part of the viewBox
@@ -65,7 +66,7 @@ const Defs: React.FC<{uid: string; c: Colors; seed: number}> = ({uid, c, seed}) 
       <stop offset="100%" stopColor={c.accent} stopOpacity={0} />
     </radialGradient>
     <pattern id={`${uid}hatch`} width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(35)">
-      <line x1="0" y1="0" x2="0" y2="9" stroke="rgba(255,255,255,0.10)" strokeWidth="1.4" />
+      <line x1="0" y1="0" x2="0" y2="9" stroke={c.ctxStroke} strokeOpacity={0.5} strokeWidth="1.4" />
     </pattern>
     <filter id={`${uid}glow`} x="-25%" y="-25%" width="150%" height="150%">
       <feGaussianBlur stdDeviation="4" result="b" />
@@ -137,12 +138,13 @@ const World: React.FC<{p: MapViewportProps; cam: MapCam; seed: number; isLens?: 
   }
 
   const pulse = ((frame - active.trigger_frame) % 40) / 40;
+  const routeColor = (active as any).arrow === 'attack' ? '#ef4444' : colors.accent2;
 
   return (
     <g transform={`translate(${cam.tx.toFixed(1)} ${cam.ty.toFixed(1)}) scale(${z.toFixed(3)})`}>
       {ctxPath ? (
         <>
-          <path d={ctxPath} fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.2)" strokeWidth={1.1 / z} />
+          <path d={ctxPath} fill={colors.ctxFill} stroke={colors.ctxStroke} strokeWidth={1.1 / z} />
           <path d={ctxPath} fill={`url(#${uid}hatch)`} stroke="none" />
         </>
       ) : null}
@@ -167,6 +169,37 @@ const World: React.FC<{p: MapViewportProps; cam: MapCam; seed: number; isLens?: 
         <rect x={vx} y={vy} width={vwz} height={vhz} filter={`url(#${uid}terrain)`} />
       </g>
 
+      {/* terrain / sea / region features: rivers draw themselves, lakes fill, areas are marked ellipses */}
+      {p.features.map((f) => {
+        const lp = Math.max(0, frame - f.trigger_frame);
+        const fin = Math.min(1, lp / 14);
+        if (frame < f.trigger_frame - 2) return null;
+        const draw = Math.min(1, lp / 42);
+        return (
+          <g key={f.id} opacity={fin}>
+            {f.shape === 'river' && f.d && (
+              <>
+                <path d={f.d} fill="none" stroke={colors.accent2} strokeWidth={9 / z} strokeOpacity={0.2} strokeLinecap="round" strokeLinejoin="round" filter={`url(#${uid}soft)`} />
+                <path d={f.d} fill="none" stroke={colors.accent2} strokeWidth={3.4 / z} strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - draw} filter={`url(#${uid}glow)`} />
+              </>
+            )}
+            {f.shape === 'lake' && f.d && <path d={f.d} fill={colors.accent2} fillOpacity={0.55} stroke={colors.accent2} strokeWidth={2 / z} filter={`url(#${uid}glow)`} />}
+            {f.shape === 'area' && f.rx > 0 && (
+              <>
+                <ellipse cx={f.cx} cy={f.cy} rx={f.rx * (0.6 + 0.4 * draw)} ry={f.ry * (0.6 + 0.4 * draw)} fill={colors.accent} fillOpacity={0.14} stroke={colors.accent2} strokeWidth={2.4 / z} strokeDasharray={`${9 / z} ${8 / z}`} strokeDashoffset={-(frame * 0.6) / z} />
+                {f.approx && <text x={f.cx} y={f.cy + f.ry + 22 / z} textAnchor="middle" fontSize={14 / z} fill={colors.text} opacity={0.75} fontFamily={p.font}>حدود تقريبية</text>}
+              </>
+            )}
+            {f.shape === 'mountain' && (
+              <g transform={`translate(${f.cx} ${f.cy}) scale(${(1 / z).toFixed(3)})`} filter={`url(#${uid}shadow)`}>
+                <path d="M-26 0 L0 -46 L26 0 Z" fill={colors.accent} stroke="#040914" strokeWidth={2.4} />
+                <path d="M-8 -26 L0 -46 L8 -26 L0 -30 Z" fill="#fff" opacity={0.9} />
+              </g>
+            )}
+          </g>
+        );
+      })}
+
       {/* city halo: the subject is the city, not the whole country */}
       {cityFocus && (
         <g>
@@ -177,8 +210,8 @@ const World: React.FC<{p: MapViewportProps; cam: MapCam; seed: number; isLens?: 
 
       {route && (
         <g>
-          <path d={route.d} fill="none" stroke={colors.accent2} strokeWidth={9 / z} strokeOpacity={0.18} strokeLinecap="round" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - route.t} filter={`url(#${uid}soft)`} />
-          <path d={route.d} fill="none" stroke={colors.accent2} strokeWidth={3.2 / z} strokeLinecap="round" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - route.t} filter={`url(#${uid}glow)`} />
+          <path d={route.d} fill="none" stroke={routeColor} strokeWidth={9 / z} strokeOpacity={0.18} strokeLinecap="round" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - route.t} filter={`url(#${uid}soft)`} />
+          <path d={route.d} fill="none" stroke={routeColor} strokeWidth={3.2 / z} strokeLinecap="round" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - route.t} filter={`url(#${uid}glow)`} />
           <path d={route.d} fill="none" stroke="#fff" strokeWidth={1.1 / z} strokeLinecap="round" pathLength={1} strokeDasharray={`0.012 0.03`} strokeDashoffset={-(frame * 0.012)} opacity={0.85} />
           <g transform={`translate(${route.px.toFixed(1)} ${route.py.toFixed(1)}) rotate(${route.ang.toFixed(1)}) scale(${(1 / z).toFixed(3)})`}>
             <path d="M0 0 L-11 -6 L-11 6 Z" fill="#fff" opacity={route.t < 1 ? 1 : 0.0} />

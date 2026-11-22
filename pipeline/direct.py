@@ -81,7 +81,7 @@ KINDS = [
     "stack_pyramid",     "macro_zoom_globe", "subsurface_mine", "dot_matrix_population",
     "money_waterfall", "frontline_clash",
     "line_chart", "pie_chart", "map", "stat", "bigtext", "bars", "timeline", "versus", "list", "icons", "canvas", "photo", "split", "ticker", "cardstack",
-    "city_skyline", "architecture", "mystery_scene",
+    "city_skyline", "architecture", "mystery_scene", "year_counter", "person_card",
     # أنماط مشاهد سينمائية جديدة لتنويع الحركة والإضاءة
     "cinematic_dramatic", "architectural_blueprint", "celestial_constellation",
     "kinetic_wave_field", "radial_light_cathedral", "topographic_contour",
@@ -573,6 +573,24 @@ def normalize_beat(b, sentence="", geo=None):
             return bigtext()
         out["items"] = items
         return _add_camera(out, b)
+    if kind == "year_counter":
+        y = _num(b.get("year"), -5000, 2100, None)
+        if y is None:
+            return bigtext()
+        o = {"kind": "year_counter", "year": int(y), "title": _words(b.get("title"), 5), "label": _words(b.get("label") or fallback_text, 6),
+             "era": _s(b.get("era") or "year", 12)}
+        ty = _num(b.get("to_year"), -5000, 2100, None)
+        if ty is not None:
+            o["to_year"] = int(ty)
+        return _add_camera(o, b)
+    if kind == "person_card":
+        nm = _words(b.get("name") or b.get("title"), 5)
+        if not nm:
+            return bigtext()
+        o = {"kind": "person_card", "name": nm, "years": _s(b.get("years"), 16), "role": _words(b.get("role"), 6), "query": _s(b.get("query"), 60)}
+        if b.get("img"):
+            o["img"] = b["img"]
+        return _add_camera(o, b)
     if kind == "city_skyline":
         o = {"kind": "city_skyline", "title": _words(b.get("title") or fallback_text, 5)}
         if b.get("subtitle") or b.get("sub"):
@@ -1074,6 +1092,8 @@ def _pred_always_true(b: dict, sentence: str = "", geo=None) -> bool:
 
 
 BEAT_RULES: Dict[str, Dict[str, Any]] = {
+    "year_counter": {"predicate": lambda b, s="", g=None: _num(b.get("year"), -5000, 2100, None) is not None, "reason": "year_counter requires a real year number"},
+    "person_card": {"predicate": lambda b, s="", g=None: bool(str(b.get("name") or b.get("title") or "").strip()), "reason": "person_card requires the person's name"},
     "city_skyline": {"predicate": lambda b, s="", g=None: bool(str(b.get("title") or "").strip()), "reason": "city_skyline requires a title naming the city"},
     "architecture": {"predicate": lambda b, s="", g=None: bool(str(b.get("title") or "").strip()), "reason": "architecture requires a title naming the building"},
     "mystery_scene": {"predicate": lambda b, s="", g=None: bool(str(b.get("question") or b.get("text") or "").strip()), "reason": "mystery_scene requires a question"},
@@ -1259,7 +1279,8 @@ PHOTO_RULES = """
 
 - camera: "parallax" للمناظر والمدن، "push-in" للوجوه والمباني، "static" للأحداث التاريخية.
 
-- استعمل photo فقط لما لا تستطيع city_skyline أو architecture أو mystery_scene أو generative_canvas أو map تمثيله (وجه شخص حقيقي، حدث تاريخي لا يُختزل في رمز). لا تزد عن 15-25% من المقاطع، ولا مقطعين متتاليين منه."""
+- استعمل photo فقط لما لا تستطيع city_skyline أو architecture أو mystery_scene أو generative_canvas أو map تمثيله (وجه شخص حقيقي، حدث تاريخي لا يُختزل في رمز). لا تزد عن 15-25% من المقاطع، ولا مقطعين متتاليين منه.
+- قاعدة الكيانات (إلزامية): أي سنة/قرن/حقبة تُذكر → year_counter (year رقم حقيقي)؛ أي شخصية تاريخية → person_card (name, years, role)؛ أي رقم أو قياس → stat أو bars (أرقام حقيقية فقط)؛ أي مكان → خريطة تظهر تلقائياً. لا تكرر نفس المكوّن في مقطعين متتاليين."""
 
 def director_system(photos=True):
 
@@ -1302,6 +1323,11 @@ def apply_beats(script, result, geo=None, llm_retry_fn: Optional[Callable[[List[
                     rule = BEAT_RULES.get(rk)
                     if not rule or not rule["predicate"](raw_list[i], s_txt, geo):
                         failed_reasons.append(f"{sc['id']}[{i}] ({rk}): {rule['reason'] if rule else 'unknown kind'}")
+        try:
+            from . import entities as _ent
+            failed_reasons += _ent.plan_errors(s, got, _ent.ensure_plan(s, geo))
+        except Exception as _e:  # noqa: BLE001 - never silent
+            record_fallback(f"entity validation of the director plan unavailable: {_e}", beat_id="entities")
         if failed_reasons:
             try:
                 retry_res = llm_retry_fn(failed_reasons)

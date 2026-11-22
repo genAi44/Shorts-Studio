@@ -122,6 +122,20 @@ We welcome contributions from **everyone**:
 
 ---
 
+## 🧩 Entity → visual system
+
+Every entity named in the narration gets a visual of its type in its sentence's scene; every place (village … globe) gets a map.
+One registry (`pipeline/entities.py`), one structural llm extraction, local validation, one retry to the director, a visible fallback.
+Guide + how to add a type: [`docs/ENTITIES.md`](docs/ENTITIES.md).
+
+```bash
+python scripts/build_entity_fixture.py                                   # tests/fixtures/entities_spec.json (one scene per entity type)
+SMOKE_FIXTURE=tests/fixtures/entities_spec.json python scripts/smoke_test.py
+python -m pytest tests/test_entities.py                                  # fails when a sentence has an entity but no visual
+```
+
+Fallbacks are listed in `qa_report.json`, returned as `warnings` by `/api/job/<id>` and shown under the video in the UI.
+
 ## 🔬 Visual smoke test
 
 Renders one scene per beat kind (plus map-overlay and LLM-scene cases) and checks every frame automatically.

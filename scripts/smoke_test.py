@@ -28,7 +28,7 @@ from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent
 REMOTION = ROOT / "remotion"
-FIXTURE = ROOT / "tests" / "fixtures" / "all_beats_spec.json"
+FIXTURE = (ROOT / os.environ["SMOKE_FIXTURE"]).resolve() if os.environ.get("SMOKE_FIXTURE") else ROOT / "tests" / "fixtures" / "all_beats_spec.json"
 OUT = ROOT / "outputs" / "smoke"
 FRAMES = [1, 15, 45, 90, 149]
 ENTRANCE_FRAMES = 30  # frames 1 and 15 are inside the entrance: edge/overlap there are warnings
