@@ -106,7 +106,7 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
       return `${w.name_ar} — ${w.country_ar}`;
     }
     if (w.kind === 'continent') {
-      return `قارة ${w.name_ar}`;
+      return `${w.kind_label || 'قارة'} ${w.name_ar}`;
     }
     if (w.kind === 'country') {
       return `دولة ${w.name_ar}`;
@@ -327,7 +327,7 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
 
               {/* Highlighted Target Country Polygons (active country glows, others dim) */}
               {countries.map((c, ci) => {
-                const isActiveCountry = !activeWp.iso3 || c.iso3 === activeWp.iso3;
+                const isActiveCountry = !activeWp.iso3 || activeWp.kind === 'continent' || c.iso3 === activeWp.iso3;
                 return c.d ? (
                   <path
                     key={`c_${c.iso3}_${ci}`}
@@ -471,7 +471,7 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
         >
           <span style={{fontSize: 16, fontWeight: 800, color: '#e2e8f0'}}>
             {pairedCityWp.kind === 'continent'
-              ? `القارة: ${pairedCityWp.name_ar}`
+              ? (pairedCityWp.kind_label === 'منطقة' ? `المنطقة: ${pairedCityWp.name_ar}` : `القارة: ${pairedCityWp.name_ar}`)
               : pairedCityWp.country_ar
               ? `الدولة: ${pairedCityWp.country_ar}`
               : `الموقع: ${pairedCityWp.name_ar}`}

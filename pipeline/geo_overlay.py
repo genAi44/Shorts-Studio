@@ -75,7 +75,12 @@ _CURATED_COUNTRIES_AR: Dict[str, Dict[str, Any]] = {
 }
 
 # قاموس معزّز لأشهر العواصم والمدن العالمية لضمان الدقة الفورية حتى مع اختلاف الهمزات أو التصريف
+# Arabic common words that are also country names: accepted as a country only right after one of these tokens.
+_AMBIGUOUS_COUNTRY_WORDS = {"مالي"}
+_COUNTRY_CONTEXT_PREV = ("دولة", "جمهورية", "في", "إلى", "الى", "من", "نحو", "عاصمة", "شمال", "جنوب", "وسط")
+
 _CURATED_CITIES_AR: Dict[str, Dict[str, Any]] = {
+    "مدينة الكويت": {"name_ar": "مدينة الكويت", "name_en": "Kuwait City", "country_ar": "الكويت", "iso3": "KWT", "iso2": "kw", "lat": 29.3759, "lon": 47.9774, "is_capital": True},
     "سوكري": {"name_ar": "سوكري", "name_en": "Sucre", "country_ar": "بوليفيا", "iso3": "BOL", "iso2": "bo", "lat": -19.0196, "lon": -65.2619, "is_capital": True},
     "لاباز": {"name_ar": "لاباز", "name_en": "La Paz", "country_ar": "بوليفيا", "iso3": "BOL", "iso2": "bo", "lat": -16.4897, "lon": -68.1193, "is_capital": True},
     "لا باز": {"name_ar": "لاباز", "name_en": "La Paz", "country_ar": "بوليفيا", "iso3": "BOL", "iso2": "bo", "lat": -16.4897, "lon": -68.1193, "is_capital": True},
@@ -129,6 +134,13 @@ _CURATED_CONTINENTS_AR: Dict[str, Dict[str, Any]] = {
     "آسيا": {"name_ar": "آسيا", "name_en": "Asia", "iso3": "CHN", "continent_isos": ["CHN", "IND", "SAU", "TUR", "JPN", "IRN"], "lat": 34.0, "lon": 90.0},
     "أفريقيا": {"name_ar": "أفريقيا", "name_en": "Africa", "iso3": "EGY", "continent_isos": ["EGY", "DZA", "NGA", "ETH", "ZAF", "COD"], "lat": 4.0, "lon": 20.0},
     "إفريقيا": {"name_ar": "إفريقيا", "name_en": "Africa", "iso3": "EGY", "continent_isos": ["EGY", "DZA", "NGA", "ETH", "ZAF", "COD"], "lat": 4.0, "lon": 20.0},
+    "العواصم العربية": {"name_ar": "العالم العربي", "name_en": "Arab World", "iso3": "SAU", "is_region": True, "continent_isos": ["SAU","ARE","QAT","KWT","BHR","OMN","EGY","JOR","IRQ","SYR","LBN","MAR","DZA","TUN","LBY","SDN","YEM"], "lat": 27.0, "lon": 35.0},
+    "الدول العربية": {"name_ar": "العالم العربي", "name_en": "Arab World", "iso3": "SAU", "is_region": True, "continent_isos": ["SAU","ARE","QAT","KWT","BHR","OMN","EGY","JOR","IRQ","SYR","LBN","MAR","DZA","TUN","LBY","SDN","YEM"], "lat": 27.0, "lon": 35.0},
+    "العالم العربي": {"name_ar": "العالم العربي", "name_en": "Arab World", "iso3": "SAU", "is_region": True, "continent_isos": ["SAU","ARE","QAT","KWT","BHR","OMN","EGY","JOR","IRQ","SYR","LBN","MAR","DZA","TUN","LBY","SDN","YEM"], "lat": 27.0, "lon": 35.0},
+    "الوطن العربي": {"name_ar": "العالم العربي", "name_en": "Arab World", "iso3": "SAU", "is_region": True, "continent_isos": ["SAU","ARE","QAT","KWT","BHR","OMN","EGY","JOR","IRQ","SYR","LBN","MAR","DZA","TUN","LBY","SDN","YEM"], "lat": 27.0, "lon": 35.0},
+    "العواصم الخليجية": {"name_ar": "دول الخليج", "name_en": "Gulf States", "iso3": "SAU", "is_region": True, "continent_isos": ["SAU","ARE","QAT","KWT","BHR","OMN"], "lat": 25.5, "lon": 50.0},
+    "الدول الخليجية": {"name_ar": "دول الخليج", "name_en": "Gulf States", "iso3": "SAU", "is_region": True, "continent_isos": ["SAU","ARE","QAT","KWT","BHR","OMN"], "lat": 25.5, "lon": 50.0},
+    "دول الخليج": {"name_ar": "دول الخليج", "name_en": "Gulf States", "iso3": "SAU", "is_region": True, "continent_isos": ["SAU","ARE","QAT","KWT","BHR","OMN"], "lat": 25.5, "lon": 50.0},
     "أوقيانوسيا": {"name_ar": "أوقيانوسيا", "name_en": "Oceania", "iso3": "AUS", "continent_isos": ["AUS", "NZL", "PNG"], "lat": -25.0, "lon": 135.0},
 }
 
@@ -392,6 +404,8 @@ def extract_timed_geo_mentions(
                 )
                 if mentions:
                     mentions[-1]["continent_isos"] = list(cinfo.get("continent_isos") or [])
+                    if cinfo.get("is_region"):
+                        mentions[-1]["kind_label"] = "منطقة"
 
     # 3. Dynamic database scan for any other country in AR_ISO3
     if len(mentions) < 4:
@@ -400,6 +414,10 @@ def extract_timed_geo_mentions(
                 continue
             if ar_name in _CITY_STOP_WORDS:
                 continue
+            if ar_name in _AMBIGUOUS_COUNTRY_WORDS and not re.search(
+                rf"(?:{'|'.join(_COUNTRY_CONTEXT_PREV)})\s+{re.escape(ar_name)}(?:$|[\s،؟!.,:؛\-])", clean_text
+            ):
+                continue  # e.g. "مركز مالي" (financial hub) must not resolve to Mali
             if ar_name in ("أمريكا", "امريكا") and re.search(
                 r"(?:أمريكا|امريكا)\s+(?:الجنوبية|الشمالية|اللاتينية|الوسطى)",
                 clean_text,
@@ -637,7 +655,9 @@ def build_scene_map_overlay(
         )
         zoom_variety = 0.18 if prev_same_country else 0.0
 
-        if m.get("is_microstate"):
+        if m.get("kind") == "continent":
+            target_zoom = 1.0  # region/continent: show the whole fitted view (all highlighted countries)
+        elif m.get("is_microstate"):
             target_zoom = 2.15 + zoom_variety
         elif single_country_scene:
             if len(distinct_cities) >= 2:
