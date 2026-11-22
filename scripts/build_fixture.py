@@ -63,6 +63,7 @@ OVERLAY_SCENES = [
     ("overlay_country", "الرياض عاصمة السعودية وأكبر مدنها", "map_zoom"),
     ("overlay_microstate", "المنامة عاصمة مملكة البحرين الصغيرة", "map_zoom"),
     ("overlay_region", "هل تعلم أن بعض العواصم العربية غنية جدا", "map_zoom"),
+    ("overlay_route", "من الرياض عاصمة السعودية إلى أبوظبي عاصمة الإمارات", "map_zoom"),
 ]
 
 LLM_SCENES = [("llm_plain", "DynamicScene_hook_0_0", None), ("llm_with_map", "DynamicScene_lead_0_1", "وتليها مدينة الكويت عاصمة الكويت")]

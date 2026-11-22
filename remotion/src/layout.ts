@@ -83,3 +83,12 @@ export const CANVAS_FIT_BOX = {
 
 // Beats start their entrance this many frames BEFORE their cut, so the first frame of a scene is never empty.
 export const BEAT_LEAD_FRAMES = 6;
+
+// Magnifier lens for tiny places (map viewBox units, 840x520): margin from the visible corner, radius, zoom (x100) at which it appears,
+// and the cap (x100) for the main map while the lens shows the close-up.
+export const MAP_LENS = {
+  margin: 14,
+  r: 100,
+  min_zoom_pct: 220,
+  main_cap_pct: 155,
+} as const;
