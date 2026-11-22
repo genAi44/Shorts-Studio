@@ -351,6 +351,8 @@ def build_spec(script, style, plan, total_frames, geo, audio_name="audio.wav", p
             if map_overlay:
                 prev_map_overlay = map_overlay
         except Exception:
+            import logging as _log
+            _log.getLogger("pipeline.rem").exception("map_overlay failed for scene %s", sc.get("id"))
             map_overlay = None
         sc_vi = sc.get("_vi") if isinstance(sc.get("_vi"), dict) else {}
         scene_obj = {

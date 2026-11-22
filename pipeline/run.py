@@ -74,6 +74,8 @@ def produce(script, style, voice_id, job_dir, log=print, progress=lambda f: None
     script = normalize(script)
     style = norm_style(style)
     geo = get_geo()
+    from .generative_visuals import reset_variety
+    reset_variety()
     # تشغيل وحفظ خطة محرك الذكاء البصري (Visual Intelligence Engine) في مجلد المهمة
     try:
         from .visual_intelligence import analyze_script_visual_intelligence

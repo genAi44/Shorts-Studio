@@ -47,17 +47,12 @@ const Scene: React.FC<{ scene: SceneSpec; index: number; fallbackTransition?: an
   const sceneOpacity = Math.min(enterOp, exitOp);
 
   const hasMapOverlay = Boolean(scene.map_overlay);
-  const isMapFocusedMode = scene.visual_mode === 'map_zoom' || scene.visual_mode === 'battle_map';
-  const mapMode: 'hud' | 'split-bottom' | 'full-stage' = (isLegacyFullMap || (!hasCustomTsx && isMapFocusedMode && activeBeatKind !== 'photo'))
-    ? 'full-stage'
-    : !hasCustomTsx
-      ? 'split-bottom'
-      : 'hud';
-  const hasSplitMap = hasMapOverlay && mapMode === 'split-bottom';
+  // أي ذكر لمكان → خريطة بملء الشاشة
+  const mapMode: 'hud' | 'split-bottom' | 'full-stage' = 'full-stage';
 
   return (
     <AbsoluteFill style={{ opacity: sceneOpacity }}>
-      <MapLayoutCtx.Provider value={{ splitBottom: hasSplitMap }}>
+      <MapLayoutCtx.Provider value={{ splitBottom: false }}>
         <AbsoluteFill
           style={{
             transform: `translate3d(0px, ${enterY.toFixed(1)}px, 0) scale(${camScale.toFixed(4)})`,

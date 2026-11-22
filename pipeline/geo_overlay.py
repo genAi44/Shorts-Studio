@@ -165,6 +165,12 @@ _CURATED_LANDMARKS_AR: Dict[str, Dict[str, Any]] = {
     "الحرب الباردة": {"name_ar": "برلين — الحرب الباردة", "name_en": "Berlin Cold War", "country_ar": "ألمانيا", "iso3": "DEU", "iso2": "de", "lat": 52.5200, "lon": 13.4050},
 }
 
+# الكرة الأرضية / العالم: خريطة عالمية بدول ممثِّلة من كل القارات
+_CURATED_WORLD_AR: Dict[str, Dict[str, Any]] = {
+    k: {"name_ar": k, "name_en": "World", "iso3": "EGY", "continent_isos": ["USA", "BRA", "EGY", "ZAF", "RUS", "CHN", "IND", "AUS", "FRA"], "lat": 20.0, "lon": 10.0}
+    for k in ("الكرة الأرضية", "كوكب الأرض", "خريطة العالم", "العالم بأسره", "أنحاء العالم")
+}
+
 _COMMON_NOUN_CITY_STOPWORDS = {
     "العبور", "عبور", "السلام", "سلام", "النصر", "نصر", "الفتح", "فتح",
     "التحرير", "تحرير", "الثورة", "ثورة", "الشروق", "شروق", "الأمل", "أمل",
@@ -291,7 +297,8 @@ def extract_timed_geo_mentions(
             "عاصمة" if kind == "capital"
             else ("مدينة" if kind == "city"
             else ("قارة" if kind == "continent"
-            else ("معلم" if kind == "landmark" else "دولة")))
+            else ("العالم" if kind == "world"
+            else ("معلم" if kind == "landmark" else "دولة"))))
         )
         mentions.append({
             "matched_token": matched_str,
@@ -372,6 +379,14 @@ def extract_timed_geo_mentions(
                 lon=cinfo["lon"],
                 is_microstate=bool(cinfo.get("is_microstate")),
             )
+
+    # 2a. الكرة الأرضية / العالم
+    for wk in _CURATED_WORLD_AR:
+        if wk in clean_text and not mentions:
+            w = _CURATED_WORLD_AR[wk]
+            _register_mention(wk, "world", w["name_ar"], w["name_en"], w["name_ar"], w["iso3"], "", w["lat"], w["lon"])
+            mentions[-1]["continent_isos"] = list(w["continent_isos"])
+            break
 
     # 2b. Check continents (if no more specific country/city/landmark already found, or alongside)
     if len(mentions) < 3:
@@ -471,6 +486,21 @@ def extract_timed_geo_mentions(
                     lat=float(ci["lat"]),
                     lon=float(ci["lon"]),
                 )
+
+    # 5. قرية/بلدة + اسم: بحث مباشر بلا فلتر حجم السكان
+    if len(mentions) < 4 and engine is not None:
+        for m_ in re.finditer(r"(?:قرية|بلدة|قرى)\s+((?:ال)?[؀-ۿ]+(?:\s[؀-ۿ]+)?)", clean_text):
+            if len(mentions) >= 4:
+                break
+            parts = m_.group(1).split()
+            for cand in dict.fromkeys([" ".join(parts), parts[0]]):
+                try:
+                    pl = engine._match_exact_ar(cand, None) or engine._match_altname(cand, "ar", None)
+                except Exception:
+                    pl = None
+                if pl and pl.lat is not None and pl.lon is not None:
+                    _register_mention(cand, "city", pl.name_ar or cand, pl.name_en or cand, pl.country_ar or "", pl.country_iso3 or "", pl.country_iso2 or "", float(pl.lat), float(pl.lon))
+                    break
 
     # Sort mentions in chronological spoken order (by start_sec, then char_pos)
     mentions.sort(key=lambda m: (m["start_sec"], m["char_pos"]))

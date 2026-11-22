@@ -202,6 +202,14 @@ def validate_generative_canvas_spec(spec: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
+_VARIETY: Dict[str, Any] = {"n": 0, "pal": set(), "env": set(), "app": set(), "cam": set()}
+
+
+def reset_variety() -> None:
+    """يُستدعى مع بداية كل فيديو لتبدأ دورة التنويع من جديد."""
+    _VARIETY.update(n=0, pal=set(), env=set(), app=set(), cam=set())
+
+
 def compose_procedural_scene(topic: str, context: Optional[str] = None) -> Dict[str, Any]:
     """Procedurally generates an intricate scene from primitives based on semantic keywords."""
     t = f"{topic} {context or ''}".lower()
@@ -822,7 +830,9 @@ def compose_procedural_scene(topic: str, context: Optional[str] = None) -> Dict[
     # 9. تصميم مشهد أصيل متكامل عبر محرك السرد البصري (AI Visual Storyteller)
     from .storyteller import design_scene_specification, evaluate_and_improve_scene
 
-    seed_idx = sum(ord(ch) for ch in (topic or "scene")) % 10
+    # تنويع حقيقي: عدّاد + مجموعات "المستخدم" على مستوى الفيديو كله (بدل hash%10 ومجموعات فارغة كل مرة)
+    seed_idx = _VARIETY["n"]
+    _VARIETY["n"] += 1
     designed = design_scene_specification(
         scene_id=f"gen_{seed_idx}",
         role="body",
@@ -833,10 +843,10 @@ def compose_procedural_scene(topic: str, context: Optional[str] = None) -> Dict[
         prev_narration="",
         next_narration="",
         video_title=context or _words(topic, 5),
-        used_palettes=set(),
-        used_environments=set(),
-        used_approaches=set(),
-        used_cameras=set(),
+        used_palettes=_VARIETY["pal"],
+        used_environments=_VARIETY["env"],
+        used_approaches=_VARIETY["app"],
+        used_cameras=_VARIETY["cam"],
     )
     improved, _ = evaluate_and_improve_scene(designed, topic, seed_idx, [])
     return improved
