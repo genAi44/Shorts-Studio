@@ -1009,7 +1009,7 @@ export const computeFit = (els: any[]): {k: number; cx: number; cy: number} => {
       case 'icon': case 'emoji': w = h = el.size ?? 120; break;
       case 'flag': w = el.size ?? 130; h = w * 0.75; break;
       case 'lottie': w = h = el.size ?? 220; break;
-      case 'counter': { const fs = el.fontSize ?? 64; w = (String(el.to ?? '').length + 3) * fs * 0.6; h = fs * 2; break; }
+      case 'counter': { const fs = el.fontSize ?? 64; const dg = String(el.to ?? '').length; w = (dg + Math.floor((dg - 1) / 3)) * fs * 0.62 + 160; h = fs * 2.2; break; }
       case 'gauge': w = el.kind === 'ring' ? 160 : (el.width ?? 400); h = el.kind === 'ring' ? 160 : 80; break;
       case 'text': { const fs = el.size ?? 38; w = Math.min(el.maxWidth ?? 800, String(el.text || '').length * fs * 0.55); h = fs * 1.5; break; }
       default: continue; // shapes/paths/connectors are decor: they scale with the group but don't size it

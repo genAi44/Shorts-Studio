@@ -38,8 +38,11 @@ const Scene: React.FC<{ scene: SceneSpec; index: number; fallbackTransition?: an
 
   // دخول وخروج سينمائي ناعم عند حدود المشاهد (بدل القطع الحاد)
   const enterSpr = index === 0 ? 1 : spring({ frame, fps, config: { damping: 16, stiffness: 180, mass: 0.7 } });
-  const enterScale = index === 0 ? 1 : interpolate(enterSpr, [0, 1], [1.06, 1.0]);
-  const enterY = index === 0 ? 0 : interpolate(enterSpr, [0, 1], [index % 2 === 0 ? 28 : -24, 0]);
+  // 4 entrance variants cycled by scene index so consecutive scenes don't share the same motion
+  const variant = (index + th.st.seed) % 4;
+  const enterScale = index === 0 ? 1 : interpolate(enterSpr, [0, 1], [variant === 2 ? 0.94 : 1.06, 1.0]);
+  const enterY = index === 0 || variant === 3 ? 0 : interpolate(enterSpr, [0, 1], [variant === 0 ? 28 : -24, 0]);
+  const enterX = index === 0 || variant !== 3 ? 0 : interpolate(enterSpr, [0, 1], [index % 2 ? 40 : -40, 0]);
   // Scenes are butt-joined (no overlap), so any opacity dip at the edges shows as a dark flash on every cut
   // (0.72 exit -> 0.25 enter measured). Hard cut + spring settle + SceneWipe carry the transition instead.
   const enterOp = 1;
@@ -62,7 +65,7 @@ const Scene: React.FC<{ scene: SceneSpec; index: number; fallbackTransition?: an
       <MapLayoutCtx.Provider value={{ splitBottom: hasSplitMap }}>
         <AbsoluteFill
           style={{
-            transform: `translate3d(0px, ${enterY.toFixed(1)}px, 0) scale(${camScale.toFixed(4)})`,
+            transform: `translate3d(${enterX.toFixed(1)}px, ${enterY.toFixed(1)}px, 0) scale(${camScale.toFixed(4)})`,
             transformOrigin: '50% 45%',
           }}
         >

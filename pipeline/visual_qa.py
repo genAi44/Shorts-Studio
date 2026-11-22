@@ -103,30 +103,34 @@ def _audit_scene(scene: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _check_still_darkness(spec: Dict[str, Any], job_dir: str) -> Optional[Dict[str, Any]]:
-    """اختياري: يفحص نسبة البكسلات المظلمة في إطار منتصف المشهد الأول عبر render_still."""
+    """اختياري: يرندر إطار منتصف كل مشهد (حزمة واحدة) ويفحص الفراغ المظلم في منطقة البيت (y: 280..1380)."""
     try:
         from PIL import Image
         import numpy as np
         from . import rem
 
-        if not rem.available() or not spec.get("scenes"):
+        scenes = spec.get("scenes") or []
+        if not rem.available() or not scenes:
             return None
-        mid_frame = max(1, int(spec["scenes"][0].get("dur", 30) // 2))
+        frames = [int(sc.get("from", 0)) + max(1, int(sc.get("dur", 30)) // 2) for sc in scenes]
         still_path = os.path.join(job_dir, "qa_still_%d.jpg")
-        rem.render_still(spec, still_path, mid_frame, job_dir)
-        rendered = os.path.join(job_dir, f"qa_still_{mid_frame}.jpg")
-        if not os.path.exists(rendered):
+        rem.render_still(spec, still_path, ",".join(map(str, frames)), job_dir)
+        per_scene = []
+        for sc, fr in zip(scenes, frames):
+            rendered = os.path.join(job_dir, f"qa_still_{fr}.jpg")
+            if not os.path.exists(rendered):
+                continue
+            arr = np.asarray(Image.open(rendered).convert("L"))
+            dark_ratio = float((arr[280:1380, :] < 22).mean())
+            per_scene.append({"scene": sc.get("id"), "frame": fr, "dark_ratio": round(dark_ratio, 3), "empty_warning": dark_ratio > 0.78})
+            try:
+                os.remove(rendered)
+            except OSError:
+                pass
+        if not per_scene:
             return None
-        im = Image.open(rendered).convert("L")
-        arr = np.asarray(im)
-        # Inspect STAGE_A + STAGE_B region (y: 280..1380)
-        roi = arr[280:1380, :]
-        dark_ratio = float((roi < 22).mean())
-        try:
-            os.remove(rendered)
-        except OSError:
-            pass
-        return {"frame": mid_frame, "dark_ratio": round(dark_ratio, 3), "empty_warning": dark_ratio > 0.78}
+        worst = max(per_scene, key=lambda r: r["dark_ratio"])
+        return {**worst, "scenes": per_scene, "empty_warning": any(r["empty_warning"] for r in per_scene)}
     except Exception:
         return None
 
