@@ -281,3 +281,9 @@ def test_color_interpolate_is_rewritten():
     from pipeline.storyteller import _fix_color_interpolate as f
     out = f("interpolate(p, [0, 1], ['#c0c0c0', '#ffd700'], {x: 1}); interpolate(p, [0, 1], [0, 1])")
     assert out.startswith("interpolateColors(") and "; interpolate(p, [0, 1], [0, 1])" in out
+
+
+def test_arabic_text_count_distinguishes_bare_scene():
+    from pipeline.storyteller import _arabic_texts as at
+    assert len(at("<AbsoluteFill><svg><rect/></svg></AbsoluteFill>")) == 0
+    assert len(at("<div>عنوان المشهد</div><div>بطاقة أولى</div><div>بطاقة ثانية</div>")) == 3

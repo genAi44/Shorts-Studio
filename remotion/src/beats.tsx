@@ -2223,6 +2223,11 @@ export const BeatView: React.FC<{beat: Beat}> = ({beat}) => {
     // without one, shift down and enlarge slightly so the beat zone is used.
     return (
       <SlotContainer slot="FULL_STAGE" fullCanvas clip>
+        {/* Backdrop: a blurred, enlarged copy of the scene fills the edges the transform below uncovers,
+            so the scene's own opaque background never shows as a rectangle. */}
+        <div aria-hidden style={{position: 'absolute', inset: 0, transform: 'scale(1.35)', filter: 'blur(40px)', opacity: 0.95}}>
+          <SceneBoundary><DynamicComp frame={frame} fps={fps} dur={beat.dur || 90} /></SceneBoundary>
+        </div>
         <div style={{position: 'absolute', inset: 0, transformOrigin: '50% 6%', transform: hudMap ? 'scale(0.82)' : 'translateY(100px) scale(1.05)', WebkitMaskImage: EDGE_FADE, maskImage: EDGE_FADE, WebkitMaskComposite: 'source-in', maskComposite: 'intersect'}}>
           <SceneBoundary><DynamicComp frame={frame} fps={fps} dur={beat.dur || 90} /></SceneBoundary>
         </div>

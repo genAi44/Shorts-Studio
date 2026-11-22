@@ -1353,6 +1353,16 @@ def _build_llm_scene_prompts(
     return _LLM_TSX_SYSTEM, user_prompt
 
 
+_AR_LITERAL_RE = re.compile(
+    r"""(?:>([^<>{}]*[؀-ۿ][^<>{}]*)<)|(?:['"`]([^'"`\n]*[؀-ۿ][^'"`\n]*)['"`])"""
+)
+
+
+def _arabic_texts(code: str) -> set:
+    """Distinct non-empty Arabic text nodes/string literals in a TSX component."""
+    return {t.strip() for m in _AR_LITERAL_RE.findall(code) for t in m if t.strip()}
+
+
 def _sanitize_llm_tsx(raw_code: str, tsx_id: str) -> Optional[str]:
     if not raw_code or not isinstance(raw_code, str):
         return None
@@ -1611,6 +1621,10 @@ def _synthesize_beat_tsx_via_llm(
         logger.warning("LLM TSX synthesis skipped for scene %d (%s): %s", scene_index, tsx_id, last_err)
         return None
     sanitized = _sanitize_llm_tsx(resp.content, tsx_id)
+    # Richness gate: a scene with (almost) no Arabic text (e.g. three bare bars) is an empty frame, not a scene.
+    if sanitized is not None and len(_arabic_texts(sanitized)) < 3:
+        logger.warning("LLM TSX rejected for scene %d (%s): fewer than 3 Arabic text nodes", scene_index, tsx_id)
+        return None
     if sanitized is None:
         logger.warning(
             "LLM TSX rejected by sanitizer for scene %d (%s); raw_len=%d head=%r",

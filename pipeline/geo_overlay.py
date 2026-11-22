@@ -497,6 +497,16 @@ def extract_timed_geo_mentions(
     return mentions[:4]
 
 
+def _fit_zoom(geo: Any, iso: Any, S: float, K: float) -> Optional[float]:
+    """Zoom (1..4) at which the country's main bbox fills ~70% of the 688x412 view; None if unknown."""
+    if not iso or not geo.has(iso):
+        return None
+    bb = geo.main_bbox(iso)
+    w_px = max((bb[2] - bb[0]) * S * K, 1.0)
+    h_px = max((bb[3] - bb[1]) * S, 1.0)
+    return max(1.0, min(4.0, 0.7 * min(688.0 / w_px, 412.0 / h_px)))
+
+
 def build_scene_map_overlay(
     sc: Dict[str, Any],
     words: List[Dict[str, Any]],
@@ -666,16 +676,16 @@ def build_scene_map_overlay(
                 target_zoom = 1.22 + zoom_variety if m["kind"] in ("capital", "city") else 1.08 + zoom_variety
             else:
                 target_zoom = 1.12 + zoom_variety if m["kind"] in ("capital", "city") else 1.06 + zoom_variety
+            fit = _fit_zoom(geo, iso_m, S, K)  # tiny country (Bahrain): view scale is capped, so zoom in to fill
+            if fit and fit > target_zoom:
+                target_zoom = round(fit, 2)
         else:
             # Multi-country scene: the view is fitted to ALL countries, so a small one (UAE next to Saudi) would be
             # a speck. Zoom until the active country's main bbox fills ~70% of the 688x412 view.
             target_zoom = 1.65 + zoom_variety if m["kind"] in ("capital", "city") else 1.38 + zoom_variety
-            if iso_m and geo.has(iso_m):
-                bb = geo.main_bbox(iso_m)
-                w_px = max((bb[2] - bb[0]) * S * K, 1.0)
-                h_px = max((bb[3] - bb[1]) * S, 1.0)
-                fit = 0.7 * min(688.0 / w_px, 412.0 / h_px)
-                target_zoom = round(max(1.0, min(4.0, fit)) + zoom_variety, 2)
+            fit = _fit_zoom(geo, iso_m, S, K)
+            if fit:
+                target_zoom = round(fit + zoom_variety, 2)
 
         waypoints.append({
             "id": f"wp_{scene_idx}_{idx_m}",
