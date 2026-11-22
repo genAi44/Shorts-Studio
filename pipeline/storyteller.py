@@ -1649,7 +1649,52 @@ def _run_tsc_check() -> Tuple[bool, List[int], str]:
         return True, [], ""
 
 
+def _top_level_args(args: str) -> List[str]:
+    parts, depth, cur, q = [], 0, [], ""
+    for ch in args:
+        if q:
+            q = "" if ch == q else q
+        elif ch in "'\"`":
+            q = ch
+        elif ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            parts.append("".join(cur))
+            cur = []
+            continue
+        cur.append(ch)
+    parts.append("".join(cur))
+    return parts
+
+
+def _fix_color_interpolate(code: str) -> str:
+    """Remotion's interpolate() throws on color strings ("Non-numeric strings can only be interpolated using
+    Easing.step1") and killed the whole render. LLM code does this often: switch such calls to interpolateColors."""
+    out, i = [], 0
+    pat = re.compile(r"\binterpolate(?:Colors)?\(")
+    while True:
+        m = pat.search(code, i)
+        if not m:
+            out.append(code[i:])
+            break
+        depth, j = 1, m.end()
+        while j < len(code) and depth:
+            depth += (code[j] == "(") - (code[j] == ")")
+            j += 1
+        args = code[m.end(): j - 1]
+        is_color = m.group(0).startswith("interpolateColors") or re.search(r"""\[\s*['"](?:#|rgb|hsl)""", args) is not None
+        out.append(code[i: m.start()])
+        if is_color:
+            args = ",".join(_top_level_args(args)[:3])  # interpolateColors takes no extrapolate/easing options
+        out.append(("interpolateColors(" if is_color else "interpolate(") + args + ")")
+        i = j
+    return "".join(out)
+
+
 def _assemble_dynamic_file(header: str, blocks: List[str], registry_entries: List[str]) -> str:
+    blocks = [_fix_color_interpolate(b) for b in blocks]
     return (
         header
         + "\n\n".join(blocks)
@@ -1795,7 +1840,7 @@ def generate_dynamic_tsx_file(
     header = (
         "/* AUTO-GENERATED ORIGINAL TSX SCENES BY AI VIDEO ARCHITECT */\n"
         "import React from 'react';\n"
-        "import {AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig, Easing} from 'remotion';\n\n"
+        "import {AbsoluteFill, interpolate, interpolateColors, spring, useCurrentFrame, useVideoConfig, Easing} from 'remotion';\n\n"
         + ("\n".join(geo_const_lines) + "\n\n" if geo_const_lines else "")
     )
 

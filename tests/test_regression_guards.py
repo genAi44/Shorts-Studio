@@ -266,3 +266,18 @@ class TestRegressionGuards(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_every_sfx_cue_used_by_remotion_has_a_builder():
+    import re
+    from pipeline.sfx import SFX_BUILDERS
+    src = (ROOT / "remotion" / "src" / "sfx.tsx").read_text(encoding="utf-8")
+    m = re.search(r"type SfxName = ([^;]+);", src)
+    names = set(re.findall(r"'(\w+)'", m.group(1)))
+    assert names <= set(SFX_BUILDERS), names - set(SFX_BUILDERS)
+
+
+def test_color_interpolate_is_rewritten():
+    from pipeline.storyteller import _fix_color_interpolate as f
+    out = f("interpolate(p, [0, 1], ['#c0c0c0', '#ffd700'], {x: 1}); interpolate(p, [0, 1], [0, 1])")
+    assert out.startswith("interpolateColors(") and "; interpolate(p, [0, 1], [0, 1])" in out

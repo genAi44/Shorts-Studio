@@ -2200,6 +2200,14 @@ const PieChartBeat: React.FC<{beat: Beat}> = ({beat}) => {
 // The scene's own opaque background gets scaled/shifted above; feather its edges so no hard rectangle shows.
 const EDGE_FADE = 'linear-gradient(to right, transparent, #000 5%, #000 95%, transparent), linear-gradient(to bottom, transparent, #000 4%, #000 96%, transparent)';
 
+// One broken LLM scene (runtime throw) must not abort the whole render: show nothing for that beat instead.
+class SceneBoundary extends React.Component<{children: React.ReactNode}, {failed: boolean}> {
+  state = {failed: false};
+  static getDerivedStateFromError() { return {failed: true}; }
+  componentDidCatch(e: unknown) { console.warn('[scene-boundary] dynamic scene failed:', e); }
+  render() { return this.state.failed ? null : this.props.children; }
+}
+
 // Legacy chart/stat beats anchor around y~650 and leave the rest of BEAT_ZONE (280..1380) empty: re-center + enlarge.
 const FILL_KINDS = new Set(['bars', 'pie_chart', 'line_chart', 'stat', 'stat_ring_v2', 'list', 'timeline']);
 
@@ -2216,7 +2224,7 @@ export const BeatView: React.FC<{beat: Beat}> = ({beat}) => {
     return (
       <SlotContainer slot="FULL_STAGE" fullCanvas clip>
         <div style={{position: 'absolute', inset: 0, transformOrigin: '50% 6%', transform: hudMap ? 'scale(0.82)' : 'translateY(100px) scale(1.05)', WebkitMaskImage: EDGE_FADE, maskImage: EDGE_FADE, WebkitMaskComposite: 'source-in', maskComposite: 'intersect'}}>
-          <DynamicComp frame={frame} fps={fps} dur={beat.dur || 90} />
+          <SceneBoundary><DynamicComp frame={frame} fps={fps} dur={beat.dur || 90} /></SceneBoundary>
         </div>
       </SlotContainer>
     );

@@ -8,7 +8,7 @@ import wave
 import numpy as np
 
 SR = 44100
-SFX_VERSION = "3"
+SFX_VERSION = "4"
 _RNG = np.random.default_rng(7)
 
 
@@ -174,6 +174,9 @@ SFX_BUILDERS = {
     "impact": _impact,
     "riser": _riser,
     "ding": _ding,
+    # sfx.tsx emits 'swipe' and 'chime'; without these files the whole render died on a 404
+    "swipe": lambda: _whoosh(dur=0.22, amp=0.4),
+    "chime": lambda: _ding(dur=0.6, amp=0.3),
     "ambient": _ambient_bed,
 }
 
