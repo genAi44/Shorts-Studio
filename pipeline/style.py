@@ -247,3 +247,23 @@ def art_prompt(script, avoid=()):
     if avoid:
         t += "\n\nستايلات استُخدمت مؤخراً، ابتعد عنها: " + "، ".join(map(str, avoid))
     return t
+
+
+def _hex(c):
+    return "#%02x%02x%02x" % tuple(int(v) for v in c[:3])
+
+
+def theme_from_style(style):
+    """Colours an LLM-generated scene must use so it sits on this video's ground (see storyteller prompt)."""
+    pal = style["palette"]
+    dark = bool(style.get("dark"))
+    ground = pal["c1"]
+    if dark:
+        card_bg = "rgba(%d,%d,%d,0.92)" % tuple(int(v * 0.55) for v in ground)
+        card_text = _hex(pal["text"])
+    else:
+        card_bg = "rgba(255,255,255,0.88)"
+        card_text = _hex(pal["text"])
+    return {"bg_type": style["bg"]["type"], "ground": _hex(ground), "text": _hex(pal["text"]), "accent": _hex(pal["accent"]),
+            "accent2": _hex(pal["accent2"]), "dark": dark, "card_bg": card_bg, "card_text": card_text,
+            "card_border": _hex(pal["accent"])}

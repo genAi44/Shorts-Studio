@@ -2203,9 +2203,6 @@ const PieChartBeat: React.FC<{beat: Beat}> = ({beat}) => {
   );
 };
 
-// The scene's own opaque background gets scaled/shifted above; feather its edges so no hard rectangle shows.
-const EDGE_FADE = 'linear-gradient(to right, transparent, #000 5%, #000 95%, transparent), linear-gradient(to bottom, transparent, #000 4%, #000 96%, transparent)';
-
 // One broken LLM scene (runtime throw) must not abort the whole render: show nothing for that beat instead.
 class SceneBoundary extends React.Component<{children: React.ReactNode}, {failed: boolean}> {
   state = {failed: false};
@@ -2213,6 +2210,8 @@ class SceneBoundary extends React.Component<{children: React.ReactNode}, {failed
   componentDidCatch(e: unknown) { console.warn('[scene-boundary] dynamic scene failed:', e); }
   render() { return this.state.failed ? null : this.props.children; }
 }
+
+const TSX_SCENE_CSS = '.tsx-scene > div { background: none !important; } .tsx-scene svg rect[width="1080"][height="1920"] { display: none; }';
 
 export const BeatView: React.FC<{beat: Beat}> = ({beat}) => {
   const {hudMap} = useContext(MapLayoutCtx);
@@ -2226,12 +2225,10 @@ export const BeatView: React.FC<{beat: Beat}> = ({beat}) => {
     // without one, shift down and enlarge slightly so the beat zone is used.
     return (
       <SlotContainer slot="FULL_STAGE" fullCanvas clip>
-        {/* Backdrop: a blurred, enlarged copy of the scene fills the edges the transform below uncovers,
-            so the scene's own opaque background never shows as a rectangle. */}
-        <div aria-hidden data-audit-ignore style={{position: 'absolute', inset: 0, transform: 'scale(1.35)', filter: 'blur(40px)', opacity: 0.95}}>
-          <SceneBoundary><DynamicComp frame={frame} fps={fps} dur={beat.dur || 90} /></SceneBoundary>
-        </div>
-        <div style={{position: 'absolute', inset: 0, transformOrigin: `50% ${SCENE_FIT.origin_y_pct}%`, transform: hudMap ? `scale(${SCENE_FIT.compress_pct / 100})` : `translateY(${SCENE_FIT.plain_shift_px}px) scale(${SCENE_FIT.plain_scale_pct / 100})`, WebkitMaskImage: EDGE_FADE, maskImage: EDGE_FADE, WebkitMaskComposite: 'source-in', maskComposite: 'intersect'}}>
+        {/* LLM scenes paint their own opaque dark background. Make the scene transparent so the video's ground
+            (paper / kraft / solid / ink ...) shows through: scene root background off, full-canvas glow rects hidden. */}
+        <style>{TSX_SCENE_CSS}</style>
+        <div className="tsx-scene" style={{position: 'absolute', inset: 0, transformOrigin: `50% ${SCENE_FIT.origin_y_pct}%`, transform: hudMap ? `scale(${SCENE_FIT.compress_pct / 100})` : `translateY(${SCENE_FIT.plain_shift_px}px) scale(${SCENE_FIT.plain_scale_pct / 100})`}}>
           <SceneBoundary><DynamicComp frame={frame} fps={fps} dur={beat.dur || 90} /></SceneBoundary>
         </div>
       </SlotContainer>

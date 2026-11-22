@@ -439,7 +439,8 @@ def build_spec(script, style, plan, total_frames, geo, audio_name="audio.wav", p
         ]
         if all_tsx_beats:
             only_set = {only_scene_idx} if only_scene_idx is not None else None
-            generate_dynamic_tsx_file(all_tsx_beats, only_indices=only_set)
+            from .style import theme_from_style
+            generate_dynamic_tsx_file(all_tsx_beats, only_indices=only_set, theme=theme_from_style(style))
     except Exception as _tsx_err:
         import logging as _log
         _log.getLogger("pipeline.rem").exception("Dynamic TSX generation failed: %s", _tsx_err)

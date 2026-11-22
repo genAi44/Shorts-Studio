@@ -73,3 +73,20 @@ def test_plain_backgrounds_are_varied_and_readable():
     assert set(["paper", "kraft", "solid", "ink"]) <= set(types)
     # legacy names stay valid
     assert st.normalize({"bg": {"type": "waves"}})["bg"]["type"] == "waves"
+
+
+def test_llm_scene_prompt_carries_the_video_theme():
+    from pipeline import storyteller as st, style
+    s = style.random_style(1)
+    th = style.theme_from_style(s)
+    assert th["ground"].startswith("#") and th["dark"] == bool(s["dark"])
+    beat = {"tsx_id": "X", "narration": "نص تجريبي للمشهد", "title": "عنوان", "id": "body1"}
+    st._TSX_THEME = None
+    sig0 = st._compute_beat_tsx_sig(beat, {})
+    st._TSX_THEME = th
+    try:
+        sysp, user = st._build_llm_scene_prompts(beat, 1, 8, {})
+        assert "VIDEO THEME" in user and th["ground"] in user and "NO `background`" in sysp
+        assert st._compute_beat_tsx_sig(beat, {}) != sig0  # cached scenes of another theme are not reused
+    finally:
+        st._TSX_THEME = None

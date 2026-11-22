@@ -25,6 +25,32 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from .config import ROOT
+
+# Theme of the video being built (set by generate_dynamic_tsx_file). ponytail: module-level because the prompt
+# builder runs in a ThreadPoolExecutor (a ContextVar would not propagate); two simultaneous renders could clash.
+_TSX_THEME: Optional[Dict[str, Any]] = None
+
+
+def _theme_block() -> str:
+    t = _TSX_THEME
+    if not t:
+        return ""
+    kind = "dark" if t["dark"] else "LIGHT"
+    return (
+        "\nVIDEO THEME (this wins over any colour instruction in the system rules): "
+        f"the video ground is {kind} {t['ground']} (background type `{t['bg_type']}`) and shows through the scene. "
+        "The outer <AbsoluteFill> MUST NOT set any background (no gradient, no full-canvas rect/glow): leave it transparent. "
+        f"Free-standing text and strokes use {t['text']}; accents {t['accent']} and {t['accent2']}. "
+        f"Every card: background `{t['card_bg']}`, border `1.5px solid {t['card_border']}`, text colour {t['card_text']}. "
+        "Never use white text directly on a light ground, nor dark text on a dark ground.\n"
+    )
+
+
+def _theme_sig() -> str:
+    t = _TSX_THEME
+    return json.dumps(t, sort_keys=True) if t else ""
+
+
 from .geo import AR_ISO3, detect_city_in_text, get_geo
 
 logger = logging.getLogger("pipeline.storyteller")
@@ -1234,7 +1260,7 @@ STRICT CODE & SAFE ZONE RULES:
    const frame = props.frame ?? currentFrame;
    const fps = props.fps ?? videoFps;
    const dur = Math.max(1, props.dur ?? 150);
-4. Wrap outer JSX inside <AbsoluteFill style={{pointerEvents: 'none', overflow: 'hidden', background: '...'}}>...</AbsoluteFill>.
+4. Wrap outer JSX inside <AbsoluteFill style={{pointerEvents: 'none', overflow: 'hidden'}}> with NO `background` on it (the video's own ground shows through; a VIDEO THEME block in the user message gives the colours).
 5. NO external assets: NO <img>, NO <image>, NO <canvas>, NO fetch, NO require, NO window, NO document, NO Three.js.
 6. Safe layout zones on 1080x1920:
    - Top header/title banner: `x: 60..1020, y: 110..240` (keep `y >= 110` so camera pan/zoom never clips the top edge, and NEVER place any icon, badge, or illustration inside `y: 90..245` overlapping the header text!)
@@ -1259,8 +1285,8 @@ def _build_llm_scene_prompts(
     role = _clean_text(beat.get("id") or beat.get("role") or f"scene_{scene_index}")
     video_title = _clean_text(beat.get("video_title") or "")
     facts_summary = _clean_text(beat.get("facts_summary") or "")
-    accent = beat.get("accent") or "#38bdf8"
-    sec = beat.get("secondary_accent") or "#f59e0b"
+    accent = beat.get("accent") or (_TSX_THEME or {}).get("accent") or "#38bdf8"
+    sec = beat.get("secondary_accent") or (_TSX_THEME or {}).get("accent2") or "#f59e0b"
 
     # Split full scene narration into 2-3 timed semantic clauses so the LLM animates them progressively
     clauses = [c.strip() for c in re.split(r"[،,؛;:.!؟?\-]+", narration) if c.strip()]
@@ -1345,6 +1371,7 @@ def _build_llm_scene_prompts(
         f"Previous Scene Narration: \"{prev_narration}\"\n"
         f"Next Scene Narration: \"{next_narration}\"\n"
         f"Suggested Accent Colors (customize atmosphere to fit the scene's story): primary={accent}, secondary={sec}\n"
+        f"{_theme_block()}"
         f"{geo_note}"
         f"\nCreate a rich, concrete, multi-phase visual storytelling composition specifically explaining this scene's narration within the context of \"{video_title}\". "
         f"Include recognizable domain-specific SVG illustrations/diagrams + crisp horizontal Arabic infographic cards/labels via `<foreignObject><div dir=\"rtl\" lang=\"ar\" style={{{{fontFamily: \"'Cairo', 'Noto Kufi Arabic', sans-serif\"}}}}>...</div></foreignObject>`. "
@@ -1757,7 +1784,8 @@ def _compute_beat_tsx_sig(beat: Dict[str, Any], geo_ctx: Dict[str, Any]) -> str:
     import hashlib
     payload = json.dumps(
         {
-            "sig_v": 11,
+            "sig_v": 12,
+            "theme": _theme_sig(),
             "tsx_id": beat.get("tsx_id", ""),
             "narration": _clean_text(beat.get("narration") or ""),
             "title": _clean_text(beat.get("title") or beat.get("on_screen") or ""),
@@ -1820,10 +1848,14 @@ def generate_dynamic_tsx_file(
     scenes_beats: List[Dict[str, Any]],
     use_llm: Optional[bool] = None,
     only_indices: Optional[set] = None,
+    theme: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """Generates bespoke, original React/TSX components in `remotion/src/generated/DynamicScenes.tsx`
     for every scene beat, synthesizing custom TSX via LLM and verifying with TypeScript `tsc --noEmit`.
+    `theme` (style.theme_from_style) makes the scenes follow the video's ground / palette.
     """
+    global _TSX_THEME
+    _TSX_THEME = theme
     os.makedirs(DYNAMIC_TSX_PATH.parent, exist_ok=True)
     total = len(scenes_beats)
     seen_ids: set = set()
