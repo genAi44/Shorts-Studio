@@ -1,5 +1,6 @@
 """جسر Remotion: يبني مواصفة الفيديو (JSON) من السكربت والستايل والتوقيت، ويشغّل الرندر عبر Node."""
 import copy
+import re
 import glob
 import json
 import os
@@ -204,6 +205,53 @@ def _make_cues(kind: str, fps: int, visual_mode: str = "") -> list:
     return cues
 
 
+_AR_PUNCT = re.compile(r"[،؛؟.,:!?\"'()\-]")
+
+
+def _norm_ar(t: str) -> str:
+    t = _AR_PUNCT.sub("", str(t or "")).strip()
+    return t[2:] if t.startswith("ال") and len(t) > 4 else t
+
+
+def _entity_word_frame(sent_text: str, words, lo: int, hi: int):
+    """Frame of the first word (in tokens lo..hi) naming the place the sentence is about, else None."""
+    try:
+        from .geo_overlay import extract_timed_geo_mentions
+        gm = extract_timed_geo_mentions(sent_text, "", [], 150)
+    except Exception:
+        return None
+    m0 = next((x for x in gm if x.get("kind") in ("landmark", "capital", "city", "country")), None)
+    if not m0:
+        return None
+    want = [_norm_ar(w) for w in str(m0.get("matched_token") or m0.get("name_ar") or "").split() if w]
+    want = [w for w in want if len(w) >= 3]
+    if not want:
+        return None
+    for i in range(max(lo, 0), min(hi, len(words) - 1) + 1):
+        tok = _norm_ar(words[i].get("t", ""))
+        tok = tok[1:] if tok[:1] in "وبلف" and len(tok) > 4 and tok[1:] and tok not in want else tok
+        if any(w == tok or (len(w) >= 4 and w in tok) for w in want):
+            return int(round(words[i]["s"] * FPS))
+    return None
+
+
+def _align_photo_starts(beats, starts, groups, sents, words, ntok):
+    """A photo of a place must appear when the place is NAMED (like its map waypoint), not at sentence start.
+    Shifts a photo beat's start to the entity word (anticipation 3 frames) when that is <= 2.5 s later."""
+    if len(words) != ntok:
+        return
+    for i, b in enumerate(beats):
+        if i == 0 or i >= len(starts) or i >= len(groups) or not isinstance(b, dict) or b.get("kind") != "photo":
+            continue
+        fr = _entity_word_frame(sents[i] if i < len(sents) else "", words, groups[i][0], groups[i][-1])
+        if fr is None:
+            continue
+        new = fr - 3
+        limit = starts[i + 1] - 14 if i + 1 < len(starts) else new
+        if 0 < new - starts[i] <= 75 and new <= limit:
+            starts[i] = new
+
+
 # ------------------------------------------------------------------ مقاطع المشهد بالتوقيت
 def scene_beats(scene, words, dur_frames, geo, hook_first=None, photo=None, degrade=True, visual_mode=""):
     """يقسّم الجمل على توقيت الكلمات: كل مقطع يبدأ عند نطق أول كلمة في جملته."""
@@ -240,6 +288,7 @@ def scene_beats(scene, words, dur_frames, geo, hook_first=None, photo=None, degr
             wi = min(g[0], len(words) - 1) if len(words) == ntok else min(int(g[0] / max(ntok, 1) * len(words)), len(words) - 1)
             starts.append(max(int(round(words[wi]["s"] * FPS)) - 3, starts[-1] + 14))
         sents = direct.sentences(scene["narration"])
+        _align_photo_starts(beats, starts, groups, sents, words, ntok)
     out = []
     for i, b in enumerate(beats):
         sent_text = sents[i] if i < len(sents) else (b.get("narration") or scene.get("narration", ""))

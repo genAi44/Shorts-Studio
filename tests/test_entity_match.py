@@ -29,3 +29,19 @@ def test_geo_mentions_arabic_ambiguity_and_regions():
     assert "مدينة الكويت" in names("وتليها مدينة الكويت عاصمة دولة الكويت")
     assert "العالم العربي" in names("بعض العواصم العربية تتجاوز ثروتها")
     assert "دول الخليج" in names("ما هي العواصم الخليجية الأخرى")
+
+
+def test_photo_start_moves_to_entity_word():
+    from pipeline import direct, rem
+    n = "الرياض عاصمة السعودية تبرز كثيرا. الأغنى عالمياً وتتميز أبوظبي عاصمة الإمارات."
+    groups = direct.sentence_groups(n)
+    ntok = sum(len(g) for g in groups)
+    toks = n.split()[:ntok]
+    words = [{"t": t, "s": j * 0.42, "e": j * 0.42 + 0.38} for j, t in enumerate(toks)]
+    sents = direct.sentences(n)
+    beats = [{"kind": "map"}, {"kind": "photo"}]
+    starts = [0, int(round(words[groups[1][0]]["s"] * 30)) - 3]
+    first = starts[1]
+    rem._align_photo_starts(beats, starts, groups, sents, words, ntok)
+    assert starts[1] > first  # photo now waits for «أبوظبي»
+    assert starts[0] == 0
