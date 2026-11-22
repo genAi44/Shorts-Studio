@@ -62,7 +62,7 @@ const Scene: React.FC<{ scene: SceneSpec; index: number; fallbackTransition?: an
 
   return (
     <AbsoluteFill style={{ opacity: sceneOpacity }}>
-      <MapLayoutCtx.Provider value={{ splitBottom: hasSplitMap }}>
+      <MapLayoutCtx.Provider value={{ splitBottom: hasSplitMap, hudMap: hasCustomTsx && hasMapOverlay }}>
         <AbsoluteFill
           style={{
             transform: `translate3d(${enterX.toFixed(1)}px, ${enterY.toFixed(1)}px, 0) scale(${camScale.toFixed(4)})`,

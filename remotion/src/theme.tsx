@@ -63,4 +63,4 @@ export const useTheme = () => useContext(ThemeCtx);
 export const MotionCtx = createContext({speed: 1, settled: false});
 
 // تخطيط الشاشة المقسمة: صورة في الأعلى وخريطة تفاعلية عريضة في الأسفل
-export const MapLayoutCtx = createContext({splitBottom: false});
+export const MapLayoutCtx = createContext<{splitBottom: boolean; hudMap?: boolean}>({splitBottom: false, hudMap: false});

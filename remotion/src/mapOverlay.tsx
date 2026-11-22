@@ -154,21 +154,18 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
   // Placement: panoramic split-bottom stage below photo, full-stage map, or corner HUD
   const effectiveMode = mode || (splitBottom ? 'split-bottom' : 'hud');
   const isWide = effectiveMode === 'split-bottom' || effectiveMode === 'full-stage';
-  const placement = overlay.placement === 'top-right' ? 'top-right' : 'top-left';
-  const cardWidth = isWide ? 984 : Math.min(520, vw);
-  const svgRenderHeight = effectiveMode === 'full-stage' ? 980 : effectiveMode === 'split-bottom' ? 620 : Math.min(340, vh);
+  const cardWidth = isWide ? 984 : 600;
+  const svgRenderHeight = effectiveMode === 'full-stage' ? 980 : effectiveMode === 'split-bottom' ? 620 : 330;
   const slotName = effectiveMode === 'split-bottom' ? 'STAGE_B' : effectiveMode === 'full-stage' ? 'FULL_STAGE' : 'HUD';
   const posStyle: React.CSSProperties =
     effectiveMode === 'full-stage'
       ? {left: 48, top: 200}
       : effectiveMode === 'split-bottom'
       ? {left: 48, top: 710}
-      : placement === 'top-right'
-      ? {right: 48, top: 290}
-      : {left: 48, top: 290};
+      : {left: 240, top: 995}; // HUD sits in the bottom band (above CAPTION_ZONE) so it never covers the scene content
 
-  const slideOffsetX = isWide ? 0 : placement === 'top-right' ? (1 - enterSpring) * 65 : -(1 - enterSpring) * 65;
-  const slideOffsetY = isWide ? (1 - enterSpring) * 44 : (1 - enterSpring) * 24;
+  const slideOffsetX = 0;
+  const slideOffsetY = (1 - enterSpring) * 44;
 
   const accentSolid = rgba(th.p.accent, 1);
   const accent2Solid = rgba(th.p.accent2, 1);

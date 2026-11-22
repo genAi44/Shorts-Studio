@@ -34,7 +34,7 @@ import {Headline} from './text';
 import {AccentShapes, PhotoBeat, isAlt, useFont2} from './photo';
 import {CitySceneBeat, ArchitectureBeat, MysterySceneBeat} from './sceneBeats';
 
-import {MotionCtx, on, rgba, useTheme} from './theme';
+import {MapLayoutCtx, MotionCtx, on, rgba, useTheme} from './theme';
 import {BEAT_ZONE, CAPTION_ZONE, HEADLINE_ZONE, SAFE_BOTTOM, SAFE_TOP} from './layout';
 import {Beat, RGB} from './types';
 
@@ -2197,16 +2197,24 @@ const PieChartBeat: React.FC<{beat: Beat}> = ({beat}) => {
   );
 };
 
+// The scene's own opaque background gets scaled/shifted above; feather its edges so no hard rectangle shows.
+const EDGE_FADE = 'linear-gradient(to right, transparent, #000 5%, #000 95%, transparent), linear-gradient(to bottom, transparent, #000 4%, #000 96%, transparent)';
+
 export const BeatView: React.FC<{beat: Beat}> = ({beat}) => {
+  const {hudMap} = useContext(MapLayoutCtx);
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
 
   // If this beat has its own AI-generated bespoke TSX component, render it inside a clipped slot above captions
   const DynamicComp = beat.tsx_id ? DYNAMIC_SCENE_REGISTRY[beat.tsx_id] : undefined;
   if (DynamicComp) {
+    // LLM scenes are top-heavy (content ends ~y=1050..1190). With a HUD map, compress them above the map band;
+    // without one, shift down and enlarge slightly so the beat zone is used.
     return (
       <SlotContainer slot="FULL_STAGE" fullCanvas clip>
-        <DynamicComp frame={frame} fps={fps} dur={beat.dur || 90} />
+        <div style={{position: 'absolute', inset: 0, transformOrigin: '50% 6%', transform: hudMap ? 'scale(0.82)' : 'translateY(100px) scale(1.05)', WebkitMaskImage: EDGE_FADE, maskImage: EDGE_FADE, WebkitMaskComposite: 'source-in', maskComposite: 'intersect'}}>
+          <DynamicComp frame={frame} fps={fps} dur={beat.dur || 90} />
+        </div>
       </SlotContainer>
     );
   }
