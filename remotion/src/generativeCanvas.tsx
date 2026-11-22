@@ -994,6 +994,34 @@ const CustomSvgIllustrationLayer: React.FC<{
 };
 
 // ------------------------------------------------------------------ Generative Canvas Beat Main
+// Templates place small fixed-size primitives around the canvas centre, leaving most of the 9:16 frame dark.
+// Measure the content bbox (rough per-type size estimates) and scale it up to fill the beat zone.
+const FIT_BOX = {w: 920, h: 900, cx: 540, cy: 860, max: 1.9};
+export const computeFit = (els: any[]): {k: number; cx: number; cy: number} => {
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const el of els) {
+    const rx = Number(el.x ?? 540), ry = Number(el.y ?? 960);
+    if (!Number.isFinite(rx) || !Number.isFinite(ry)) continue;
+    const x = Math.max(200, Math.min(880, rx)), y = Math.max(360, Math.min(1550, ry));
+    let w = 0, h = 0;
+    switch (el.type) {
+      case 'badge': { const fs = el.size === 'lg' ? 30 : el.size === 'sm' ? 22 : 26; w = String(el.text || '').length * fs * 0.6 + 110; h = fs * (el.sub ? 3.2 : 2.4); break; }
+      case 'icon': case 'emoji': w = h = el.size ?? 120; break;
+      case 'flag': w = el.size ?? 130; h = w * 0.75; break;
+      case 'lottie': w = h = el.size ?? 220; break;
+      case 'counter': { const fs = el.fontSize ?? 64; w = (String(el.to ?? '').length + 3) * fs * 0.6; h = fs * 2; break; }
+      case 'gauge': w = el.kind === 'ring' ? 160 : (el.width ?? 400); h = el.kind === 'ring' ? 160 : 80; break;
+      case 'text': { const fs = el.size ?? 38; w = Math.min(el.maxWidth ?? 800, String(el.text || '').length * fs * 0.55); h = fs * 1.5; break; }
+      default: continue; // shapes/paths/connectors are decor: they scale with the group but don't size it
+    }
+    x0 = Math.min(x0, x - w / 2); x1 = Math.max(x1, x + w / 2);
+    y0 = Math.min(y0, y - h / 2); y1 = Math.max(y1, y + h / 2);
+  }
+  if (!Number.isFinite(x0)) return {k: 1, cx: FIT_BOX.cx, cy: FIT_BOX.cy};
+  const k = Math.max(1, Math.min(FIT_BOX.max, FIT_BOX.w / Math.max(1, x1 - x0), FIT_BOX.h / Math.max(1, y1 - y0)));
+  return {k, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2};
+};
+
 export const GenerativeCanvasBeat: React.FC<{ beat: any }> = ({ beat }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -1016,6 +1044,7 @@ export const GenerativeCanvasBeat: React.FC<{ beat: any }> = ({ beat }) => {
     elements: beat.elements || [],
   };
 
+  const fit = React.useMemo(() => computeFit(spec.elements as any[]), [spec.elements]);
   const accentColor = spec.accent || defaultAccent;
   const secondaryAccent = beat.secondary_accent || defaultSec;
   const cinematicIntensity = cinematicMode ? 1 : 0;
@@ -1096,6 +1125,7 @@ export const GenerativeCanvasBeat: React.FC<{ beat: any }> = ({ beat }) => {
       )}
 
       {/* Render all generative elements */}
+      <div style={{position: 'absolute', inset: 0, transformOrigin: `${fit.cx}px ${fit.cy}px`, transform: `translate(${FIT_BOX.cx - fit.cx}px, ${FIT_BOX.cy - fit.cy}px) scale(${fit.k.toFixed(3)})`}}>
       {spec.elements.map((el, idx) => (
         <GenerativeElementView
           key={el.id || `gen_el_${idx}`}
@@ -1106,6 +1136,7 @@ export const GenerativeCanvasBeat: React.FC<{ beat: any }> = ({ beat }) => {
           settled={Boolean(beat.settled)}
         />
       ))}
+      </div>
 
       {/* Cinematic lighting + vignette + grain layer driven from scene_spec.cinematic / lighting */}
       {cinematicIntensity > 0 && (
