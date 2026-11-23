@@ -242,7 +242,7 @@ def sandbox_render(items: Dict[str, Dict[str, Any]], style: Dict[str, Any], work
                 elif typ == "overlap" and late:
                     problems[name].append(f"overlapping text: {txt} {where}" + (f" with the second text at {it.get('obox')} (move one of them so the boxes do not intersect)" if it.get("obox") else ""))
                 elif typ == "map" and late:
-                    problems[name].append(f"text sits on the map stage {txt} {where}: the map occupies {it.get('obox')}; keep every other element above its top edge (y <= 690 for split-bottom)")
+                    problems[name].append(f"text sits on the map stage {txt} {where}: the map occupies {it.get('obox')}. Either keep every other element above its top edge (y <= 690) with much less content (no big counter), or switch to <MapLayer mode=\"hud\" /> (small map at y ~995..1420) and use y 280..960 for the content")
                 elif typ == "zone":
                     problems[name].append(f"text outside the safe zones (caption zone / above safe top): {txt} {where}")
                 elif typ == "rtl":

@@ -3,10 +3,10 @@
  * historical persons (PersonCardBeat). Pure SVG/CSS + spring/interpolate; colours come from the video theme so
  * they sit on any ground (paper, kraft, solid, ink ...).
  */
-import React from 'react';
+import React, {useContext} from 'react';
 import {AbsoluteFill, interpolate, staticFile} from 'remotion';
 import {Easing} from 'remotion';
-import {rgba, useTheme} from './theme';
+import {MapLayoutCtx, rgba, useTheme} from './theme';
 import {enterStyle, useFont, useProgress, useSpring} from './hooks';
 import {BEAT_ZONE} from './layout';
 import type {Beat} from './types';
@@ -18,6 +18,7 @@ const fmtYear = (y: number) => (y < 0 ? `${Math.abs(y)} ق.م` : String(y));
 export const YearCounterBeat: React.FC<{beat: Beat}> = ({beat}) => {
   const th = useTheme();
   const font = useFont();
+  const {splitBottom} = useContext(MapLayoutCtx); // a map stage fills the lower half: stack the counter above it
   const year = Number(beat.year);
   const to = beat.to_year !== undefined && beat.to_year !== null ? Number(beat.to_year) : null;
   const p = useProgress(0.1, 1.2);
@@ -25,22 +26,23 @@ export const YearCounterBeat: React.FC<{beat: Beat}> = ({beat}) => {
   const span = Math.max(60, Math.round(Math.abs((to ?? year) - year) * 1.6) || (Math.abs(year) > 1000 ? 140 : 60));
   const a0 = year - span * 0.45, a1 = (to ?? year) + span * 0.55;
   const cur = Math.round(interpolate(p, [0, 1], [a0, to ?? year], {easing: Easing.bezier(0.22, 1, 0.36, 1)}));
-  const X0 = 150, X1 = 930, AY = BEAT_ZONE.center_y + 190;
+  const X0 = 150, X1 = 930, AY = splitBottom ? BEAT_ZONE.top + 355 : BEAT_ZONE.center_y + 190;
+  const bigTop = splitBottom ? BEAT_ZONE.top + 60 : BEAT_ZONE.center_y - 330, labelTop = splitBottom ? BEAT_ZONE.top + 250 : BEAT_ZONE.center_y - 60;
   const xOf = (v: number) => X0 + ((v - a0) / (a1 - a0)) * (X1 - X0);
   const ticks = Array.from({length: 5}, (_, i) => Math.round(a0 + ((a1 - a0) * i) / 4));
   const text = rgba(th.p.text), acc = rgba(th.p.accent), acc2 = rgba(th.p.accent2);
   const showTo = to !== null;
-  const bigSize = showTo ? 150 : 210;
+  const bigSize = splitBottom ? (showTo ? 110 : 150) : showTo ? 150 : 210;
   return (
     <AbsoluteFill>
       {beat.title ? (
-        <div dir="rtl" style={{position: 'absolute', left: BEAT_ZONE.left, right: BEAT_ZONE.right, top: BEAT_ZONE.title_top + 40, textAlign: 'center', ...font, fontSize: 56, fontWeight: 800, color: text, ...enterStyle(lbl, 'rise', 30)}}>{beat.title}</div>
+        <div dir="rtl" style={{position: 'absolute', left: BEAT_ZONE.left, right: BEAT_ZONE.right, top: splitBottom ? BEAT_ZONE.top - 40 : BEAT_ZONE.title_top + 40, textAlign: 'center', ...font, fontSize: splitBottom ? 44 : 56, fontWeight: 800, color: text, ...enterStyle(lbl, 'rise', 30)}}>{beat.title}</div>
       ) : null}
-      <div style={{position: 'absolute', left: 0, right: 0, top: BEAT_ZONE.center_y - 330, textAlign: 'center', direction: 'ltr', ...font, fontSize: bigSize, fontWeight: 900, lineHeight: 1.1, color: acc, fontVariantNumeric: 'tabular-nums', textShadow: th.shadow}}>
+      <div style={{position: 'absolute', left: 0, right: 0, top: bigTop, textAlign: 'center', direction: 'ltr', ...font, fontSize: bigSize, fontWeight: 900, lineHeight: 1.1, color: acc, fontVariantNumeric: 'tabular-nums', textShadow: th.shadow}}>
         {showTo ? `${fmtYear(year)} ← ${fmtYear(Math.round(interpolate(p, [0, 1], [year, to as number])))}` : fmtYear(cur)}
       </div>
       {beat.label ? (
-        <div dir="rtl" style={{position: 'absolute', left: BEAT_ZONE.left, right: BEAT_ZONE.right, top: BEAT_ZONE.center_y - 60, textAlign: 'center', ...font, fontSize: 52, fontWeight: 700, color: text, ...enterStyle(lbl, 'rise', 36)}}>{beat.label}</div>
+        <div dir="rtl" style={{position: 'absolute', left: BEAT_ZONE.left, right: BEAT_ZONE.right, top: labelTop, textAlign: 'center', ...font, fontSize: splitBottom ? 40 : 52, fontWeight: 700, color: text, ...enterStyle(lbl, 'rise', 36)}}>{beat.label}</div>
       ) : null}
       <svg width={1080} height={1920} style={{position: 'absolute', inset: 0}}>
         <line x1={X0} y1={AY} x2={X1} y2={AY} stroke={rgba(th.p.text, 0.35)} strokeWidth={5} strokeLinecap="round" />
