@@ -50,7 +50,7 @@ CAPTION_ZONE = {
 HUD_MAP_ZONE = {"top": 995, "left": 240, "width": 600, "svg_height": 330}
 
 # Map stage placements (wide card) used when a map is the main subject.
-MAP_STAGE_ZONE = {"full_top": 200, "split_top": 710, "width": 984, "full_svg_height": 980, "bleed_width": 1080, "bleed_svg_height": 1000, "bleed_head_top": 96, "bleed_foot_bottom": 110, "split_svg_height": 620}
+MAP_STAGE_ZONE = {"full_top": 200, "split_top": 710, "width": 984, "full_svg_height": 980, "bleed_width": 1080, "bleed_svg_height": 1000, "bleed_head_top": 96, "split_head_top": 40, "split_foot_bottom": 24, "bleed_foot_bottom": 110, "split_svg_height": 620}
 
 # LLM scenes are top-heavy: compress above the HUD map, or shift down/enlarge slightly when there is no map (percent / px / ratio x100).
 SCENE_FIT = {"compress_pct": 82, "plain_shift_px": 100, "plain_scale_pct": 105, "origin_y_pct": 6}

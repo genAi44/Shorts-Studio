@@ -56,7 +56,7 @@ def _kit_text() -> str:
 
 _HINTS = (
     ("edge", "touches/overflows the canvas edge", "Give every text container an explicit width (<= 920) and centre it: left = LAYOUT.cx - width/2. Pass maxWidth to ArText. Never use right:/negative offsets."),
-    ("overlap", "overlapping text", "Stack elements vertically with explicit y values at least 1.4 x the font size apart, computed from one list, and keep cards from covering each other's text."),
+    ("overlap", "overlapping text", "Stack elements vertically with explicit y values at least 1.4 x the font size apart, computed from one list, and keep cards from covering each other's text. If the two overlapping texts share the same box, the same words are drawn twice (an outline/shadow copy, a duplicated list item, or two layers at the same x/y): draw every string exactly once and use textShadow or colour for emphasis. A keyword longer than ~12 characters at size >= 100 wraps and collides: use size <= 90 or put it in a separate Abs with its own y."),
     ("zone", "safe zones", "Every text must lie between LAYOUT.beat.top and LAYOUT.beat.bottom - 40 (and out of the map card when you use MapLayer)."),
     ("rtl", "right-to-left", "Render every Arabic string with <ArText> (it sets dir=rtl); never put Arabic directly in a div/span/svg text."),
     ("tiny", "too small", "Raise font sizes: body text >= 30 px, labels >= 26 px."),
@@ -173,7 +173,7 @@ def _flat(path: Path) -> bool:
     return float(arr[280:1380, :].std()) < FLAT_STD
 
 
-def sandbox_render(items: Dict[str, Dict[str, Any]], style: Dict[str, Any], workdir: Path) -> Dict[str, List[str]]:
+def sandbox_render(items: Dict[str, Dict[str, Any]], style: Dict[str, Any], workdir: Path, _retry: bool = False) -> Dict[str, List[str]]:
     """Renders 3 frames of every candidate with the REAL composition (one bundle for the batch) in a child process with a
     timeout, then audits them. items: name -> {"ctx": ctx}. Returns name -> problems."""
     problems: Dict[str, List[str]] = {n: [] for n in items}
@@ -199,6 +199,14 @@ def sandbox_render(items: Dict[str, Dict[str, Any]], style: Dict[str, Any], work
                            env=dict(os.environ, AUDIT="1"), capture_output=True, text=True, encoding="utf-8", errors="replace",
                            timeout=60 + 25 * len(all_frames))
         if r.returncode != 0:
+            # a failed batch must not cost every scene a retry: render the scenes one by one so only the guilty one is blamed
+            if len(items) > 1:
+                merged: Dict[str, List[str]] = {}
+                for n, it in items.items():
+                    merged.update(sandbox_render({n: it}, style, workdir))
+                return merged
+            if not _retry:  # a single scene: one more try before it is reported
+                return sandbox_render(items, style, workdir, _retry=True)
             for n in problems:
                 problems[n].append("sandbox render failed: " + (r.stderr or r.stdout)[-300:])
             return problems
@@ -223,7 +231,7 @@ def sandbox_render(items: Dict[str, Dict[str, Any]], style: Dict[str, Any], work
                 if typ == "edge" and late:
                     problems[name].append(f"text touches/overflows the canvas edge: {txt} {where}")
                 elif typ == "overlap" and late:
-                    problems[name].append(f"overlapping text: {txt} {where}")
+                    problems[name].append(f"overlapping text: {txt} {where}" + (f" with the second text at {it.get('obox')} (move one of them so the boxes do not intersect)" if it.get("obox") else ""))
                 elif typ == "zone":
                     problems[name].append(f"text outside the safe zones (caption zone / above safe top): {txt} {where}")
                 elif typ == "rtl":

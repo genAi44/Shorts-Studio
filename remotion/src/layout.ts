@@ -64,6 +64,8 @@ export const MAP_STAGE_ZONE = {
   bleed_width: 1080,
   bleed_svg_height: 1000,
   bleed_head_top: 96,
+  split_head_top: 40,
+  split_foot_bottom: 24,
   bleed_foot_bottom: 110,
   split_svg_height: 620,
 } as const;

@@ -59,7 +59,7 @@ const collect = (): Item[] => {
 };
 
 export const auditItems = (items: Item[]) => {
-  const issues: {type: string; text: string; other?: string; box: number[]; fs?: number}[] = [];
+  const issues: {type: string; text: string; other?: string; box: number[]; obox?: number[]; fs?: number}[] = [];
   for (const it of items) {
     const box = [it.l, it.t, it.r, it.b].map(Math.round);
     if (it.l < EDGE || it.r > CANVAS_WIDTH - EDGE || it.t < 0 || it.b > CANVAS_HEIGHT) issues.push({type: 'edge', text: it.text, box});
@@ -81,7 +81,7 @@ export const auditItems = (items: Item[]) => {
       if (w <= 0 || h <= 0) continue;
       const small = Math.min((a.r - a.l) * (a.b - a.t), (b.r - b.l) * (b.b - b.t));
       if ((w * h) / small > 0.25) {
-        issues.push({type: 'overlap', text: a.text, other: b.text, box: [a.l, a.t, a.r, a.b].map(Math.round)});
+        issues.push({type: 'overlap', text: a.text, other: b.text, box: [a.l, a.t, a.r, a.b].map(Math.round), obox: [b.l, b.t, b.r, b.b].map(Math.round)});
       }
     }
   }

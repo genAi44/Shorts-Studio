@@ -150,3 +150,15 @@ def test_recipe_fixture_scenes_pass_the_static_gate():
 def test_hints_cover_unknown_css_keys_and_prop_types():
     h = sa.hints_for(["line 57: TS2353 Object literal may only specify known properties, and 'justify' does not exist"])
     assert any("justifyContent" in x for x in h)
+
+
+def test_failed_batch_render_is_isolated_per_scene(tmp_path, monkeypatch):
+    class R:
+        returncode, stderr, stdout = 1, "boom", ""
+
+    calls = []
+    monkeypatch.setattr(sa.subprocess, "run", lambda *a, **k: (calls.append(1), R())[1])
+    ctx = {"dur": 60, "words": []}
+    out = sa.sandbox_render({"a": {"ctx": ctx}, "b": {"ctx": ctx}}, norm_style({"seed": 1}), tmp_path)
+    assert set(out) == {"a", "b"} and all("sandbox render failed" in p[0] for p in out.values())
+    assert len(calls) == 5  # batch, then each scene alone with one retry
