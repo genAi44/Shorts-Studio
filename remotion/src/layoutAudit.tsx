@@ -115,6 +115,13 @@ export const auditItems = (items: Item[]) => {
   return issues;
 };
 
+/** union box of everything the scene drew (text + icons, captions excluded): used to reject near-empty scenes */
+const bboxOf = (items: Item[]): number[] | null => {
+  const v = items.filter((i) => !i.caption);
+  if (!v.length) return null;
+  return [Math.min(...v.map((i) => i.l)), Math.min(...v.map((i) => i.t)), Math.max(...v.map((i) => i.r)), Math.max(...v.map((i) => i.b))].map(Math.round);
+};
+
 export const LayoutAudit: React.FC = () => {
   const frame = useCurrentFrame();
   const [handle] = useState(() => delayRender('layout-audit'));
@@ -122,7 +129,7 @@ export const LayoutAudit: React.FC = () => {
     const id = setTimeout(() => {
       try {
         const items = collect();
-        console.log('[AUDIT]' + JSON.stringify({frame, texts: items.filter((i) => !i.caption).length, issues: auditItems(items)}));
+        console.log('[AUDIT]' + JSON.stringify({frame, texts: items.filter((i) => !i.caption).length, bbox: bboxOf(items), issues: auditItems(items)}));
       } finally {
         continueRender(handle);
       }

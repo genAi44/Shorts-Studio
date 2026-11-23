@@ -54,6 +54,15 @@ const visit = (node) => {
   if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
     const tag = node.tagName.getText(sf);
     if (FORBIDDEN_TAGS.has(tag)) add(node, `<${tag}> is forbidden`);
+    if (tag === 'Counter') {
+      const attrs = node.attributes.properties.filter((x) => ts.isJsxAttribute(x));
+      const to = attrs.find((x) => x.name.getText(sf) === 'to');
+      const lit = to && to.initializer && ts.isJsxExpression(to.initializer) && to.initializer.expression && ts.isNumericLiteral(to.initializer.expression) ? Number(to.initializer.expression.text) : null;
+      const has = (n) => attrs.some((x) => x.name.getText(sf) === n);
+      if (lit !== null && Number.isInteger(lit) && lit >= 1000 && lit <= 2100 && !has('year') && !has('suffix') && !has('decimals')) {
+        add(node, `<Counter to={${lit}}> looks like a year and would print "${lit.toLocaleString('en-US')}": add the year prop (<Counter year to={${lit}} />); for a real count of ${lit} items add a suffix`);
+      }
+    }
     for (const a of node.attributes.properties) {
       if (ts.isJsxAttribute(a)) {
         const n = a.name.getText(sf);

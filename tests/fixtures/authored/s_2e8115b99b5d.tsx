@@ -36,6 +36,7 @@ export default function Scene({dur, data}: SceneProps) {
             {data.sentence}
           </ArText>
           <Counter
+            year
             to={1037}
             from={980}
             size={150}

@@ -26,6 +26,7 @@ from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 from .config import FPS, ROOT, record_fallback
 
 REMOTION = ROOT / "remotion"
+MIN_CONTENT_H = 420  # px of vertical extent of everything a scene draws (beat zone is 1100)
 AUTHORED_SRC = REMOTION / "src" / "authored"
 KIT_DOC = ROOT / "docs" / "SCENE_KIT.md"
 CACHE_DIR = ROOT / "data" / "authored_cache"
@@ -61,6 +62,7 @@ _HINTS = (
     ("rtl", "right-to-left", "Render every Arabic string with <ArText> (it sets dir=rtl); never put Arabic directly in a div/span/svg text."),
     ("tiny", "too small", "Raise font sizes: body text >= 30 px, labels >= 26 px."),
     ("blank", "blank", "Draw visible content: at least a hero element and one ArText from frame 20 on."),
+    ("name", "TS2304", "Every component/helper you use must be imported from '../kit' in the first import line (Ribbon, KeyLine, Hub, Steps, Stack, Pinned, Abs, ArText, Icon, Counter ...): add the missing name to that import."),
     ("css", "TS2353", "A style object has a property that is not real CSS (e.g. 'justify'): use exact camelCase CSS names - justifyContent, alignItems, flexDirection, textAlign, gap. Check every key you wrote in style={{...}}."),
     ("recipe", "TS2322", "A prop has the wrong type: check the recipe's exact signature in the kit doc (Steps items are strings; Stack/Hub items are objects; Hub center is a React node)."),
 )
@@ -234,6 +236,9 @@ def sandbox_render(items: Dict[str, Dict[str, Any]], style: Dict[str, Any], work
             late = idx >= 1  # entrance (first test frame) may cross edges / overlap; later frames may not
             if idx == 1 and (_flat(img) or aud.get("texts", 0) == 0):
                 problems[name].append("the scene is blank or has no visible text at mid-scene")
+            bb = aud.get("bbox")
+            if idx == 1 and bb and (bb[3] - bb[1]) < MIN_CONTENT_H and not any(i.get("type") == "map" for i in aud.get("issues", [])):
+                problems[name].append(f"the scene is too sparse: all its content spans only {bb[3] - bb[1]} px of height (need >= {MIN_CONTENT_H}); build a real composition - lead line, hero element, supporting elements, spread over y 280..1380")
             for it in aud.get("issues", []):
                 typ, txt = it["type"], f"'{it.get('text', '')}'" + (f" x '{it['other']}'" if it.get("other") else "")
                 where = f"@{it.get('box')}"

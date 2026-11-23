@@ -16,7 +16,7 @@ export default function Scene({dur, data}: SceneProps) {
       <Abs x={90} y={LAYOUT.beat.center_y - 220} w={900} style={enter(p, 'rise', 60)}>
         <Card style={{padding: 40}}>
           <ArText size={64}>{data.sentence}</ArText>
-          <Counter to={1453} size={150} delay={0.3} />
+          <Counter year to={1453} size={150} delay={0.3} />
         </Card>
       </Abs>
     </AbsoluteFill>
@@ -44,6 +44,8 @@ Good short-form scenes share a few habits. Apply them; do not imitate any specif
 6. **A continuous element behind the content** (`Ribbon`) gives scenes the same visual family; keep it at low alpha.
 7. **One metaphor per scene**: hub (sources), rising steps (progress/stages), list that grows (consequences), pinned card (a fact).
 8. Stagger by 0.1-0.35 s; the key word enters first or on the spoken word (`data.words` has the times).
+9. **Say a number ONCE.** If the hero is a `Counter` (or a big numeral), do not also write the same number in words or digits in a title or label; the second copy is noise. The same for a year: show it once.
+10. **Fill the beat zone.** A scene is a composition spread over y 280..1380 (lead line + hero + supporting elements); a lone word or number with empty space around it is rejected as too sparse.
 
 ## Layout recipes (ready-made, in `../kit`)
 | recipe | use it for | props |
@@ -51,7 +53,7 @@ Good short-form scenes share a few habits. Apply them; do not imitate any specif
 | `KeyLine` | the headline of nearly every scene | `keyword` (big accent word/phrase), `lead?` (small line above), `tail?` (small line below), `size=120`, `delay`, `maxWidth` |
 | `Hub` | something with 2-7 sources/parts/causes | `items=[{icon?: 'lucide:x', label?}]`, `center` (node: an `Icon` ~130 px), `cy`, `radius=300`, `delay` |
 | `Steps` | stages, progress, ranking (first item is on the right) | `items: string[]` (2-5 short labels), `w=900`, `bottom`, `maxH=540` |
-| `Stack` | consequences, features, a numbered list | `items=[{text, icon?}]` (2-6 rows, 150 px apart), `top`, `step=0.5` |
+| `Stack` | consequences, features, a numbered list | `items=[{text, icon?}]` (2-6 rows, 150 px apart), `top`, `step=0.5`, `w=860` |
 | `Pinned` | one fact/number on a card hanging from a string | `x,y,w,h,rotate`, children = `Counter` / `ArText` / `Icon` (no photos) |
 | `Ribbon` | background decoration behind everything | `variant` 0 / 1 / 2 |
 
@@ -99,7 +101,7 @@ sentence (`type`, `scale`, `name_ar`, numbers, years, `lat/lon`), `map_overlay` 
 | `Abs` | absolutely positioned box `{x,y,w?,h?,style}` (px on the canvas) |
 | `Card` | theme card (dark glass on dark grounds, white card on light grounds) |
 | `ArText` | **all Arabic text**: `dir=rtl`, word-by-word entrance, `size, weight, color, align, delay, reveal('words'|'fade'|'none'), maxWidth` |
-| `Counter` | rolling number `{to, from, delay, dur, size, suffix, decimals}` |
+| `Counter` | rolling number `{to, from, delay, dur, size, suffix, decimals, year}`. **A year uses `year`**: `<Counter year to={1956} />` prints 1956 (without it you get "1,956"; the gate rejects it) |
 | `Ring`, `Bar` | progress ring / bar `{value 0..1, ...}` |
 | `Icon` | Iconify icon `{name:'lucide:landmark', size, color}` (bundled sets lucide / ph / tabler) |
 | `MapLayer` | the vector map engine, only when `data.map_overlay` exists. It draws its own card with its own labels at a FIXED place: `mode="split-bottom"` card at y 710..1415 (put EVERY other element in y 280..690 - the gate rejects anything that touches the map stage, including its pills and the magnifier lens), `mode="full-stage"` card at y 200..1280 (put NOTHING over it), `mode="hud"` frameless map at y 995..1395 (x 120..960). **Budget your space first**: `split-bottom` leaves only y 280..690 (~410 px) for EVERYTHING else, enough for a KeyLine plus ONE short line. When the scene also needs a big number/year/counter, a list, or more than ~12 words of text, use `mode="hud"` instead (small map at the bottom) and compose in y 280..960. A hero counter at size >= 150 does not fit above `split-bottom` |

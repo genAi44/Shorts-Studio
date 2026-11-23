@@ -48,7 +48,7 @@ export const useKit = () => {
 };
 
 /** Absolutely positioned box (px on the 1080x1920 canvas). Use LAYOUT numbers for x/y/w/h. */
-export const Abs: React.FC<{x: number; y: number; w?: number; h?: number; style?: CSSProperties; children?: React.ReactNode}> = ({x, y, w, h, style, children}) => (
+export const Abs: React.FC<{x?: number; y?: number; w?: number; h?: number; style?: CSSProperties; children?: React.ReactNode}> = ({x = 0, y = 0, w, h, style, children}) => (
   <div style={{position: 'absolute', left: x, top: y, width: w, height: h, ...style}}>{children}</div>
 );
 
@@ -83,12 +83,14 @@ export const ArText: React.FC<{
 };
 
 /** Number rolling from `from` to `to` (LTR digits, tabular). */
-export const Counter: React.FC<{to: number; from?: number; delay?: number; dur?: number; size?: number; color?: string; suffix?: string; decimals?: number; style?: CSSProperties}> = ({to, from = 0, delay = 0, dur = 1.2, size = 160, color, suffix = '', decimals = 0, style}) => {
+export const Counter: React.FC<{to: number; from?: number; delay?: number; dur?: number; size?: number; color?: string; suffix?: string; decimals?: number; year?: boolean; style?: CSSProperties}> = ({to, from, delay = 0, dur = 1.2, size = 160, color, suffix = '', decimals = 0, year = false, style}) => {
   const th = useTheme();
   const font = useFont();
   const p = useProgress(delay, dur);
-  const v = from + (to - from) * p;
-  const txt = v.toLocaleString('en-US', {minimumFractionDigits: decimals, maximumFractionDigits: decimals});
+  const from0 = from ?? (year ? to - 40 : 0);
+  const v = from0 + (to - from0) * p;
+  // a year is never grouped (1956, not 1,956)
+  const txt = year ? String(Math.round(v)) : v.toLocaleString('en-US', {minimumFractionDigits: decimals, maximumFractionDigits: decimals});
   return <div style={{...font, direction: 'ltr', fontVariantNumeric: 'tabular-nums', fontSize: size, fontWeight: 900, lineHeight: 1.1, color: color ?? rgba(th.p.accent), textShadow: th.shadow, ...style}}>{txt}{suffix}</div>;
 };
 
@@ -213,11 +215,11 @@ export const Steps: React.FC<{items: string[]; w?: number; bottom?: number; maxH
   );
 };
 
-const StackRow: React.FC<{y: number; delay: number; text: string; icon?: string}> = ({y, delay, text, icon}) => {
+const StackRow: React.FC<{y: number; delay: number; text: string; icon?: string; w: number}> = ({y, delay, text, icon, w}) => {
   const k = useKit();
   const p = useSpring(delay, 'snappy');
   return (
-    <Abs x={110} y={y} w={860} style={enterStyle(p, 'right', 70)}>
+    <Abs x={(LAYOUT.W - w) / 2} y={y} w={w} style={enterStyle(p, 'right', 70)}>
       <Card style={{padding: '22px 30px', display: 'flex', alignItems: 'center', flexDirection: 'row-reverse', gap: 24}}>
         {icon ? <Icon name={icon} size={52} color={k.c('accent')} /> : null}
         <div style={{flex: 1}}><ArText size={42} weight={800} align="right" maxWidth={680} reveal="none" lineHeight={1.2}>{text}</ArText></div>
@@ -227,19 +229,19 @@ const StackRow: React.FC<{y: number; delay: number; text: string; icon?: string}
 };
 
 /** Recipe: a list that builds up row by row (rows stay). 2..6 rows. */
-export const Stack: React.FC<{items: {text: string; icon?: string}[]; top?: number; step?: number; delay?: number}> = ({items, top = LAYOUT.beat.top + 60, step = 0.5, delay = 0.1}) => (
+export const Stack: React.FC<{items: {text: string; icon?: string}[]; top?: number; step?: number; delay?: number; w?: number}> = ({items, top = LAYOUT.beat.top + 60, step = 0.5, delay = 0.1, w = 860}) => (
   <>
-    {items.slice(0, 6).map((it, i) => <StackRow key={i} y={top + i * 150} delay={delay + i * step} text={it.text} icon={it.icon} />)}
+    {items.slice(0, 6).map((it, i) => <StackRow key={i} y={top + i * 150} delay={delay + i * step} text={it.text} icon={it.icon} w={w} />)}
   </>
 );
 
 /** Recipe: a pinned card on a string (swings gently). Put an Icon / Counter / ArText inside. Not for photos (use the photo beat). */
-export const Pinned: React.FC<{x?: number; y?: number; w?: number; h?: number; rotate?: number; delay?: number; children?: React.ReactNode}> = ({x = LAYOUT.cx - 220, y = LAYOUT.beat.top + 80, w = 440, h = 460, rotate = -4, delay = 0.1, children}) => {
+export const Pinned: React.FC<{x?: number; y?: number; w?: number; h?: number; rotate?: number; delay?: number; style?: CSSProperties; children?: React.ReactNode}> = ({x = LAYOUT.cx - 220, y = LAYOUT.beat.top + 80, w = 440, h = 460, rotate = -4, delay = 0.1, style, children}) => {
   const k = useKit();
   const p = useSpring(delay, 'bouncy');
   const sway = useIdle(1.6, 4, rotate);
   return (
-    <Abs x={x} y={y} w={w} h={h} style={{...enterStyle(p, 'drop', 120), transform: `translateY(${(1 - p) * -120}px) rotate(${rotate + sway}deg)`, transformOrigin: '50% 0%'}}>
+    <Abs x={x} y={y} w={w} h={h} style={{...enterStyle(p, 'drop', 120), transform: `translateY(${(1 - p) * -120}px) rotate(${rotate + sway}deg)`, transformOrigin: '50% 0%', ...style}}>
       <div style={{position: 'absolute', left: w / 2 - 14, top: -26, width: 28, height: 56, borderRadius: 14, border: `5px solid ${k.c('text', 0.7)}`, background: 'transparent'}} />
       <div style={{width: w, height: h, background: k.dark ? 'rgba(245,240,230,0.96)' : '#ffffff', borderRadius: 10, boxShadow: '0 22px 40px rgba(0,0,0,0.32)', padding: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#141210'}}>{children}</div>
     </Abs>
