@@ -74,6 +74,15 @@
         "region": "string"
       }
     },
+    "area_map": {
+      "required": ["kind", "area"],
+      "fields": {
+        "area": "object",
+        "mode": "string",
+        "layout": "string",
+        "view": "object"
+      }
+    },
     "map_pin": {
       "required": ["kind", "points"],
       "fields": {

@@ -25,6 +25,7 @@ import {
   VersusBattleBeat,
 } from './visualStoryBeats';
 import {GenerativeCanvasBeat} from './generativeCanvas';
+import {AreaMapBeat} from './areaMap';
 import {DYNAMIC_SCENE_REGISTRY} from './generated/DynamicScenes';
 
 import {clamp01, enterStyle, EnterKind, Pop, useFont, useIdle, useProgress, useSpring} from './hooks';
@@ -2214,6 +2215,7 @@ export const BeatView: React.FC<{beat: Beat}> = ({beat}) => {
   let body: React.ReactNode;
 
   switch (beat.kind) {
+    case 'area_map': body = <AreaMapBeat beat={beat} />; break;
     case 'map_pin': body = <MapPinBeat beat={beat} />; break;
     case 'timeline_card': body = <TimelineCardBeat beat={beat} />; break;
     case 'stat_ring_v2': body = <StatRingV2Beat beat={beat} />; break;

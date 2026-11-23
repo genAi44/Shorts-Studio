@@ -8,7 +8,7 @@ import subprocess
 
 import numpy as np
 
-from . import direct, sfx as _sfx
+from . import areamap, direct, sfx as _sfx
 from . import icons as _icons
 from .config import ROOT, FPS
 
@@ -286,6 +286,8 @@ def scene_beats(scene, words, dur_frames, geo, hook_first=None, photo=None, degr
             b.pop("tsx_id", None)
         if b["kind"] == "map":
             b["view"] = map_view(geo, b)
+        elif b["kind"] == "area_map":
+            b["view"] = areamap.build_view(b)
         elif b["kind"] == "map_pin":
             # Use scene's visual data (has lat/lon + ISO codes) to build a real GeoJSON view
             vis = scene.get("visual", {})
