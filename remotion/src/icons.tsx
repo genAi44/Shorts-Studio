@@ -311,6 +311,7 @@ export const Icon: React.FC<IconProps> = ({
 
   return (
     <svg
+      data-audit-icon="1"
       width={size}
       height={size}
       viewBox={data.viewBox}

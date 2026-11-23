@@ -13,7 +13,7 @@ import {CANVAS_HEIGHT, CANVAS_WIDTH, CAPTION_ZONE, SAFE_TOP} from './layout';
 const EDGE = 20;
 const MIN_FONT = 22;
 
-type Item = {dir: string; text: string; l: number; t: number; r: number; b: number; fs: number; el: Element; caption: boolean};
+type Item = {dir: string; text: string; l: number; t: number; r: number; b: number; fs: number; el: Element; caption: boolean; icon?: boolean};
 
 const ancestorOpacity = (el: Element): number => {
   let op = 1;
@@ -55,12 +55,27 @@ const collect = (): Item[] => {
       caption: !!el.closest('[data-caption]'),
     });
   });
+  // icons are not text, but text drawn over them is just as unreadable: audit them as boxes (>= 40 px, visible)
+  document.querySelectorAll('[data-audit-icon]').forEach((el) => {
+    if (el.closest('[data-audit-ignore]') || ancestorOpacity(el) < 0.6) return; // faint ghost icons are decoration
+    const q = el.getBoundingClientRect();
+    if (q.width < 40 || q.height < 40 || q.right <= 0 || q.left >= CANVAS_WIDTH) return;
+    // hidden behind an opaque card? sample a few points: if none of them hits the icon, it is not visible
+    const pts = [[0.5, 0.5], [0.3, 0.3], [0.7, 0.3], [0.3, 0.7], [0.7, 0.7]];
+    const seen = pts.some(([fx, fy]) => {
+      const top = document.elementFromPoint(q.left + q.width * fx, q.top + q.height * fy);
+      return !!top && (el.contains(top) || top.contains(el) === false && top.closest('svg') === el);
+    });
+    if (!seen && pts.every(([fx, fy]) => { const top = document.elementFromPoint(q.left + q.width * fx, q.top + q.height * fy); return !!top && !(top instanceof SVGElement); })) return;
+    items.push({dir: 'ltr', text: '[icon]', l: q.left, t: q.top, r: q.right, b: q.bottom, fs: 999, el, caption: false, icon: true});
+  });
   return items;
 };
 
 export const auditItems = (items: Item[]) => {
   const issues: {type: string; text: string; other?: string; box: number[]; obox?: number[]; fs?: number}[] = [];
   for (const it of items) {
+    if (it.icon) continue;
     const box = [it.l, it.t, it.r, it.b].map(Math.round);
     if (it.l < EDGE || it.r > CANVAS_WIDTH - EDGE || it.t < 0 || it.b > CANVAS_HEIGHT) issues.push({type: 'edge', text: it.text, box});
     if (it.fs > 0 && it.fs < MIN_FONT && !it.el.closest('[data-audit-kit]')) issues.push({type: 'tiny', text: it.text, box, fs: Math.round(it.fs)});
@@ -84,6 +99,7 @@ export const auditItems = (items: Item[]) => {
     for (let j = i + 1; j < items.length; j++) {
       const a = items[i], b = items[j];
       if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
+      if (a.icon && b.icon) continue;
       if (a.fs < MIN_FONT || b.fs < MIN_FONT) continue; // unreadable text is already reported as 'tiny'
       // Range rects include the font's tall ascent/descent: compare the ink core (12% trimmed top and bottom)
       const ta = a.t + (a.b - a.t) * 0.12, ba = a.b - (a.b - a.t) * 0.12, tb = b.t + (b.b - b.t) * 0.12, bb = b.b - (b.b - b.t) * 0.12;
@@ -91,7 +107,7 @@ export const auditItems = (items: Item[]) => {
       const h = Math.min(ba, bb) - Math.max(ta, tb);
       if (w <= 0 || h <= 0) continue;
       const small = Math.min((a.r - a.l) * (a.b - a.t), (b.r - b.l) * (b.b - b.t));
-      if ((w * h) / small > 0.25) {
+      if ((w * h) / small > (a.icon || b.icon ? 0.2 : 0.15)) {
         issues.push({type: 'overlap', text: a.text, other: b.text, box: [a.l, a.t, a.r, a.b].map(Math.round), obox: [b.l, b.t, b.r, b.b].map(Math.round)});
       }
     }
