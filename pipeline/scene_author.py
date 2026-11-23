@@ -61,6 +61,8 @@ _HINTS = (
     ("rtl", "right-to-left", "Render every Arabic string with <ArText> (it sets dir=rtl); never put Arabic directly in a div/span/svg text."),
     ("tiny", "too small", "Raise font sizes: body text >= 30 px, labels >= 26 px."),
     ("blank", "blank", "Draw visible content: at least a hero element and one ArText from frame 20 on."),
+    ("css", "TS2353", "A style object has a property that is not real CSS (e.g. 'justify'): use exact camelCase CSS names - justifyContent, alignItems, flexDirection, textAlign, gap. Check every key you wrote in style={{...}}."),
+    ("recipe", "TS2322", "A prop has the wrong type: check the recipe's exact signature in the kit doc (Steps items are strings; Stack/Hub items are objects; Hub center is a React node)."),
 )
 
 

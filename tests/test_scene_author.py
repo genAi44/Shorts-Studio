@@ -145,3 +145,8 @@ def test_fixture_authored_files_pass_the_static_gate():
 def test_recipe_fixture_scenes_pass_the_static_gate():
     for f in sorted((ROOT / "tests" / "fixtures" / "recipes").glob("s_*.tsx")):
         assert sa.static_check(f) == [], f.name
+
+
+def test_hints_cover_unknown_css_keys_and_prop_types():
+    h = sa.hints_for(["line 57: TS2353 Object literal may only specify known properties, and 'justify' does not exist"])
+    assert any("justifyContent" in x for x in h)

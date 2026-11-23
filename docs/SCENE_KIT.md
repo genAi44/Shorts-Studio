@@ -55,6 +55,11 @@ Good short-form scenes share a few habits. Apply them; do not imitate any specif
 | `Pinned` | one fact/number on a card hanging from a string | `x,y,w,h,rotate`, children = `Counter` / `ArText` / `Icon` (no photos) |
 | `Ribbon` | background decoration behind everything | `variant` 0 / 1 / 2 |
 
+**Pick the recipe from what the sentence says** (use it unless the scene is a map/chart/photo): several sources, causes or parts → `Hub`;
+stages, growth, a ranking or "from X to Y" → `Steps`; consequences, features, a list of 3+ things → `Stack`; one striking fact or number
+that is not a chart → `Pinned`. A timeline of dated events is a `Stack` (date as the item's first words) or `Steps` — do not hand-build
+a timeline with custom flex layouts. Style objects take real camelCase CSS keys only (`justifyContent`, never `justify`).
+
 Layout rule: `KeyLine` goes in `y = LAYOUT.beat.top + 10` (width 900, centred with `display:flex; justifyContent:center`), the
 recipe body below it (`Hub` `cy = LAYOUT.beat.center_y + 120`, `Stack` `top = LAYOUT.beat.top + 220`, `Steps` default). Recipes may be
 combined or used as inspiration for your own composition (inline SVG shapes + `useSpr` staggers).
