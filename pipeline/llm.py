@@ -115,6 +115,74 @@ def gemini_vision_json(system: str, user: str, images: List[bytes]) -> Any:
     return _parse_with_repair(raw, repair)
 
 
+def _shrink_jpeg(data: bytes, max_side: int = 448, quality: int = 70) -> bytes:
+    import io
+    from PIL import Image
+    try:
+        im = Image.open(io.BytesIO(data)).convert("RGB")
+        im.thumbnail((max_side, max_side))
+        out = io.BytesIO()
+        im.save(out, "JPEG", quality=quality)
+        return out.getvalue()
+    except Exception:  # noqa: BLE001 - send the original bytes rather than nothing
+        return data
+
+
+def freellmapi_vision_json(system: str, user: str, images: List[bytes]) -> Any:
+    """Vision through FreeLLMAPI (model "auto" routes to a vision-capable free model): the free alternative to Gemini Vision."""
+    from .llm_providers import FreeLLMAPIProvider
+    prov = FreeLLMAPIProvider()
+    if not prov.is_configured():
+        raise LLMError("FreeLLMAPI غير مضبوط (FREELLMAPI_API_KEY / FREELLMAPI_BASE_URL)", provider="freellmapi")
+    parts: List[Dict[str, Any]] = [{"type": "text", "text": user}]
+    # free routed models reject / time out on big multi-image payloads: 4 images, <= 448 px, JPEG q70 is enough to recognise a place
+    for i, im in enumerate(images[:4]):
+        parts.append({"type": "text", "text": f"Image {i}:"})
+        parts.append({"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + base64.b64encode(_shrink_jpeg(im)).decode()}})
+    messages = [{"role": "system", "content": system}, {"role": "user", "content": parts}]
+
+    def call(msgs):
+        data = _post(f"{prov.base_url}/chat/completions", {"Authorization": f"Bearer {prov.api_key}", "Content-Type": "application/json"},
+                     {"model": "auto", "temperature": 0.1, "messages": msgs}, timeout=150)
+        try:
+            return data["choices"][0]["message"]["content"] or ""
+        except (KeyError, IndexError, TypeError):
+            raise LLMError("ردّ FreeLLMAPI Vision بلا محتوى.", provider="freellmapi")
+
+    raw = call(messages)
+    return _parse_with_repair(raw, lambda bad: call(messages + [{"role": "assistant", "content": bad},
+                                                                {"role": "user", "content": "الرد ليس JSON صالحاً. أعده كـ JSON فقط."}]))
+
+
+def vision_providers() -> List[str]:
+    """Providers to try for picture verification, in order. PHOTO_VERIFY = auto (default: Gemini, then FreeLLMAPI) |
+    gemini | freellmapi | off (the verification gate is disabled: the best heuristic candidate is accepted)."""
+    mode = (cfg("PHOTO_VERIFY", "auto") or "auto").strip().lower()
+    if mode == "off":
+        return []
+    from .llm_providers import FreeLLMAPIProvider
+    gem = ["gemini"] if cfg("GEMINI_API_KEY") else []
+    free = ["freellmapi"] if FreeLLMAPIProvider().is_configured() else []
+    if mode == "gemini":
+        return gem
+    if mode == "freellmapi":
+        return free
+    return gem + free
+
+
+def vision_json(system: str, user: str, images: List[bytes]) -> Any:
+    """Picture verification with provider fallback: a 429 from Gemini no longer means 'no photo'."""
+    errors = []
+    for prov in vision_providers():
+        try:
+            fn = gemini_vision_json if prov == "gemini" else freellmapi_vision_json
+            return fn(system, user, images)
+        except Exception as e:  # noqa: BLE001 - try the next provider, the last error is raised
+            errors.append(f"{prov}: {str(e)[:80]}")
+            logger.warning("vision provider %s failed: %s", prov, e)
+    raise LLMError("لا مزوّد رؤية متاح — " + " | ".join(errors) if errors else "التحقق بالرؤية معطّل", provider="vision")
+
+
 def write_script_with_facts(topic: str, facts_text: str, style: Optional[Any] = None) -> dict:
     """كتابة سكربت فيديو قصير معتمد كلياً على الحقائق الموثقة المجلوبة من الويب دون هلوسة."""
     from . import scriptspec as sp
