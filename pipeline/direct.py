@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 from .config import ROOT, record_fallback
 from .icons import pick_icons_for_beat, _has_whole_word
+from . import areamap
 
 _SPEC_SCHEMA_PATH = ROOT / "spec_schema.json"
 _SPEC_SCHEMA: Dict[str, Any] = json.loads(_SPEC_SCHEMA_PATH.read_text(encoding="utf-8")) if _SPEC_SCHEMA_PATH.exists() else {"common_fields": {}, "beats": {}}
@@ -76,7 +77,7 @@ ICONS = ["pin", "building", "mountain", "clock", "coin", "person", "people", "bo
 KINDS = [
     "custom_scene",
     "generative_canvas",
-    "map_pin", "timeline_card", "stat_ring_v2", "elevation_profile",
+    "area_map", "map_pin", "timeline_card", "stat_ring_v2", "elevation_profile",
     "versus_battle", "animated_route", "balance_meter", "deep_time_slider",
     "stack_pyramid",     "macro_zoom_globe", "subsurface_mine", "dot_matrix_population",
     "money_waterfall", "frontline_clash",
@@ -236,6 +237,9 @@ def normalize_beat(b, sentence="", geo=None):
         if b.get("layout") in ("center", "stack", "diag", "left"):
             o["layout"] = b["layout"]
         return _add_camera(o, b)
+
+    if kind == "area_map":
+        return areamap.beat_from_raw(b) or bigtext()
 
     if kind == "map_pin":
         region = b.get("region") or "egypt"
@@ -1028,11 +1032,19 @@ def _pred_elements_nonempty(b: dict, sentence: str = "", geo=None) -> bool:
     return isinstance(els, list) and len(els) >= 1
 
 
+def _pred_area_map(b: dict, sentence: str = "", geo=None) -> bool:
+    return areamap.valid_claim(b)
+
+
 def _pred_always_true(b: dict, sentence: str = "", geo=None) -> bool:
     return isinstance(b, dict) and bool(b.get("kind"))
 
 
 BEAT_RULES: Dict[str, Dict[str, Any]] = {
+    "area_map": {
+        "predicate": _pred_area_map,
+        "reason": "area_map requires an `area` object with a place and a value (or a compare ratio)",
+    },
     "elevation_profile": {
         "predicate": _pred_elevation_profile,
         "reason": "elevation_profile requires numeric altitude data and geographic elevation context",
@@ -1217,10 +1229,20 @@ PHOTO_RULES = """
 
 - استعمل photo فقط لما لا تستطيع city_skyline أو architecture أو mystery_scene أو generative_canvas أو map تمثيله (وجه شخص حقيقي، حدث تاريخي لا يُختزل في رمز). لا تزد عن 15-25% من المقاطع، ولا مقطعين متتاليين منه."""
 
+AREA_RULES = """
+
+## قاعدة المساحة (إلزامية): كلما ذكرت الجملة مساحة أو حجم مكان (دولة، مدينة، قارة، محيط، جزيرة، بحيرة...) أو قارنت حجمين ("س يعادل ٣ أضعاف ص") يجب أن يكون kind لمقطع تلك الجملة "area_map" مع كائن "area" منظّم تستخرجه أنت من الجملة (لا تعتمد على التخمين ولا تخترع أرقاماً غير موجودة في الجملة):
+{"kind":"area_map","title":"...","area":{"place":"الاسم العربي كما في الجملة","place_en":"English name","iso3":"SAU","type":"country|city|continent|ocean|sea|lake|island|region","value":2150000,"unit":"km2|mi2|ha|m2","digits":"arabic|latin","compare":{"place":"...","place_en":"...","iso3":"...","type":"country","ratio":3.5}}}
+- value رقم صافٍ بالوحدة المذكورة (٢٫١ مليون كم² => 2100000). digits="arabic" إن كتب السكربت الأرقام هندية (٠-٩) وإلا "latin".
+- compare اختياري ولا يوضع إلا عند مقارنة نسبية: place هو الأكبر/موضوع الجملة، compare.place هو المرجع، ratio = مساحة الأول ÷ مساحة الثاني كما وردت في الجملة (قد يغيب value حينها).
+- الجملة الطويلة تُقسَّم إلى مقاطع (sentences)؛ ضع area في المقطع الذي يُنطق فيه الرقم أو النسبة، وبقية مقاطعها بأي نوع عادي.
+- مقطعان area_map متتاليان مسموحان؛ يتولى النظام تغيير التخطيط بينهما."""
+
+
 def director_system(photos=True):
 
     pb = f"\n## دليل الحركة:\n{_PLAYBOOK}\n\n" if _PLAYBOOK else ""
-    return pb + DIRECTOR_SYSTEM + (PHOTO_RULES if photos else "")
+    return pb + DIRECTOR_SYSTEM + AREA_RULES + (PHOTO_RULES if photos else "")
 
 def director_prompt(script, scenes, mood=""):
     items = []
@@ -1258,6 +1280,7 @@ def apply_beats(script, result, geo=None, llm_retry_fn: Optional[Callable[[List[
                     rule = BEAT_RULES.get(rk)
                     if not rule or not rule["predicate"](raw_list[i], s_txt, geo):
                         failed_reasons.append(f"{sc['id']}[{i}] ({rk}): {rule['reason'] if rule else 'unknown kind'}")
+            failed_reasons += areamap.missing_reasons(sc["id"], raw_list[:len(sents)])
         if failed_reasons:
             try:
                 retry_res = llm_retry_fn(failed_reasons)
@@ -1274,8 +1297,12 @@ def apply_beats(script, result, geo=None, llm_retry_fn: Optional[Callable[[List[
         raw = got.get(sc["id"])
         sents = sentences(sc["narration"])
         raw = raw if isinstance(raw, list) else []
+        # قاعدة المساحة: جملة تذكر مساحة مكان بلا مقطع area_map (حتى بعد إعادة المحاولة) => بديل مرئي مُعلَّم
+        claims = [areamap.claim_of(raw[i]) if i < len(raw) else None for i in range(len(sents))]
         target["beats"] = [
-            guard_beat(raw[i], sc, i, sents[i], geo) if i < len(raw) else validate_beat(normalize_beat(fallback_beat(sc, i, sents[i]), sents[i], geo))
+            areamap.fallback_beat(claims[i], sc["id"], i) if claims[i] and raw[i].get("kind") != "area_map"
+            else guard_beat(raw[i], sc, i, sents[i], geo) if i < len(raw)
+            else validate_beat(normalize_beat(fallback_beat(sc, i, sents[i]), sents[i], geo))
             for i in range(len(sents))
         ]
         # إذا كان المشهد يحمل visual.type == "map" أو يذكر مدينة/عاصمة معروفة ولم يضع المخرج خريطة،
@@ -1285,7 +1312,7 @@ def apply_beats(script, result, geo=None, llm_retry_fn: Optional[Callable[[List[
         if not det_city:
             det_city, det_info = detect_city_in_text(sc.get("narration", ""))
 
-        has_map_beat = any(b.get("kind") in ("map", "map_pin") for b in target["beats"])
+        has_map_beat = any(b.get("kind") in ("map", "map_pin", "area_map") for b in target["beats"])
         if not has_map_beat and sc.get("role") in ("body", "lead") and target["beats"]:
             orig_concept = target["beats"][0].get("concept")
             if vis.get("type") == "map" and (vis.get("countries") or vis.get("points")):
@@ -1367,7 +1394,7 @@ def apply_beats(script, result, geo=None, llm_retry_fn: Optional[Callable[[List[
             if t.get("role") not in ("hook", "body") or not t.get("beats"):
                 continue
             cur_kind = t["beats"][0].get("kind")
-            if cur_kind == "photo":
+            if cur_kind in ("photo", "area_map"):
                 continue
             if cur_kind in ("map", "map_pin") and map_count <= 1:
                 continue
@@ -1412,6 +1439,7 @@ def apply_beats(script, result, geo=None, llm_retry_fn: Optional[Callable[[List[
                             all_pts.append({"name": c_name, "lat": c_dict["lat"], "lon": c_dict["lon"], "dot": True})
                 if all_pts:
                     hb["points"] = all_pts[:6]
+    areamap.assign_layouts(targets)
     # فحص ما بعدي: تنويع المقاطع، منع تكرار الخرائط أو أي نوع مرتين متتاليتين، وتنويع الكاميرا
     stat_choices = ["ring", "bar", "stack", "plain"]
     bigtext_choices = ["center", "stack", "diag", "left"]
@@ -1483,7 +1511,7 @@ def apply_beats(script, result, geo=None, llm_retry_fn: Optional[Callable[[List[
                     is_diff_map = True
 
             is_repeat = (
-                cur_kind not in ("custom_scene", "generative_canvas")
+                cur_kind not in ("custom_scene", "generative_canvas", "area_map")
                 and ((cur_kind == prev_kind and not is_diff_map)
                      or (cur_kind in ("stat", "stat_ring_v2") and prev_kind in ("stat", "stat_ring_v2")))
             )
@@ -1691,7 +1719,7 @@ def apply_beats(script, result, geo=None, llm_retry_fn: Optional[Callable[[List[
                 sc_beats = s[pid].get("beats") or []
 
                 # دمج مقاطع المشهد الواحد في مقطع بصري متكامل واحد يغطي الجملة كاملة (8 مشاهد = 8 تصاميم متكاملة)
-                if len(sc_beats) > 1:
+                if len(sc_beats) > 1 and not any(b.get("kind") == "area_map" for b in sc_beats if isinstance(b, dict)):
                     primary_beat = dict(sc_beats[0])
                     concepts = [str(b.get("concept") or "").strip() for b in sc_beats if isinstance(b, dict) and b.get("concept")]
                     if concepts:
@@ -1746,7 +1774,7 @@ def apply_beats(script, result, geo=None, llm_retry_fn: Optional[Callable[[List[
                     else:
                         beat_item["scene_spec"] = designed["scene_spec"]
                         beat_item["narration_cues"] = designed["narration_cues"]
-                        if beat_item.get("kind") not in ("photo", "map", "map_pin"):
+                        if beat_item.get("kind") not in ("photo", "map", "map_pin", "area_map"):
                             beat_item["tsx_id"] = f"DynamicScene_{pid}_{b_idx}_{global_beat_idx}"
                             beat_item["narration"] = sent_txt
                             beat_item["video_title"] = full_video_title
