@@ -48,3 +48,6 @@ data/nominatim_cache.json
 remotion/src/authored/*.tsx
 data/authored_cache/
 tests/fixtures/area_map_spec.json
+
+# Playwright QA runs: videos and screenshots (the scenarios are in qa/playwright/)
+test-results/

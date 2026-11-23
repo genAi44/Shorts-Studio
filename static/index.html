@@ -120,6 +120,14 @@
       cursor: wait
     }
 
+    /* touch screens: comfortable targets (>= 40px) */
+    @media (pointer: coarse) {
+      button { min-height: 44px }
+      button[style*="font-size:12px"], button[style*="font-size:11px"] { min-height: 40px !important; padding: 8px 14px !important }
+      select, input:not([type=checkbox]), textarea { min-height: 40px }
+    }
+    input[type=checkbox] { width: 20px !important; height: 20px; accent-color: var(--gold) }
+
     .row {
       display: flex;
       gap: 10px;
@@ -270,6 +278,7 @@
           <button class="sec" id="bToggleLlmSettings" style="padding:5px 12px;font-size:12px">⚙️ تخصيص الأدوار</button>
         </div>
       </div>
+      <p class="cnt" id="llmHealthMsg" role="status" aria-live="polite" style="margin:0 0 8px"></p>
       <p class="sub" style="margin-bottom:10px">
         يدعم النظام <b>FreeLLMAPI</b> (Auto Mode مجاني ذكي)، <b>Gemini</b>، <b>DeepSeek</b>، ومزوّدي <b>OpenAI</b>.
         يمكنك اختيار المزوّد والنموذج لكل مهمة بشكل مستقل، مع نظام Fallback تلقائي وسجلات التوجيه الفعلي.
@@ -420,6 +429,17 @@
   </div>
   <script>
     const $ = s => document.querySelector(s);
+    function nameFields(root) {
+      (root || document).querySelectorAll('input,select,textarea').forEach(e => {
+        if ((e.labels && e.labels.length) || e.getAttribute('aria-label')) return;
+        let t = '';
+        for (let n = e.previousElementSibling; n && !t; n = n.previousElementSibling) if (/^(LABEL|SPAN|DIV|B|H\d)$/.test(n.tagName)) t = n.textContent.trim().replace(/\s+/g, ' ');
+        if (!t && e.closest('.role-box, .fix, div')) { const h = e.closest('div') && e.closest('div').querySelector('b, label, h3'); if (h) t = h.textContent.trim().replace(/\s+/g, ' '); }
+        e.setAttribute('aria-label', (t || e.placeholder || e.title || e.id || 'حقل').slice(0, 80));
+      });
+    }
+    new MutationObserver(() => nameFields()).observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('DOMContentLoaded', () => nameFields());
     let S = null, voicesLoaded = false;
     const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     async function api(p, b) {
@@ -537,6 +557,7 @@
     $('#bDirAuto').onclick = () => runDirect(true);
 
     $('#bGen').onclick = async () => {
+      if (!$('#idea').value.trim()) { $('#genMsg').textContent = '⛔ اكتب فكرة الفيديو أولاً.'; $('#idea').focus(); return }  // no pointless 400 round trip
       $('#bGen').disabled = true; $('#genMsg').textContent = 'جارٍ البحث عن الحقائق في الويب ثم كتابة السكربت…';
       try {
         const r = await api('/api/script', { idea: $('#idea').value });
@@ -615,8 +636,8 @@
             }
             const wr = r.warnings || [];
             const wH = wr.length ? `<div class="card" style="margin-top:14px"><h3 style="margin:0 0 8px;font-size:15px">⚠ تقرير البدائل والتحذيرات (${wr.length})</h3><ul style="margin:0;padding-inline-start:18px;font-size:13px;direction:ltr;text-align:left">${wr.map(w => `<li>${esc(w)}</li>`).join('')}</ul></div>` : '';
-            $('#result').innerHTML = `<video src="${r.url}" controls playsinline></video>
-          <div class="row" style="justify-content:center"><a href="${r.url}" download="short.mp4"><button>تنزيل MP4</button></a></div>
+            $('#result').innerHTML = (r.url ? `<video src="${r.url}" controls playsinline></video>
+          <div class="row" style="justify-content:center"><a href="${r.url}" download="short.mp4"><button>تنزيل MP4</button></a></div>` : '<p class="bad" style="text-align:center">⛔ اكتمل الإنتاج لكن لا يوجد رابط للفيديو</p>') + `
           <p class="cnt" style="text-align:center">المدة ${r.duration} ث</p>
           ${mrH}
           ${wH}
@@ -639,6 +660,7 @@
     <span class="chip">ترجمة: ${ST.caption.mode}</span><span class="chip">أرقام: ${ST.stat.layout}</span><span class="chip">نص: ${ST.text.layout}</span>
     ${by ? `<span class="chip on">${(by === 'deepseek' || by === 'style_model') ? 'صمّمه المدير الفني (AI)' : by === 'preset' ? 'ستايل جاهز' : 'عشوائي'}</span>` : ''}</div>`;
       $('#stJson').value = JSON.stringify(ST, null, 1);
+      $('#stJson').style.borderColor = '';
     }
     async function newStyle(rand) {
       $('#stMsg').textContent = '…';
@@ -664,14 +686,14 @@
         <div class="cnt" style="font-size:10px">Icon (${esc(ic.license)})</div>
       </div>`);
         });
-        (r.emojis || []).slice(0, 4).forEach(em => {
+        (r.emojis || []).filter(em => em && em.file).slice(0, 4).forEach(em => {
           cards.push(`<div class="fix" style="text-align:center;cursor:pointer" data-ins="add emoji ${esc(em.char)}">
         <img src="/assets/${esc(em.file)}" width="34" height="34" alt="${esc(em.char)}">
         <div style="font-size:11px;margin-top:4px">${esc(em.name_ar)}</div>
         <div class="cnt" style="font-size:10px">Emoji SVG</div>
       </div>`);
         });
-        (r.flags || []).slice(0, 4).forEach(fl => {
+        (r.flags || []).filter(fl => fl && fl.file).slice(0, 4).forEach(fl => {
           cards.push(`<div class="fix" style="text-align:center;cursor:pointer" data-ins="add flag ${esc(fl.code)}">
         <img src="/assets/${esc(fl.file)}" width="42" height="32" style="border-radius:4px;border:1px solid var(--line)" alt="${esc(fl.code)}">
         <div style="font-size:11px;margin-top:4px"><code>Flag: ${esc(fl.code)}</code></div>
@@ -710,7 +732,10 @@
       } catch (e) { $('#chatEditMsg').textContent = '⛔ ' + e.message }
     };
     loadVisualLibrary();
-    $('#stJson').oninput = e => { try { ST = JSON.parse(e.target.value); e.target.style.borderColor = '' } catch { e.target.style.borderColor = 'var(--bad)' } };
+    $('#stJson').oninput = e => {
+      try { ST = JSON.parse(e.target.value); e.target.style.borderColor = ''; $('#stMsg').textContent = '' }
+      catch { e.target.style.borderColor = 'var(--bad)'; $('#stMsg').textContent = '⛔ JSON غير صالح — يُستخدم آخر ستايل صالح حتى تصحّحه' }
+    };
     async function loadPresets() {
       try {
         const r = await fetch('/api/presets').then(x => x.json());
@@ -931,9 +956,9 @@
           if (res.healthy) summary.push(`${pid}: ${res.latency_ms}ms ✓`);
           else summary.push(`${pid}: ⚠ ${res.error || res.status}`);
         }
-        alert('🩺 نتيجة فحص اتصال المزوّدين:\n\n' + summary.join('\n'));
+        $('#llmHealthMsg').textContent = '🩺 ' + summary.join(' · ');
       } catch (e) {
-        alert('⛔ تعذر فحص الاتصال: ' + e.message);
+        $('#llmHealthMsg').textContent = '⛔ تعذر فحص الاتصال: ' + e.message;
       }
       btn.disabled = false;
       btn.textContent = '🩺 فحص الاتصال';
