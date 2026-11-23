@@ -1,12 +1,14 @@
 """خادم الويب: واجهة + واجهات API. شغّله ثم افتح http://localhost:8742"""
 import json
 import logging
+import shutil
 import threading
 import time
 import traceback
 import uuid
 
 import io
+from pathlib import Path
 
 from flask import Flask, jsonify, request, send_file, send_from_directory
 
@@ -67,6 +69,7 @@ def visual_library():
     ] if q else [
         visual_tools.resolve_flag(c, shape="rect") for c in ("EG", "SA", "BO", "MA", "AE", "JO", "IQ", "SY")
     ]
+    flags_res = [f for f in flags_res if f and f.get("found") and f.get("file")]
     lottie_res = visual_tools.search_lottie(q, limit=8)
     charts_res = [
         {"type": "generative_canvas", "name": "GenerativeCanvas (نظام ليغو التوليدي المخصص من الصفر)"},
@@ -406,6 +409,9 @@ def make_beats():
     return jsonify({**_pack(script), "by": by})
 
 
+PREVIEW_LOCK = threading.Lock()  # remotion/src/generated + src/authored are shared files: one preview at a time
+
+
 @app.post("/api/preview")
 def preview():
     """إطار معاينة سريع (بلا صوت حقيقي): Remotion إن توفّر وإلا PIL."""
@@ -415,27 +421,31 @@ def preview():
     scenes = sp.scenes_of(script)
     i = max(0, min(int(b.get("scene", 0)), len(scenes) - 1))
     OUT.mkdir(exist_ok=True)
-    work = OUT / "_prev"
-    work.mkdir(exist_ok=True)
+    work = OUT / "_prev" / uuid.uuid4().hex[:10]  # per request: two tabs previewing at once must not overwrite each other's frame
+    work.mkdir(parents=True, exist_ok=True)
     # تقدير التوقيت من عدد الكلمات بلا استدعاء ElevenLabs
     auds = [tts.estimate_timing(sc["narration"]) for sc in scenes]
     plan, total = plan_scenes(script, auds)
     p = plan[i]
     if rem.available() and pick_engine(b.get("engine")) == "remotion":
         try:
-            spec = rem.build_spec(script, st, plan, int(round(total * 30)), get_geo(), None, degrade=False, only_scene_idx=i)
-            if cfg("AUTHORED_SCENES", "0") == "1":  # preview = the cached authored scene (same file the final render uses)
-                from pipeline import scene_author
-                spec = scene_author.author_spec(spec, str(work / "authored"), cache_only=True, only_ids={spec["scenes"][i]["id"]})
-            sc = spec["scenes"][i]
-            bi = max(0, min(int(b.get("beat", 0)), len(sc["beats"]) - 1))
-            fr = sc["from"] + sc["beats"][bi]["from"] + int(float(b.get("t", 2.0)) * 30)
-            fr = min(fr, sc["from"] + sc["dur"] - 2)
-            out = str(work / "preview.jpg")
-            rem.render_still(spec, out, fr, str(work))
-            return send_file(out, mimetype="image/jpeg")
+            with PREVIEW_LOCK:
+                spec = rem.build_spec(script, st, plan, int(round(total * 30)), get_geo(), None, degrade=False, only_scene_idx=i)
+                if cfg("AUTHORED_SCENES", "0") == "1":  # preview = the cached authored scene (same file the final render uses)
+                    from pipeline import scene_author
+                    spec = scene_author.author_spec(spec, str(work / "authored"), cache_only=True, only_ids={spec["scenes"][i]["id"]})
+                sc = spec["scenes"][i]
+                bi = max(0, min(int(b.get("beat", 0)), len(sc["beats"]) - 1))
+                fr = sc["from"] + sc["beats"][bi]["from"] + int(float(b.get("t", 2.0)) * 30)
+                fr = min(fr, sc["from"] + sc["dur"] - 2)
+                out = str(work / "preview.jpg")
+                rem.render_still(spec, out, fr, str(work))
+                data = Path(out).read_bytes()
+            return send_file(io.BytesIO(data), mimetype="image/jpeg")
         except rem.RemError as e:
             return err(str(e), 500)
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
     t = min(float(b.get("t", 2.5)), p["dur"] - 0.05)
     im = preview_frame(get_geo(), p["sc"], p["dur"], p["audio"]["words"], st, t, t0=p["t0"], total=total,
                        fast=(p["sc"]["role"] == "hook"), settled=(p["sc"]["role"] == "loop"))

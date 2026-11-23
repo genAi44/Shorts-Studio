@@ -486,7 +486,7 @@ export const PhotoBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
     media = (
 
-      <div style={{position: 'absolute', left: 540 - w / 2, top: cy - h / 2 + idle * 0.5, opacity: clamp01(sm * 1.5), scale: 0.94 + 0.06 * sm, WebkitMaskImage: fade, maskImage: fade}}>
+      <div style={{position: 'absolute', left: 540 - w / 2, top: cy - h / 2 + idle * 0.5, opacity: clamp01(sm * 1.5) * (beat.img ? 1 : 0.28), scale: 0.94 + 0.06 * sm, WebkitMaskImage: fade, maskImage: fade}}>
 
         <Framed beat={beat} w={w} h={h} />
 
@@ -501,7 +501,7 @@ export const PhotoBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
     media = (
 
-      <div style={{position: 'absolute', left: 540 - D / 2, top: cy - D / 2 + idle * 0.5, filter: 'drop-shadow(0 26px 30px rgba(0,0,0,0.38))', ...enterStyle(pop, 'pop')}}>
+      <div style={{position: 'absolute', left: 540 - D / 2, top: cy - D / 2 + idle * 0.5, filter: beat.img ? 'drop-shadow(0 26px 30px rgba(0,0,0,0.38))' : 'none', opacity: beat.img ? 1 : 0.35, ...enterStyle(pop, 'pop')}}>
 
         <Framed beat={beat} w={D} h={D} style={{borderRadius: '50%'}} />
 
