@@ -162,8 +162,10 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
   // Placement: panoramic split-bottom stage below photo, full-stage map, or corner HUD
   const effectiveMode = mode || (splitBottom ? 'split-bottom' : 'hud');
   const isWide = effectiveMode === 'split-bottom' || effectiveMode === 'full-stage';
-  const cardWidth = isWide ? MAP_STAGE_ZONE.width : HUD_MAP_ZONE.width;
-  const svgRenderHeight = effectiveMode === 'full-stage' ? MAP_STAGE_ZONE.full_svg_height : effectiveMode === 'split-bottom' ? MAP_STAGE_ZONE.split_svg_height : HUD_MAP_ZONE.svg_height;
+  // full-stage is frameless: the map runs edge to edge, fades into the background and carries only floating labels
+  const bleed = effectiveMode === 'full-stage';
+  const cardWidth = bleed ? MAP_STAGE_ZONE.bleed_width : isWide ? MAP_STAGE_ZONE.width : HUD_MAP_ZONE.width;
+  const svgRenderHeight = bleed ? MAP_STAGE_ZONE.bleed_svg_height : effectiveMode === 'split-bottom' ? MAP_STAGE_ZONE.split_svg_height : HUD_MAP_ZONE.svg_height;
 
   // tiny places: the main map stays at a readable regional zoom and a magnifier lens shows the close-up
   const useLens = activeWp.zoom * 100 >= MAP_LENS.min_zoom_pct;
@@ -188,7 +190,7 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
   const slotName = effectiveMode === 'split-bottom' ? 'STAGE_B' : effectiveMode === 'full-stage' ? 'FULL_STAGE' : 'HUD';
   const posStyle: React.CSSProperties =
     effectiveMode === 'full-stage'
-      ? {left: 48, top: MAP_STAGE_ZONE.full_top}
+      ? {left: 0, top: MAP_STAGE_ZONE.full_top}
       : effectiveMode === 'split-bottom'
       ? {left: 48, top: MAP_STAGE_ZONE.split_top}
       : {left: HUD_MAP_ZONE.left, top: HUD_MAP_ZONE.top}; // bottom band above CAPTION_ZONE: never covers scene content
@@ -214,14 +216,18 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
           position: 'absolute',
           ...posStyle,
           width: cardWidth,
-          borderRadius: 24,
           overflow: 'hidden',
-          background: `linear-gradient(155deg, ${surfaceBg} 0%, ${surfaceBg2} 100%)`,
-          border: `2px solid ${rgba(th.st.palette.accent, 0.62)}`,
-          boxShadow: `0 20px 48px rgba(0, 0, 0, 0.72), 0 0 28px ${accentGlow}`,
-          backdropFilter: 'blur(14px)',
+          ...(bleed
+            ? {WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 10%, #000 88%, transparent)', maskImage: 'linear-gradient(to bottom, transparent, #000 10%, #000 88%, transparent)'}
+            : {
+                borderRadius: 24,
+                background: `linear-gradient(155deg, ${surfaceBg} 0%, ${surfaceBg2} 100%)`,
+                border: `2px solid ${rgba(th.st.palette.accent, 0.62)}`,
+                boxShadow: `0 20px 48px rgba(0, 0, 0, 0.72), 0 0 28px ${accentGlow}`,
+                backdropFilter: 'blur(14px)',
+              }),
           opacity: visibility,
-          transform: `translate3d(${slideOffsetX.toFixed(1)}px, ${slideOffsetY.toFixed(1)}px, 0) scale(${(0.92 + 0.08 * enterSpring).toFixed(3)})`,
+          transform: `translate3d(${slideOffsetX.toFixed(1)}px, ${slideOffsetY.toFixed(1)}px, 0) scale(${((bleed ? 0.98 : 0.92) + (bleed ? 0.02 : 0.08) * enterSpring).toFixed(3)})`,
           fontFamily: arabicFont,
         }}
       >
@@ -235,6 +241,7 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
             background: 'rgba(4, 10, 24, 0.78)',
             borderBottom: `1.5px solid ${rgba(th.st.palette.accent, 0.32)}`,
             gap: 10,
+            ...(bleed ? {position: 'absolute', zIndex: 2, top: MAP_STAGE_ZONE.bleed_head_top, left: 90, right: 90, borderRadius: 999, borderBottom: 'none', padding: '12px 26px', justifyContent: 'center'} : {}),
           }}
         >
           <div style={{display: 'flex', alignItems: 'center', gap: 11, minWidth: 0}}>
@@ -296,7 +303,7 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
             ctxPath={ctx_path} countries={countries} waypoints={waypoints} activeIdx={activeIdx}
             prevWp={prevWp} camTransition={camTransition} features={overlay.features || []}
             main={{tx, ty, z: mainZoom}} lens={useLens ? lensCam : null} lensC={lensC}
-            colors={{accent: accentSolid, accent2: accent2Solid, text: '#e2e8f0', ctxFill: rgba(th.p.text, 0.09), ctxStroke: rgba(th.p.text, 0.34), sea0: rgba(th.st.palette.c2, 0.95), sea1: th.dark ? '#040914' : rgba(th.st.palette.c2, 1)}}
+            colors={{accent: accentSolid, accent2: accent2Solid, text: '#e2e8f0', ctxFill: rgba(th.p.text, 0.09), ctxStroke: rgba(th.p.text, 0.34), sea0: rgba(th.st.palette.c2, bleed ? 0.16 : 0.95), sea1: bleed ? rgba(th.st.palette.c2, 0) : th.dark ? '#040914' : rgba(th.st.palette.c2, 1)}}
             font={arabicFont} uid="mp"
           />
         </div>
@@ -310,6 +317,7 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
             padding: '8px 16px',
             background: 'rgba(4, 10, 24, 0.88)',
             borderTop: `1px solid ${rgba(th.st.palette.accent, 0.28)}`,
+            ...(bleed ? {position: 'absolute', zIndex: 2, bottom: MAP_STAGE_ZONE.bleed_foot_bottom, left: 140, right: 140, borderRadius: 999, borderTop: 'none', padding: '10px 24px'} : {}),
           }}
         >
           <span style={{fontSize: 16, fontWeight: 800, color: '#e2e8f0'}}>

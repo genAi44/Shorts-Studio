@@ -30,7 +30,7 @@ ENUMS = {
     "text.layout": ["center", "stack", "diag", "left"],
     "deco.frame": ["none", "corners", "border", "ticks"],
     "deco.progress": ["none", "top", "bottom"],  # "side" removed: creates edge-bleed artifact in 9:16
-    "edit.photo": ["bleed", "polaroid", "arch", "tilt", "circle"],
+    "edit.photo": ["bleed", "polaroid", "arch", "tilt", "circle", "free"],
     "edit.cutout": ["ring", "glow", "blob", "plain"],
     "edit.mixpat": ["alt", "tail", "head", "none"],
     "edit.shapes": ["stars", "diamonds", "dots", "crosses", "none"],
@@ -139,7 +139,7 @@ def random_style(seed=None, mood=None):
         "deco": {"frame": r.choice(ENUMS["deco.frame"]), "progress": r.choice(ENUMS["deco.progress"])},
         "pace": round(r.uniform(0.75, 1.3), 2),
         "font2": font2, "weight2": FONTS[font2][2][0],
-        "edit": {"photo": r.choice(["bleed", "polaroid", "tilt"]), "cutout": r.choice(ENUMS["edit.cutout"]),
+        "edit": {"photo": r.choice(["bleed", "free", "circle", "free"]), "cutout": r.choice(ENUMS["edit.cutout"]),
                  "mixpat": r.choice(["alt", "alt", "tail", "head", "none"]), "shapes": "none",
                  "ken": r.choice(ENUMS["edit.ken"]), "glow": r.random() < 0.7, "blur": r.random() < 0.6,
                  "duo": r.random() < 0.3},
@@ -234,7 +234,7 @@ ART_SYSTEM = """أنت مدير فني لفيديوهات Shorts عربية. ا�
  "deco": {"frame":"none|corners|border|ticks","progress":"none|top|bottom|side"},
  "pace": 0.6-1.5,
  "font2": "خط ثانٍ مختلف عن الأول يُمزج معه داخل الجملة الواحدة (خفيف/كتابي)، من نفس قائمة الخطوط", "weight2": 400-700,
- "edit": {"photo":"bleed|polaroid|arch|tilt|circle","cutout":"ring|glow|blob|plain","mixpat":"alt|tail|head|none","shapes":"stars|diamonds|dots|crosses|none","ken":"in|out|pan","glow":true,"blur":true,"duo":false}
+ "edit": {"photo":"bleed|polaroid|arch|tilt|circle|free","cutout":"ring|glow|blob|plain","mixpat":"alt|tail|head|none","shapes":"stars|diamonds|dots|crosses|none","ken":"in|out|pan","glow":true,"blur":true,"duo":false}
 }
 edit هو «أسلوب المونتاج» لهذا الفيديو: photo شكل الصور المستطيلة، cutout إطار الصور المقصوصة، mixpat كيف تتبدل الخطوط بين كلمات الجملة، shapes الأشكال الزخرفية الصغيرة المتحركة، ken حركة الكاميرا على الصور، glow توهج الأرقام، blur ظهور الكلمات بتمويه، duo صبغة لونين على الصور. اختر تركيباً متماسكاً يناسب المزاج ويختلف عن الفيديوهات السابقة.
 c1 وc2 لون الخلفية (تدرّج). ctx لون الدول المحيطة وctx_edge حدودها (قريبان من الخلفية). hl ألوان الدول المُبرزة وتكون لافتة. text لون النص ويجب أن يتباين بقوة مع c1."""
