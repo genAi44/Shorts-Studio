@@ -114,3 +114,18 @@ def test_overlay_handles_every_scale():
     assert any(f["shape"] == "river" and f["d"] for f in by_id["river"]["features"])
     assert len(by_id["route"]["waypoints"]) == 3
     assert by_id["conflict"]["waypoints"][1]["arrow"] == "attack"
+
+
+def test_extractor_garbage_never_raises():
+    """The model sometimes returns strings inside `scenes` / `sentences`: the plan stays empty instead of crashing."""
+    script = {"hook": {"id": "hook", "role": "hook", "narration": "القاهرة هي عاصمة مصر."}}
+    for bad in ({"scenes": ["hook", "x"]}, {"scenes": [{"id": "hook", "sentences": "oops"}]}, {"scenes": [{"id": "hook", "sentences": ["a", 3]}]}):
+        out = E.extract_script(script, extractor=lambda payload, b=bad: b)
+        assert out["hook"] == [[]]
+
+
+def test_ordinary_adjective_is_not_a_historical_place():
+    """'جديدة' (new) is also a name-less historical hamlet in Lebanon: it must not hijack «عاصمة جديدة» in a Brazil sentence."""
+    from pipeline import geo
+    assert geo.detect_city_in_text("في البرازيل، بنوا عاصمة جديدة")[0] is None
+    assert geo.detect_city_in_text("نقلت البرازيل عاصمتها إلى برازيليا")[0] == "برازيليا"

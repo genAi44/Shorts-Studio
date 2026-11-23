@@ -50,9 +50,9 @@ export const CAPTION_ZONE = {
 // Inset map ("HUD") shown over LLM-generated scenes: bottom band, above the caption zone.
 export const HUD_MAP_ZONE = {
   top: 995,
-  left: 240,
-  width: 600,
-  svg_height: 330,
+  left: 120,
+  width: 840,
+  svg_height: 400,
 } as const;
 
 // Map stage placements (wide card) used when a map is the main subject.

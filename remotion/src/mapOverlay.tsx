@@ -164,8 +164,8 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
   const isWide = effectiveMode === 'split-bottom' || effectiveMode === 'full-stage';
   // full-stage is frameless: the map runs edge to edge, fades into the background and carries only floating labels
   const bleed = effectiveMode === 'full-stage';
-  const frameless = bleed || effectiveMode === 'split-bottom'; // the stage maps (full or under a photo) have no card
-  const cardWidth = frameless ? MAP_STAGE_ZONE.bleed_width : isWide ? MAP_STAGE_ZONE.width : HUD_MAP_ZONE.width;
+  const frameless = true; // no map has a card any more: edge-to-edge stage maps and a frameless HUD map, labels float
+  const cardWidth = isWide ? MAP_STAGE_ZONE.bleed_width : HUD_MAP_ZONE.width;
   const svgRenderHeight = bleed ? MAP_STAGE_ZONE.bleed_svg_height : effectiveMode === 'split-bottom' ? MAP_STAGE_ZONE.split_svg_height : HUD_MAP_ZONE.svg_height;
 
   // tiny places: the main map stays at a readable regional zoom and a magnifier lens shows the close-up
@@ -219,7 +219,7 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
           width: cardWidth,
           overflow: 'hidden',
           ...(frameless
-            ? {WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 10%, #000 88%, transparent)', maskImage: 'linear-gradient(to bottom, transparent, #000 10%, #000 88%, transparent)'}
+            ? (effectiveMode === 'hud' ? {WebkitMaskImage: 'radial-gradient(ellipse 64% 62% at 50% 50%, #000 72%, transparent 100%)', maskImage: 'radial-gradient(ellipse 64% 62% at 50% 50%, #000 72%, transparent 100%)'} : {WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 10%, #000 88%, transparent)', maskImage: 'linear-gradient(to bottom, transparent, #000 10%, #000 88%, transparent)'})
             : {
                 borderRadius: 24,
                 background: `linear-gradient(155deg, ${surfaceBg} 0%, ${surfaceBg2} 100%)`,

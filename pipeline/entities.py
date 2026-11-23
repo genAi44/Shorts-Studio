@@ -221,10 +221,11 @@ def extract_script(script: Dict[str, Any], extractor: Optional[Callable[[Dict[st
             cache[key] = raw
             _cache_save(cache)
     out: Dict[str, List[List[Dict[str, Any]]]] = {}
-    by_scene = {s.get("id"): s for s in (raw.get("scenes") or [])} if raw.get("scenes") else {}
+    by_scene = {s.get("id"): s for s in (raw.get("scenes") or []) if isinstance(s, dict)}  # the model sometimes returns strings in the list
     for sc in payload["scenes"]:
         sents = sc["sentences"]
         got = by_scene.get(sc["id"], {}).get("sentences") or []
+        got = got if isinstance(got, list) else []
         per: List[List[Dict[str, Any]]] = []
         for i, sentence in enumerate(sents):
             item = next((g for g in got if isinstance(g, dict) and g.get("i") == i), got[i] if i < len(got) and isinstance(got[i], dict) else {})

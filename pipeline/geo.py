@@ -788,7 +788,10 @@ def detect_city_in_text(text: str) -> Tuple[Optional[str], Optional[Dict[str, An
         else:
             place = engine._match_exact_en(cand, None)
 
-        if place and (
+        # an obscure historical hamlet with no English name and no population ("جديدة" = a Lebanese ruin) is an ordinary
+        # Arabic word in a sentence, not a place: it must never steal the sentence from the country that is named in it
+        obscure = bool(place) and not place.is_capital and place.feature_code != "PPLC" and not (place.population or 0)             and bool(re.search(r"[؀-ۿ]", place.name_en or ""))
+        if place and not obscure and (
             place.is_capital
             or place.is_historical
             or place.feature_code == "PPLC"
