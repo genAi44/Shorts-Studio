@@ -139,9 +139,18 @@ def scene_context(scene: Dict[str, Any], theme: Dict[str, Any]) -> Dict[str, Any
     }
 
 
+def _gate_sig() -> str:
+    """Hash of the code a scene is checked and rendered against: a changed map/audit/layout invalidates cached scenes."""
+    h = hashlib.sha1()
+    for f in ("mapOverlay.tsx", "layoutAudit.tsx", "layout.ts"):
+        p = REMOTION / "src" / f
+        h.update(p.read_bytes() if p.exists() else b"")
+    return h.hexdigest()[:10]
+
+
 def content_hash(ctx: Dict[str, Any]) -> str:
     ov = json.dumps(ctx.get("map_overlay"), sort_keys=True, ensure_ascii=False)
-    payload = json.dumps({"v": KIT_VERSION, "doc": hashlib.sha1(_kit_text().encode("utf-8")).hexdigest(), "sentence": ctx["sentence"],
+    payload = json.dumps({"v": KIT_VERSION, "doc": hashlib.sha1(_kit_text().encode("utf-8")).hexdigest(), "gate": _gate_sig(), "sentence": ctx["sentence"],
                           "entities": ctx["entities"], "theme": ctx["theme"], "dur": ctx["dur"], "role": ctx["role"],
                           "overlay": hashlib.sha1(ov.encode("utf-8")).hexdigest()}, sort_keys=True, ensure_ascii=False)
     return hashlib.sha1(payload.encode("utf-8")).hexdigest()[:12]
@@ -232,6 +241,8 @@ def sandbox_render(items: Dict[str, Dict[str, Any]], style: Dict[str, Any], work
                     problems[name].append(f"text touches/overflows the canvas edge: {txt} {where}")
                 elif typ == "overlap" and late:
                     problems[name].append(f"overlapping text: {txt} {where}" + (f" with the second text at {it.get('obox')} (move one of them so the boxes do not intersect)" if it.get("obox") else ""))
+                elif typ == "map" and late:
+                    problems[name].append(f"text sits on the map stage {txt} {where}: the map occupies {it.get('obox')}; keep every other element above its top edge (y <= 690 for split-bottom)")
                 elif typ == "zone":
                     problems[name].append(f"text outside the safe zones (caption zone / above safe top): {txt} {where}")
                 elif typ == "rtl":

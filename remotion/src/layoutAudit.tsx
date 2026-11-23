@@ -69,6 +69,17 @@ export const auditItems = (items: Item[]) => {
     // scene text must stay inside the safe zones: not in the caption zone, not above the safe top
     if (!it.caption && !it.el.closest('[data-audit-kit]') && (it.b > CAPTION_ZONE.top + 12 && it.t < CAPTION_ZONE.bottom || it.t < SAFE_TOP - 8)) issues.push({type: 'zone', text: it.text, box});
   }
+  // authored scenes that draw a map: nothing else may sit on the map stage (the card/lens/labels live there)
+  const mapEl = typeof document !== 'undefined' ? document.querySelector('[data-audit-kit="map"]') : null;
+  if (mapEl) {
+    const m = mapEl.getBoundingClientRect();
+    for (const it of items) {
+      if (it.caption || it.el.closest('[data-audit-kit]')) continue;
+      if (it.b > m.top + 40 && it.t < m.bottom - 40 && it.r > m.left && it.l < m.right) {
+        issues.push({type: 'map', text: it.text, box: [it.l, it.t, it.r, it.b].map(Math.round), obox: [m.left, m.top, m.right, m.bottom].map(Math.round)});
+      }
+    }
+  }
   for (let i = 0; i < items.length; i++) {
     for (let j = i + 1; j < items.length; j++) {
       const a = items[i], b = items[j];

@@ -102,7 +102,7 @@ sentence (`type`, `scale`, `name_ar`, numbers, years, `lat/lon`), `map_overlay` 
 | `Counter` | rolling number `{to, from, delay, dur, size, suffix, decimals}` |
 | `Ring`, `Bar` | progress ring / bar `{value 0..1, ...}` |
 | `Icon` | Iconify icon `{name:'lucide:landmark', size, color}` (bundled sets lucide / ph / tabler) |
-| `MapLayer` | the vector map engine, only when `data.map_overlay` exists. It draws its own card with its own labels at a FIXED place: `mode="split-bottom"` card at y 710..1415 (put your elements in y 280..690, keep them out of the card), `mode="full-stage"` card at y 200..1280 (put NOTHING over it), `mode="hud"` small card at y 995..1420. Prefer `split-bottom` with a hero title/number above it |
+| `MapLayer` | the vector map engine, only when `data.map_overlay` exists. It draws its own card with its own labels at a FIXED place: `mode="split-bottom"` card at y 710..1415 (put EVERY other element in y 280..690 - the gate rejects anything that touches the map stage, including its pills and the magnifier lens), `mode="full-stage"` card at y 200..1280 (put NOTHING over it), `mode="hud"` small card at y 995..1420. Prefer `split-bottom` with a hero title/number above it |
 | `useSpr(delaySec, preset)` | spring 0..1 (`smooth`, `snappy`, `bouncy`) |
 | `enter(p, kind, dist)` | entrance style = opacity + translate + scale (3 properties): `rise, drop, pop, left, right, fade` |
 | `useProgress(startSec, durSec)` | 0..1 with a bezier ease |
