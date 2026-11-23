@@ -10,51 +10,17 @@ from __future__ import annotations
 
 import json
 import os
+import re
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .layout_planner import SLOTS
-
-
-_RASTER_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tiff"}
-
-
-def _has_raster(value: Any) -> bool:
-    """Returns True if value is a string path pointing to a raster image."""
-    if not isinstance(value, str):
-        return False
-    lower = value.lower().strip()
-    return any(lower.endswith(ext) for ext in _RASTER_EXTS)
-
-
-def _scan_rasters(obj: Any) -> List[str]:
-    """Recursively find all raster image paths in a spec dict/list."""
-    hits: List[str] = []
-    if isinstance(obj, dict):
-        for k, v in obj.items():
-            if _has_raster(v):
-                hits.append(f"{k}={v}")
-            else:
-                hits.extend(_scan_rasters(v))
-    elif isinstance(obj, list):
-        for item in obj:
-            hits.extend(_scan_rasters(item))
-    return hits
 
 
 def _audit_scene(scene: Dict[str, Any]) -> Dict[str, Any]:
     sid = str(scene.get("id") or "scene")
     issues: List[Dict[str, str]] = []
     score = 100
-
-    # 0a. Rule 1.1 — no raster images anywhere in the scene
-    raster_hits = _scan_rasters(scene)
-    for hit in raster_hits[:3]:  # cap to 3 to avoid flooding
-        issues.append({
-            "type": "raster_image",
-            "severity": "error",
-            "detail": f"صورة نقطية محظورة (القاعدة 1.1): {hit[:80]}",
-        })
-        score -= 30
 
     # 0b. Rule 1.2 — scene must have at least one non-text visual element
     beats = scene.get("beats") or []
@@ -139,30 +105,34 @@ def _audit_scene(scene: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _check_still_darkness(spec: Dict[str, Any], job_dir: str) -> Optional[Dict[str, Any]]:
-    """اختياري: يفحص نسبة البكسلات المظلمة في إطار منتصف المشهد الأول عبر render_still."""
+    """اختياري: يرندر إطار منتصف كل مشهد (حزمة واحدة) ويفحص الفراغ المظلم في منطقة البيت (y: 280..1380)."""
     try:
         from PIL import Image
         import numpy as np
         from . import rem
 
-        if not rem.available() or not spec.get("scenes"):
+        scenes = spec.get("scenes") or []
+        if not rem.available() or not scenes:
             return None
-        mid_frame = max(1, int(spec["scenes"][0].get("dur", 30) // 2))
+        frames = [int(sc.get("from", 0)) + max(1, int(sc.get("dur", 30)) // 2) for sc in scenes]
         still_path = os.path.join(job_dir, "qa_still_%d.jpg")
-        rem.render_still(spec, still_path, mid_frame, job_dir)
-        rendered = os.path.join(job_dir, f"qa_still_{mid_frame}.jpg")
-        if not os.path.exists(rendered):
+        rem.render_still(spec, still_path, ",".join(map(str, frames)), job_dir)
+        per_scene = []
+        for sc, fr in zip(scenes, frames):
+            rendered = os.path.join(job_dir, f"qa_still_{fr}.jpg")
+            if not os.path.exists(rendered):
+                continue
+            arr = np.asarray(Image.open(rendered).convert("L"))
+            dark_ratio = float((arr[280:1380, :] < 22).mean())
+            per_scene.append({"scene": sc.get("id"), "frame": fr, "dark_ratio": round(dark_ratio, 3), "empty_warning": dark_ratio > 0.78})
+            try:
+                os.remove(rendered)
+            except OSError:
+                pass
+        if not per_scene:
             return None
-        im = Image.open(rendered).convert("L")
-        arr = np.asarray(im)
-        # Inspect STAGE_A + STAGE_B region (y: 280..1380)
-        roi = arr[280:1380, :]
-        dark_ratio = float((roi < 22).mean())
-        try:
-            os.remove(rendered)
-        except OSError:
-            pass
-        return {"frame": mid_frame, "dark_ratio": round(dark_ratio, 3), "empty_warning": dark_ratio > 0.78}
+        worst = max(per_scene, key=lambda r: r["dark_ratio"])
+        return {**worst, "scenes": per_scene, "empty_warning": any(r["empty_warning"] for r in per_scene)}
     except Exception:
         return None
 
@@ -186,21 +156,97 @@ def _audit_design_repetition(spec: Dict[str, Any]) -> List[Dict[str, str]]:
     return issues
 
 
+_NUM_RE = re.compile(r"\d[\d,.٫٬]*\d|\d")
+_DENY_KEYS = {"img", "query", "alt_queries", "must_show", "avoid", "tsx_id", "kind", "camera", "slot", "narration",
+              "role", "cues", "concept", "scene_spec", "id", "layout", "view", "words", "entity_iso3"}
+_TSX_TEXT_RE = re.compile(
+    r"""(?:>([^<>{}]*[؀-ۿ][^<>{}]*)<)|(?:['"`]([^'"`
+]*[؀-ۿ][^'"`
+]*)['"`])"""
+)
+_AR_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩٫٬", "0123456789.,")
+
+
+def _norm_nums(text: str, min_digits: int = 2) -> set:
+    out = set()
+    for m in _NUM_RE.findall(str(text).translate(_AR_DIGITS)):
+        n = re.sub(r"[,.]", "", m)
+        if len(n) >= min_digits:
+            out.add(n)
+    return out
+
+
+def _shown_strings(obj: Any) -> List[str]:
+    if isinstance(obj, str):
+        return [obj]
+    if isinstance(obj, dict):
+        return [t for k, v in obj.items() if k not in _DENY_KEYS for t in _shown_strings(v)]
+    if isinstance(obj, list):
+        return [t for v in obj for t in _shown_strings(v)]
+    return []
+
+
+def _tsx_shown_numbers(tsx_id: str) -> set:
+    """Numbers inside Arabic text literals of a generated TSX scene (ignores colors/pixel values)."""
+    try:
+        src = (Path(__file__).resolve().parent.parent / "remotion" / "src" / "generated" / "DynamicScenes.tsx").read_text(encoding="utf-8")
+        i = src.index(f"export const {tsx_id}:")
+        j = src.find("/* @llm_verified:", i)
+        body = src[i: j if j > 0 else len(src)]
+    except (OSError, ValueError):
+        return set()
+    nums = set()
+    for lit in _TSX_TEXT_RE.findall(body):
+        nums |= _norm_nums(lit[0] or lit[1])
+    return nums
+
+
+def _audit_unsourced_numbers(spec: Dict[str, Any], sourced_text: str = "") -> List[Dict[str, str]]:
+    """Rule 1.4: a number shown on screen must come from the narration or the researched facts."""
+    allowed = _norm_nums(sourced_text)
+    issues: List[Dict[str, str]] = []
+    for sc in spec.get("scenes") or []:
+        narr = " ".join(str(w.get("t", "")) for w in (sc.get("words") or []) if isinstance(w, dict))
+        ok = allowed | _norm_nums(narr)
+        shown = set()
+        for b in sc.get("beats") or []:
+            shown |= _norm_nums(" ".join(_shown_strings(b)))
+            if b.get("tsx_id"):
+                shown |= _tsx_shown_numbers(str(b["tsx_id"]))
+        bad = sorted(shown - ok)
+        if bad:
+            issues.append({"type": "unsourced_number", "severity": "warning",
+                           "detail": f"{sc.get('id')}: أرقام ظاهرة بلا مصدر في السرد/الحقائق: {', '.join(bad[:5])}"})
+    return issues
+
+
 def audit_spec(
     spec: Dict[str, Any],
     job_dir: Optional[str] = None,
     check_pixels: bool = False,
+    sourced_text: str = "",
 ) -> Dict[str, Any]:
     """يفحص كل مشاهد الـ spec ويكتب `qa_report.json` إذا حُدّد `job_dir`."""
     scenes_rep = [_audit_scene(sc) for sc in (spec.get("scenes") or [])]
     avg_score = round(sum(r["score"] for r in scenes_rep) / max(1, len(scenes_rep)), 1)
-    design_issues = _audit_design_repetition(spec)
+    design_issues = _audit_design_repetition(spec) + _audit_unsourced_numbers(spec, sourced_text)
     report: Dict[str, Any] = {
         "passed": all(r["passed"] for r in scenes_rep) and not any(i["severity"] == "error" for i in design_issues),
         "average_score": avg_score,
         "scenes": scenes_rep,
         "design_issues": design_issues,
     }
+    # No silent fallbacks: every degraded beat is marked `_fallback` in the spec and listed here.
+    from .config import get_last_warnings
+    report["fallback_beats"] = [
+        {"scene": sc.get("id"), "kind": b.get("kind")}
+        for sc in (spec.get("scenes") or []) for b in (sc.get("beats") or []) if b.get("_fallback")
+    ]
+    report["fallback_warnings"] = get_last_warnings()
+    from .entities import spec_gaps
+    report["entity_gaps"] = spec_gaps(spec)
+    if report["entity_gaps"]:
+        report["passed"] = False
     if check_pixels and job_dir:
         px = _check_still_darkness(spec, job_dir)
         if px:

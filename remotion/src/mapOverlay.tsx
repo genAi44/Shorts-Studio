@@ -2,6 +2,8 @@ import React from 'react';
 import {AbsoluteFill, Easing, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {SafeImg} from './SafeImg';
 import {rgba, useTheme} from './theme';
+import {HUD_MAP_ZONE, MAP_LENS, MAP_STAGE_ZONE} from './layout';
+import {MapViewport} from './mapEngine';
 
 export type MapWaypoint = {
   id: string;
@@ -30,7 +32,22 @@ export type MapCountryShape = {
   cy: number;
 };
 
+export type MapFeature = {
+  id: string;
+  shape: 'river' | 'lake' | 'area' | 'mountain' | string;
+  label: string;
+  kind_label: string;
+  d: string;
+  cx: number;
+  cy: number;
+  rx: number;
+  ry: number;
+  approx: boolean;
+  trigger_frame: number;
+};
+
 export type MapOverlaySpec = {
+  features?: MapFeature[];
   enabled: boolean;
   placement?: 'top-left' | 'top-right' | 'bottom-left' | string;
   enter_frame: number;
@@ -106,10 +123,13 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
       return `${w.name_ar} — ${w.country_ar}`;
     }
     if (w.kind === 'continent') {
-      return `قارة ${w.name_ar}`;
+      return `${w.kind_label || 'قارة'} ${w.name_ar}`;
     }
     if (w.kind === 'country') {
       return `دولة ${w.name_ar}`;
+    }
+    if (['ocean', 'globe', 'terrain', 'empire', 'region'].includes(w.kind)) {
+      return w.name_ar;
     }
     return w.name_ar;
   })();
@@ -139,36 +159,45 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
   const camY = interpolate(camTransition, [0, 1], [startY, activeWp.y]);
   const camZoom = Math.max(1.0, interpolate(camTransition, [0, 1], [startZoom, activeWp.zoom]));
 
-  const rawTx = cx0 - camX * camZoom;
-  const rawTy = cy0 - camY * camZoom;
-  const minTx = vw * (1 - camZoom);
-  const minTy = vh * (1 - camZoom);
+  // Placement: panoramic split-bottom stage below photo, full-stage map, or corner HUD
+  const effectiveMode = mode || (splitBottom ? 'split-bottom' : 'hud');
+  const isWide = effectiveMode === 'split-bottom' || effectiveMode === 'full-stage';
+  // full-stage is frameless: the map runs edge to edge, fades into the background and carries only floating labels
+  const bleed = effectiveMode === 'full-stage';
+  const frameless = bleed || effectiveMode === 'split-bottom'; // the stage maps (full or under a photo) have no card
+  const cardWidth = frameless ? MAP_STAGE_ZONE.bleed_width : isWide ? MAP_STAGE_ZONE.width : HUD_MAP_ZONE.width;
+  const svgRenderHeight = bleed ? MAP_STAGE_ZONE.bleed_svg_height : effectiveMode === 'split-bottom' ? MAP_STAGE_ZONE.split_svg_height : HUD_MAP_ZONE.svg_height;
+
+  // tiny places: the main map stays at a readable regional zoom and a magnifier lens shows the close-up
+  const useLens = activeWp.zoom * 100 >= MAP_LENS.min_zoom_pct;
+  const mainZoom = useLens ? Math.min(camZoom, MAP_LENS.main_cap_pct / 100) : camZoom;
+  const rawTx = cx0 - camX * mainZoom;
+  const rawTy = cy0 - camY * mainZoom;
+  const minTx = vw * (1 - mainZoom);
+  const minTy = vh * (1 - mainZoom);
   const tx = Math.max(minTx, Math.min(0, rawTx));
   const ty = Math.max(minTy, Math.min(0, rawTy));
+  // slice-fit crops the viewBox sides: keep the lens inside what is actually visible
+  const fit = Math.max(cardWidth / vw, svgRenderHeight / vh);
+  const visX0 = (vw - cardWidth / fit) / 2, visY0 = (vh - svgRenderHeight / fit) / 2;
+  const lensC = {cx: visX0 + MAP_LENS.margin + MAP_LENS.r, cy: visY0 + MAP_LENS.margin + MAP_LENS.r};
+  const lensCam = {tx: lensC.cx - camX * camZoom, ty: lensC.cy - camY * camZoom, z: camZoom};
 
   // Sonar pulse around active pin
   const pulsePhase = ((frame - activeWp.trigger_frame) % 36) / 36;
   const pulseRadius = interpolate(pulsePhase, [0, 1], [9, 36]);
   const pulseAlpha = interpolate(pulsePhase, [0, 1], [0.88, 0]);
 
-  // Placement: panoramic split-bottom stage below photo, full-stage map, or corner HUD
-  const effectiveMode = mode || (splitBottom ? 'split-bottom' : 'hud');
-  const isWide = effectiveMode === 'split-bottom' || effectiveMode === 'full-stage';
-  const placement = overlay.placement === 'top-right' ? 'top-right' : 'top-left';
-  const cardWidth = isWide ? 984 : Math.min(520, vw);
-  const svgRenderHeight = effectiveMode === 'full-stage' ? 980 : effectiveMode === 'split-bottom' ? 620 : Math.min(340, vh);
   const slotName = effectiveMode === 'split-bottom' ? 'STAGE_B' : effectiveMode === 'full-stage' ? 'FULL_STAGE' : 'HUD';
   const posStyle: React.CSSProperties =
     effectiveMode === 'full-stage'
-      ? {left: 48, top: 200}
+      ? {left: 0, top: MAP_STAGE_ZONE.full_top}
       : effectiveMode === 'split-bottom'
-      ? {left: 48, top: 710}
-      : placement === 'top-right'
-      ? {right: 48, top: 290}
-      : {left: 48, top: 290};
+      ? {left: 0, top: MAP_STAGE_ZONE.split_top}
+      : {left: HUD_MAP_ZONE.left, top: HUD_MAP_ZONE.top}; // bottom band above CAPTION_ZONE: never covers scene content
 
-  const slideOffsetX = isWide ? 0 : placement === 'top-right' ? (1 - enterSpring) * 65 : -(1 - enterSpring) * 65;
-  const slideOffsetY = isWide ? (1 - enterSpring) * 44 : (1 - enterSpring) * 24;
+  const slideOffsetX = 0;
+  const slideOffsetY = (1 - enterSpring) * 44;
 
   const accentSolid = rgba(th.p.accent, 1);
   const accent2Solid = rgba(th.p.accent2, 1);
@@ -177,42 +206,29 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
   const surfaceBg2 = rgba(th.p.c2, 0.97);
   const arabicFont = `'Cairo', 'Noto Kufi Arabic', ${th.family2 || th.family}`;
 
-  // Deduplicate waypoints by (x, y) when rendering pins so a country+capital pair doesn't stack two identical dots
-  const uniquePinWaypoints: {wp: MapWaypoint; idx: number}[] = [];
-  for (let i = 0; i <= activeIdx && i < waypoints.length; i++) {
-    const candidate = waypoints[i];
-    const existingIdx = uniquePinWaypoints.findIndex(
-      (u) => Math.hypot(u.wp.x - candidate.x, u.wp.y - candidate.y) < 4
-    );
-    if (existingIdx >= 0) {
-      // Prefer the capital/city metadata or the latest active index
-      const prevEntry = uniquePinWaypoints[existingIdx];
-      const mergedWp =
-        prevEntry.wp.kind === 'capital' || prevEntry.wp.kind === 'city' ? prevEntry.wp : candidate;
-      uniquePinWaypoints[existingIdx] = {wp: mergedWp, idx: i};
-    } else {
-      uniquePinWaypoints.push({wp: candidate, idx: i});
-    }
-  }
-
   return (
     <AbsoluteFill style={{pointerEvents: 'none', zIndex: 24}}>
       <div
         dir="rtl"
         lang="ar"
         data-slot={slotName}
+        data-audit-kit="map"
         style={{
           position: 'absolute',
           ...posStyle,
           width: cardWidth,
-          borderRadius: 24,
           overflow: 'hidden',
-          background: `linear-gradient(155deg, ${surfaceBg} 0%, ${surfaceBg2} 100%)`,
-          border: `2px solid ${rgba(th.st.palette.accent, 0.62)}`,
-          boxShadow: `0 20px 48px rgba(0, 0, 0, 0.72), 0 0 28px ${accentGlow}`,
-          backdropFilter: 'blur(14px)',
+          ...(frameless
+            ? {WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 10%, #000 88%, transparent)', maskImage: 'linear-gradient(to bottom, transparent, #000 10%, #000 88%, transparent)'}
+            : {
+                borderRadius: 24,
+                background: `linear-gradient(155deg, ${surfaceBg} 0%, ${surfaceBg2} 100%)`,
+                border: `2px solid ${rgba(th.st.palette.accent, 0.62)}`,
+                boxShadow: `0 20px 48px rgba(0, 0, 0, 0.72), 0 0 28px ${accentGlow}`,
+                backdropFilter: 'blur(14px)',
+              }),
           opacity: visibility,
-          transform: `translate3d(${slideOffsetX.toFixed(1)}px, ${slideOffsetY.toFixed(1)}px, 0) scale(${(0.92 + 0.08 * enterSpring).toFixed(3)})`,
+          transform: `translate3d(${slideOffsetX.toFixed(1)}px, ${slideOffsetY.toFixed(1)}px, 0) scale(${((frameless ? 0.98 : 0.92) + (frameless ? 0.02 : 0.08) * enterSpring).toFixed(3)})`,
           fontFamily: arabicFont,
         }}
       >
@@ -226,6 +242,7 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
             background: 'rgba(4, 10, 24, 0.78)',
             borderBottom: `1.5px solid ${rgba(th.st.palette.accent, 0.32)}`,
             gap: 10,
+            ...(frameless ? {position: 'absolute', zIndex: 2, top: bleed ? MAP_STAGE_ZONE.bleed_head_top : MAP_STAGE_ZONE.split_head_top, left: 90, right: 90, borderRadius: 999, borderBottom: 'none', padding: '12px 26px', justifyContent: 'center'} : {}),
           }}
         >
           <div style={{display: 'flex', alignItems: 'center', gap: 11, minWidth: 0}}>
@@ -282,180 +299,14 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
 
         {/* Unobstructed Interactive Vector Map Viewport */}
         <div style={{position: 'relative', width: cardWidth, height: svgRenderHeight, overflow: 'hidden'}}>
-          <svg width="100%" height={svgRenderHeight} viewBox={`0 0 ${vw} ${vh}`} preserveAspectRatio="xMidYMid slice" style={{display: 'block'}}>
-            <defs>
-              <radialGradient id="mapOverlayBg" cx="50%" cy="50%" r="70%">
-                <stop offset="0%" stopColor={rgba(th.st.palette.c2, 0.95)} />
-                <stop offset="100%" stopColor="#040914" />
-              </radialGradient>
-              <linearGradient id="mapOverlayPoly" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor={accentSolid} stopOpacity={0.46} />
-                <stop offset="100%" stopColor={accent2Solid} stopOpacity={0.22} />
-              </linearGradient>
-              <filter id="mapOverlayGlow" x="-25%" y="-25%" width="150%" height="150%">
-                <feGaussianBlur stdDeviation="3.5" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
-
-            <rect width={vw} height={vh} fill="url(#mapOverlayBg)" />
-
-            {/* Subtle Topographic Graticule Grid */}
-            <g opacity={0.14}>
-              {[0.25, 0.5, 0.75].map((ry) => (
-                <line key={`gy_${ry}`} x1={0} y1={vh * ry} x2={vw} y2={vh * ry} stroke={accentSolid} strokeWidth={1.2} strokeDasharray="6 8" />
-              ))}
-              {[0.2, 0.4, 0.6, 0.8].map((rx) => (
-                <line key={`gx_${rx}`} x1={vw * rx} y1={0} x2={vw * rx} y2={vh} stroke={accentSolid} strokeWidth={1.2} strokeDasharray="6 8" />
-              ))}
-            </g>
-
-            {/* Camera Transform Group */}
-            <g transform={`translate(${tx.toFixed(1)}, ${ty.toFixed(1)}) scale(${camZoom.toFixed(3)})`}>
-              {/* Neighboring Countries Context */}
-              {ctx_path ? (
-                <path
-                  d={ctx_path}
-                  fill="rgba(255, 255, 255, 0.045)"
-                  stroke="rgba(255, 255, 255, 0.18)"
-                  strokeWidth={1.1 / camZoom}
-                />
-              ) : null}
-
-              {/* Highlighted Target Country Polygons (active country glows, others dim) */}
-              {countries.map((c, ci) => {
-                const isActiveCountry = !activeWp.iso3 || c.iso3 === activeWp.iso3;
-                return c.d ? (
-                  <path
-                    key={`c_${c.iso3}_${ci}`}
-                    d={c.d}
-                    fill="url(#mapOverlayPoly)"
-                    fillOpacity={isActiveCountry ? 1 : 0.35}
-                    stroke={accentSolid}
-                    strokeOpacity={isActiveCountry ? 1 : 0.45}
-                    strokeWidth={(isActiveCountry ? 3.2 : 1.6) / camZoom}
-                    filter={isActiveCountry ? 'url(#mapOverlayGlow)' : undefined}
-                  />
-                ) : null;
-              })}
-
-              {/* Animated Zigzag / Trajectory Arc Between Distinct Previous Location and Active Location */}
-              {prevWp && Math.hypot(activeWp.x - prevWp.x, activeWp.y - prevWp.y) > 8 ? (() => {
-                const dx = activeWp.x - prevWp.x;
-                const dy = activeWp.y - prevWp.y;
-                const len = Math.max(1, Math.hypot(dx, dy));
-                const nx = -dy / len;
-                const ny = dx / len;
-                const zigAmp = Math.min(14, len * 0.14);
-                const p1x = prevWp.x + dx * 0.25 + nx * zigAmp;
-                const p1y = prevWp.y + dy * 0.25 + ny * zigAmp;
-                const p2x = prevWp.x + dx * 0.50 - nx * zigAmp;
-                const p2y = prevWp.y + dy * 0.50 - ny * zigAmp;
-                const p3x = prevWp.x + dx * 0.75 + nx * zigAmp * 0.85;
-                const p3y = prevWp.y + dy * 0.75 + ny * zigAmp * 0.85;
-                const zigD = `M ${prevWp.x.toFixed(1)} ${prevWp.y.toFixed(1)} L ${p1x.toFixed(1)} ${p1y.toFixed(1)} L ${p2x.toFixed(1)} ${p2y.toFixed(1)} L ${p3x.toFixed(1)} ${p3y.toFixed(1)} L ${activeWp.x.toFixed(1)} ${activeWp.y.toFixed(1)}`;
-                return (
-                  <g>
-                    <path
-                      d={zigD}
-                      fill="none"
-                      stroke={accent2Solid}
-                      strokeWidth={3.2 / camZoom}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      pathLength={1}
-                      strokeDasharray="1"
-                      strokeDashoffset={1 - camTransition}
-                      opacity={0.95}
-                      filter="url(#mapOverlayGlow)"
-                    />
-                    <circle
-                      cx={prevWp.x}
-                      cy={prevWp.y}
-                      r={5.5 / camZoom}
-                      fill="#e2e8f0"
-                      stroke={accent2Solid}
-                      strokeWidth={2 / camZoom}
-                    />
-                  </g>
-                );
-              })() : null}
-
-              {/* Render Deduplicated Waypoints + Direct Pin Callout Label */}
-              {uniquePinWaypoints.map(({wp, idx}) => {
-                const isCurrent = idx === activeIdx || Math.hypot(wp.x - activeWp.x, wp.y - activeWp.y) < 4;
-                const placeLabel = wp.name_ar;
-                const badgeW = 136 / camZoom;
-                const badgeH = 32 / camZoom;
-                const placeAbove = wp.y > vh * 0.42;
-                const rawBx = wp.x - badgeW / 2;
-                const bx = Math.max(8 / camZoom, Math.min(vw - badgeW - 8 / camZoom, rawBx));
-                const by = placeAbove ? wp.y - badgeH - 12 / camZoom : wp.y + 12 / camZoom;
-
-                return (
-                  <g key={wp.id}>
-                    {isCurrent && (
-                      <>
-                        <circle
-                          cx={wp.x}
-                          cy={wp.y}
-                          r={pulseRadius / camZoom}
-                          fill="none"
-                          stroke="#fde047"
-                          strokeWidth={2.2 / camZoom}
-                          opacity={pulseAlpha}
-                        />
-                        <circle
-                          cx={wp.x}
-                          cy={wp.y}
-                          r={14 / camZoom}
-                          fill="rgba(253, 224, 71, 0.25)"
-                        />
-                      </>
-                    )}
-                    <circle
-                      cx={wp.x}
-                      cy={wp.y}
-                      r={(isCurrent ? 7.0 : 5.0) / camZoom}
-                      fill={isCurrent ? '#fde047' : '#cbd5e1'}
-                      stroke="#040914"
-                      strokeWidth={2.2 / camZoom}
-                    />
-                    {isCurrent && (
-                      <foreignObject x={bx} y={by} width={badgeW} height={badgeH}>
-                        <div
-                          dir="rtl"
-                          lang="ar"
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            background: 'rgba(4, 10, 24, 0.92)',
-                            border: `1.5px solid ${accentSolid}`,
-                            borderRadius: 999,
-                            color: '#fde047',
-                            fontSize: Math.round(15 / camZoom),
-                            fontWeight: 900,
-                            fontFamily: arabicFont,
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.65)',
-                            whiteSpace: 'nowrap',
-                            padding: '0 8px',
-                          }}
-                        >
-                          {placeLabel}
-                        </div>
-                      </foreignObject>
-                    )}
-                  </g>
-                );
-              })}
-            </g>
-          </svg>
+          <MapViewport
+            frame={frame} fps={fps} vw={vw} vh={vh} height={svgRenderHeight}
+            ctxPath={ctx_path} countries={countries} waypoints={waypoints} activeIdx={activeIdx}
+            prevWp={prevWp} camTransition={camTransition} features={overlay.features || []}
+            main={{tx, ty, z: mainZoom}} lens={useLens ? lensCam : null} lensC={lensC}
+            colors={{accent: accentSolid, accent2: accent2Solid, text: '#e2e8f0', ctxFill: rgba(th.p.text, 0.09), ctxStroke: rgba(th.p.text, 0.34), sea0: rgba(th.st.palette.c2, frameless ? 0.16 : 0.95), sea1: frameless ? rgba(th.st.palette.c2, 0) : th.dark ? '#040914' : rgba(th.st.palette.c2, 1)}}
+            font={arabicFont} uid="mp"
+          />
         </div>
 
         {/* Clean Bottom Footer Bar (Outside Map Viewport so Zero Polygon Obstruction) */}
@@ -467,11 +318,12 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
             padding: '8px 16px',
             background: 'rgba(4, 10, 24, 0.88)',
             borderTop: `1px solid ${rgba(th.st.palette.accent, 0.28)}`,
+            ...(frameless ? {position: 'absolute', zIndex: 2, bottom: bleed ? MAP_STAGE_ZONE.bleed_foot_bottom : MAP_STAGE_ZONE.split_foot_bottom, left: 140, right: 140, borderRadius: 999, borderTop: 'none', padding: '10px 24px'} : {}),
           }}
         >
           <span style={{fontSize: 16, fontWeight: 800, color: '#e2e8f0'}}>
             {pairedCityWp.kind === 'continent'
-              ? `القارة: ${pairedCityWp.name_ar}`
+              ? (pairedCityWp.kind_label === 'منطقة' ? `المنطقة: ${pairedCityWp.name_ar}` : `القارة: ${pairedCityWp.name_ar}`)
               : pairedCityWp.country_ar
               ? `الدولة: ${pairedCityWp.country_ar}`
               : `الموقع: ${pairedCityWp.name_ar}`}

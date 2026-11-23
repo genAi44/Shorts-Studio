@@ -34,9 +34,11 @@ import {Headline} from './text';
 
 import {AccentShapes, PhotoBeat, isAlt, useFont2} from './photo';
 import {CitySceneBeat, ArchitectureBeat, MysterySceneBeat} from './sceneBeats';
+import {YearCounterBeat, PersonCardBeat} from './entityBeats';
+import {AuthoredBeat} from './authoredBeat';
 
-import {MotionCtx, on, rgba, useTheme} from './theme';
-import {BEAT_ZONE, CAPTION_ZONE, HEADLINE_ZONE, SAFE_BOTTOM, SAFE_TOP} from './layout';
+import {MapLayoutCtx, MotionCtx, on, rgba, useTheme} from './theme';
+import {BEAT_ZONE, CAPTION_ZONE, HEADLINE_ZONE, SAFE_BOTTOM, SAFE_TOP, SCENE_FIT} from './layout';
 import {Beat, RGB} from './types';
 
 
@@ -214,7 +216,8 @@ export const BeatShell: React.FC<{beat: Beat; children: React.ReactNode}> = ({be
         'icon_scene', 'map_pin', 'timeline_card', 'bigtext', 'custom_scene',
         'generative_canvas', 'versus_battle', 'balance_meter', 'stack_pyramid',
         'deep_time_slider', 'macro_zoom_globe', 'subsurface_mine', 'dot_matrix_population',
-        'money_waterfall', 'frontline_clash', 'animated_route', 'bars', 'line_chart', 'pie_chart'
+        'money_waterfall', 'frontline_clash', 'animated_route', 'bars', 'line_chart', 'pie_chart',
+        'city_skyline', 'architecture', 'year_counter', 'person_card', 'authored' // these draw their own title: a second headline would stack on it
       ].includes(beat.kind) ? <div style={{opacity: 1 - exit}}><Headline text={beat.title} /></div> : null}
 
     </AbsoluteFill>
@@ -595,7 +598,7 @@ const StatBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
           </svg>
 
-          <div style={{position: 'absolute', left: 0, right: 0, top: cy - 80 - 85, textAlign: 'center', ...enterStyle(a, 'pop'), ...num(170, th.p.accent)}}>{show}</div>
+          <div style={{position: 'absolute', left: 0, right: 0, top: cy - 80 - 85, textAlign: 'center', ...enterStyle(a, 'pop'), ...num(Math.min(170, Math.floor(500 / (0.62 * Math.max(3, s.length)))), th.p.accent)}}>{show}</div>
 
           {labelEl(cy + 270)}
 
@@ -1356,7 +1359,7 @@ const TickerBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
       ) : null}
 
-      <div style={{position: 'absolute', top: th.zoneCy - 50, left: 0, right: 0, height: 156, overflow: 'hidden', borderTop: `3px solid ${rgba(th.p.accent, 0.5)}`, borderBottom: `3px solid ${rgba(th.p.accent, 0.5)}`}}>
+      <div data-audit-ignore style={{position: 'absolute', top: th.zoneCy - 50, left: 0, right: 0, height: 156, overflow: 'hidden', borderTop: `3px solid ${rgba(th.p.accent, 0.5)}`, borderBottom: `3px solid ${rgba(th.p.accent, 0.5)}`}}>
 
         <div style={{position: 'absolute', top: BEAT_ZONE.zero, bottom: BEAT_ZONE.zero, display: 'flex', alignItems: 'center', gap: 32, transform: `translateX(-${offset}px)`}}>
 
@@ -1390,6 +1393,10 @@ const TickerBeat: React.FC<{beat: Beat}> = ({beat}) => {
 
 // ------------------------------------------------------------------ مكدّس بطاقات (card stack)
 
+// Stacked cards must never overlap: height shrinks with the count so they all fit the beat zone.
+const CARD_GAP = 24;
+const CARD_H = (n: number) => Math.min(196, Math.floor((BEAT_ZONE.bottom - BEAT_ZONE.top - 40 - (n - 1) * CARD_GAP) / Math.max(1, n)));
+
 const CardItem: React.FC<{item: any; i: number; n: number}> = ({item, i, n}) => {
 
   const th = useTheme();
@@ -1402,7 +1409,7 @@ const CardItem: React.FC<{item: any; i: number; n: number}> = ({item, i, n}) => 
 
   return (
 
-    <div style={{position: 'absolute', left: 80, right: 80, top: th.zoneCy - 300 + i * 58, height: 196, borderRadius: 32, background: rgba(th.p.c1, Math.max(0.35, 0.82 - i * 0.1)), border: `3px solid ${rgba(col, 0.8)}`, display: 'flex', alignItems: 'center', gap: 28, padding: '0 36px', zIndex: n - i, ...enterStyle(p, 'rise', 40 + i * 18)}}>
+    <div style={{position: 'absolute', left: 80, right: 80, top: th.zoneCy - (n * CARD_H(n) + (n - 1) * CARD_GAP) / 2 + i * (CARD_H(n) + CARD_GAP), height: CARD_H(n), borderRadius: 32, background: rgba(th.p.c1, Math.max(0.35, 0.82 - i * 0.1)), border: `3px solid ${rgba(col, 0.8)}`, display: 'flex', alignItems: 'center', gap: 28, padding: '0 36px', zIndex: n - i, ...enterStyle(p, 'rise', 40 + i * 18)}}>
 
       {item.icon ? <div style={{flex: '0 0 auto'}}><Icon name={item.icon} size={78} color={rgba(col)} /></div> : null}
 
@@ -1909,7 +1916,7 @@ export const ElevationProfileBeat: React.FC<{beat: Beat}> = ({beat}) => {
         {seaProg > 0.3 && (
           <text x={96} y={SEA_Y - 14} fontSize={34} fontWeight={700}
             fill={accent2C} opacity={Math.min(1, (seaProg - 0.3) * 4)}
-            fontFamily={th.family} textAnchor="start">
+            fontFamily={th.family} textAnchor="end" direction="rtl">
             {seaLabel} = 0 م
           </text>
         )}
@@ -1918,7 +1925,7 @@ export const ElevationProfileBeat: React.FC<{beat: Beat}> = ({beat}) => {
       {/* Peak name */}
       {beat.title && mountainProg > 0.72 && (
         <div style={{
-          position: 'absolute', left: 80, right: 80, top: PEAK_Y - 90,
+          position: 'absolute', left: 80, right: 80, top: PEAK_Y - 215,
           textAlign: 'center', ...font, fontSize: 60, fontWeight: 900,
           color: textC, textShadow: th.shadow, direction: 'rtl',
           opacity: Math.min(1, (mountainProg - 0.72) * 4),
@@ -1970,7 +1977,8 @@ const LineChartBeat: React.FC<{beat: Beat}> = ({beat}) => {
   const range = maxVal - minVal || 1;
 
   // Canvas area inside the full 1080×1920 frame
-  const PAD_L = 120, PAD_R = 60, PAD_T = 580, PAD_B = 1300;
+  // plot box derived from the layout contract: value labels past the first/last point stay inside the safe margins
+  const PAD_L = BEAT_ZONE.left + 60, PAD_R = BEAT_ZONE.right + 60, PAD_T = BEAT_ZONE.chart_title_top + 160, PAD_B = BEAT_ZONE.bottom - 80;
   const W = 1080 - PAD_L - PAD_R;  // 900
   const H = PAD_B - PAD_T;          // 720
 
@@ -2066,7 +2074,7 @@ const LineChartBeat: React.FC<{beat: Beat}> = ({beat}) => {
               {/* X-axis label */}
               <text x={px} y={PAD_B + 40} fontSize={30} fill={textC} textAnchor="middle" fontFamily={th.family}>{p.label}</text>
               {/* Value label above/below dot */}
-              <text x={px} y={above ? py - 20 : py + 48} fontSize={32} fontWeight={700} fill={accentC} textAnchor="middle" fontFamily={th.family}>
+              <text x={i === 0 ? px + 22 : px} y={above ? py - 20 : py + 48} fontSize={32} fontWeight={700} fill={accentC} textAnchor={i === 0 ? 'start' : 'middle'} fontFamily={th.family}>
                 {p.value % 1 === 0 ? p.value.toFixed(0) : p.value.toFixed(1)}
                 {beat.y_label ? ` ${beat.y_label}` : ''}
               </text>
@@ -2198,16 +2206,34 @@ const PieChartBeat: React.FC<{beat: Beat}> = ({beat}) => {
   );
 };
 
+// One broken LLM scene (runtime throw) must not abort the whole render: show nothing for that beat instead.
+class SceneBoundary extends React.Component<{children: React.ReactNode}, {failed: boolean}> {
+  state = {failed: false};
+  static getDerivedStateFromError() { return {failed: true}; }
+  componentDidCatch(e: unknown) { console.warn('[scene-boundary] dynamic scene failed:', e); }
+  render() { return this.state.failed ? null : this.props.children; }
+}
+
+const TSX_SCENE_CSS = '.tsx-scene > div { background: none !important; } .tsx-scene svg rect[width="1080"][height="1920"] { display: none; }';
+
 export const BeatView: React.FC<{beat: Beat}> = ({beat}) => {
+  const {hudMap} = useContext(MapLayoutCtx);
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
 
   // If this beat has its own AI-generated bespoke TSX component, render it inside a clipped slot above captions
   const DynamicComp = beat.tsx_id ? DYNAMIC_SCENE_REGISTRY[beat.tsx_id] : undefined;
   if (DynamicComp) {
+    // LLM scenes are top-heavy (content ends ~y=1050..1190). With a HUD map, compress them above the map band;
+    // without one, shift down and enlarge slightly so the beat zone is used.
     return (
       <SlotContainer slot="FULL_STAGE" fullCanvas clip>
-        <DynamicComp frame={frame} fps={fps} dur={beat.dur || 90} />
+        {/* LLM scenes paint their own opaque dark background. Make the scene transparent so the video's ground
+            (paper / kraft / solid / ink ...) shows through: scene root background off, full-canvas glow rects hidden. */}
+        <style>{TSX_SCENE_CSS}</style>
+        <div className="tsx-scene" style={{position: 'absolute', inset: 0, transformOrigin: `50% ${SCENE_FIT.origin_y_pct}%`, transform: hudMap ? `scale(${SCENE_FIT.compress_pct / 100})` : `translateY(${SCENE_FIT.plain_shift_px}px) scale(${SCENE_FIT.plain_scale_pct / 100})`}}>
+          <SceneBoundary><DynamicComp frame={frame} fps={fps} dur={beat.dur || 90} /></SceneBoundary>
+        </div>
       </SlotContainer>
     );
   }
@@ -2268,6 +2294,9 @@ export const BeatView: React.FC<{beat: Beat}> = ({beat}) => {
     case 'architecture': body = <ArchitectureBeat beat={beat} />; break;
 
     case 'mystery_scene': body = <MysterySceneBeat beat={beat} />; break;
+    case 'authored': body = <AuthoredBeat beat={beat} />; break;
+    case 'year_counter': body = <YearCounterBeat beat={beat} />; break;
+    case 'person_card': body = <PersonCardBeat beat={beat} />; break;
 
     case 'split': body = <SplitBeat beat={beat} />; break;
 

@@ -2,6 +2,7 @@ import React, {CSSProperties, useContext} from 'react';
 
 import {AbsoluteFill, interpolate, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {SafeImg} from './SafeImg';
+import {Icon} from './icons';
 
 import {clamp01, enterStyle, useIdle, useProgress, useSpring} from './hooks';
 
@@ -314,9 +315,10 @@ const Pic: React.FC<{beat: Beat; fit: 'cover' | 'contain'; style?: CSSProperties
 
     return (
 
-      <div style={{...style, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg, ${rgba(th.p.accent, 0.55)}, ${rgba(th.p.accent2, 0.55)})`, color: rgba(th.p.text), fontSize: 44, padding: 40, textAlign: 'center', direction: 'ltr', fontFamily: 'sans-serif'}}>
+      <div style={{...style, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg, ${rgba(th.p.accent, 0.55)}, ${rgba(th.p.accent2, 0.55)})`, color: rgba(th.p.text), fontSize: 44, padding: 40, textAlign: 'center', direction: 'ltr', fontFamily: 'sans-serif'}}>
 
-        {`[photo] ${beat.query || ''}`}
+        {beat.icon ? <Icon name={beat.icon} size={340} color={rgba(th.p.text)} strokeWidth={1.5} /> : null}
+        <div dir="rtl" style={{fontSize: 64, fontWeight: 800, marginTop: beat.icon ? 24 : 0}}>{beat.text || beat.query || ''}</div>
 
       </div>
 
@@ -471,6 +473,37 @@ export const PhotoBeat: React.FC<{beat: Beat}> = ({beat}) => {
       <div style={{position: 'absolute', left: 0, right: 0, top: splitBottom ? 80 : cy - H / 2, opacity: clamp01(sm * 1.5), translate: `0 ${(1 - sm) * 50}px`, WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 14%, #000 84%, transparent)', maskImage: 'linear-gradient(to bottom, transparent, #000 14%, #000 84%, transparent)'}}>
 
         <Framed beat={beat} w={1080} h={H} />
+
+      </div>
+
+    );
+
+  } else if (ed.photo === 'free') {
+
+    // frameless: no border, no card; the photo dissolves into the background through a soft elliptical mask
+    const w = splitBottom ? 960 : (hasNum ? 940 : 1000), h = splitBottom ? 540 : (hasNum ? 680 : 800);
+    const fade = 'radial-gradient(ellipse 50% 50% at 50% 50%, #000 58%, transparent 100%)';
+
+    media = (
+
+      <div style={{position: 'absolute', left: 540 - w / 2, top: cy - h / 2 + idle * 0.5, opacity: clamp01(sm * 1.5), scale: 0.94 + 0.06 * sm, WebkitMaskImage: fade, maskImage: fade}}>
+
+        <Framed beat={beat} w={w} h={h} />
+
+      </div>
+
+    );
+
+  } else if (ed.photo === 'circle') {
+
+    // frameless: a round crop with only a soft shadow (no border line)
+    const D = splitBottom ? 470 : (hasNum ? 600 : 700);
+
+    media = (
+
+      <div style={{position: 'absolute', left: 540 - D / 2, top: cy - D / 2 + idle * 0.5, filter: 'drop-shadow(0 26px 30px rgba(0,0,0,0.38))', ...enterStyle(pop, 'pop')}}>
+
+        <Framed beat={beat} w={D} h={D} style={{borderRadius: '50%'}} />
 
       </div>
 

@@ -10,7 +10,8 @@ import { NoiseShapesLayer, SceneTransitionEffect, pickSceneTransitions } from '.
 import { SceneVisualsLayer } from './visualLayer';
 import { MapOverlayLayer } from './mapOverlay';
 import { SoundDesignLayer } from './sfx';
-import { CANVAS_HEIGHT, CANVAS_WIDTH, SAFE_TOP, SAFE_BOTTOM, HEADLINE_ZONE, BEAT_ZONE, CAPTION_ZONE } from './layout';
+import { LayoutAudit } from './layoutAudit';
+import { CANVAS_HEIGHT, CANVAS_WIDTH, SAFE_TOP, SAFE_BOTTOM, HEADLINE_ZONE, BEAT_ZONE, CAPTION_ZONE, BEAT_LEAD_FRAMES } from './layout';
 import { SceneSpec, Spec } from './types';
 
 const Scene: React.FC<{ scene: SceneSpec; index: number; fallbackTransition?: any }> = ({
@@ -38,10 +39,15 @@ const Scene: React.FC<{ scene: SceneSpec; index: number; fallbackTransition?: an
 
   // دخول وخروج سينمائي ناعم عند حدود المشاهد (بدل القطع الحاد)
   const enterSpr = index === 0 ? 1 : spring({ frame, fps, config: { damping: 16, stiffness: 180, mass: 0.7 } });
-  const enterScale = index === 0 ? 1 : interpolate(enterSpr, [0, 1], [1.06, 1.0]);
-  const enterY = index === 0 ? 0 : interpolate(enterSpr, [0, 1], [index % 2 === 0 ? 28 : -24, 0]);
-  const enterOp = index === 0 ? 1 : interpolate(frame, [0, 7], [0.25, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const exitOp = dur > 10 ? interpolate(frame, [dur - 6, dur], [1, 0.72], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }) : 1;
+  // 4 entrance variants cycled by scene index so consecutive scenes don't share the same motion
+  const variant = (index + th.st.seed) % 4;
+  const enterScale = index === 0 ? 1 : interpolate(enterSpr, [0, 1], [variant === 2 ? 0.94 : 1.06, 1.0]);
+  const enterY = index === 0 || variant === 3 ? 0 : interpolate(enterSpr, [0, 1], [variant === 0 ? 28 : -24, 0]);
+  const enterX = index === 0 || variant !== 3 ? 0 : interpolate(enterSpr, [0, 1], [index % 2 ? 40 : -40, 0]);
+  // Scenes are butt-joined (no overlap), so any opacity dip at the edges shows as a dark flash on every cut
+  // (0.72 exit -> 0.25 enter measured). Hard cut + spring settle + SceneWipe carry the transition instead.
+  const enterOp = 1;
+  const exitOp = 1;
   // ponytail: scene-level Ken Burns removed — BeatShell already applies per-beat camera; compounding caused ~1.27× over-zoom
   const camScale = enterScale;
   const sceneOpacity = Math.min(enterOp, exitOp);
@@ -57,18 +63,18 @@ const Scene: React.FC<{ scene: SceneSpec; index: number; fallbackTransition?: an
 
   return (
     <AbsoluteFill style={{ opacity: sceneOpacity }}>
-      <MapLayoutCtx.Provider value={{ splitBottom: hasSplitMap }}>
+      <MapLayoutCtx.Provider value={{ splitBottom: hasSplitMap, hudMap: hasCustomTsx && hasMapOverlay }}>
         <AbsoluteFill
           style={{
-            transform: `translate3d(0px, ${enterY.toFixed(1)}px, 0) scale(${camScale.toFixed(4)})`,
+            transform: `translate3d(${enterX.toFixed(1)}px, ${enterY.toFixed(1)}px, 0) scale(${camScale.toFixed(4)})`,
             transformOrigin: '50% 45%',
           }}
         >
           {!hasCustomTsx && <NoiseShapesLayer seed={th.st.seed + index} />}
-          {!(isLegacyFullMap && hasMapOverlay) && scene.beats.map((b, i) => (
-            <Sequence key={i} from={b.from} durationInFrames={b.dur} layout="none" name={`${scene.id}:${b.kind}`}>
+          {!(isLegacyFullMap && hasMapOverlay) && !(hasMapOverlay && mapMode === 'full-stage' && frame >= (scene.map_overlay?.enter_frame ?? 0) - 2) && scene.beats.map((b, i) => (
+            <Sequence key={i} from={b.from - BEAT_LEAD_FRAMES} durationInFrames={b.dur + BEAT_LEAD_FRAMES} layout="none" name={`${scene.id}:${b.kind}`}>
               <MotionCtx.Provider value={{ speed, settled: !!b.settled }}>
-                <BeatView beat={b} />
+                <AbsoluteFill style={{opacity: ((b as any).hide || []).some(([a, c]: number[]) => frame >= a && frame < c) ? 0 : 1}}><BeatView beat={b} /></AbsoluteFill>
               </MotionCtx.Provider>
             </Sequence>
           ))}
@@ -87,7 +93,7 @@ const Scene: React.FC<{ scene: SceneSpec; index: number; fallbackTransition?: an
   );
 };
 
-export const Short: React.FC<{ spec?: Spec } & Partial<Spec>> = (props) => {
+export const Short: React.FC<{ spec?: Spec; audit?: boolean } & Partial<Spec>> = (props) => {
   const spec = (props.spec ?? (props as unknown as Spec))!;
   const theme = useMemo(() => makeTheme(spec.style), [spec.style]);
   const transitions = useMemo(
@@ -127,6 +133,7 @@ export const Short: React.FC<{ spec?: Spec } & Partial<Spec>> = (props) => {
         <Finish />
         {spec.audio ? <Audio src={staticFile(spec.audio)} volume={0.78} /> : null}
         {spec.audio ? <SoundDesignLayer spec={spec} /> : null}
+        {props.audit ? <LayoutAudit /> : null}
       </AbsoluteFill>
     </ThemeCtx.Provider>
   );

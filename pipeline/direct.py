@@ -82,7 +82,7 @@ KINDS = [
     "stack_pyramid",     "macro_zoom_globe", "subsurface_mine", "dot_matrix_population",
     "money_waterfall", "frontline_clash",
     "line_chart", "pie_chart", "map", "stat", "bigtext", "bars", "timeline", "versus", "list", "icons", "canvas", "photo", "split", "ticker", "cardstack",
-    "city_skyline", "architecture", "mystery_scene",
+    "city_skyline", "architecture", "mystery_scene", "year_counter", "person_card", "authored",
     # أنماط مشاهد سينمائية جديدة لتنويع الحركة والإضاءة
     "cinematic_dramatic", "architectural_blueprint", "celestial_constellation",
     "kinetic_wave_field", "radial_light_cathedral", "topographic_contour",
@@ -227,11 +227,20 @@ def normalize_beat(b, sentence="", geo=None):
     out = {"kind": kind, "title": _words(b.get("title"), 7)}
     fallback_text = _words(b.get("text") or b.get("title") or " ".join(sentence.split()[:4]), 6).strip(".!؟?،:؛ ")
     def bigtext():
+        # A beat the director asked for (kind != bigtext) that cannot be drawn: never degrade silently.
+        degraded = raw_kind not in (None, "bigtext")
+        if degraded:
+            why = f"{raw_kind} beat failed its preconditions" if raw_kind in KINDS else f"unknown beat kind {raw_kind!r}"
+            record_fallback(why + " -> bigtext/photo", beat_id=str(raw_kind))
         # إذا كانت الجملة تشير لكائن حقيقي ملموس، فضّل صورة بطلة
         photo_beat = detect_photo_beat(sentence)
         if photo_beat:
+            if degraded:
+                photo_beat["_fallback"] = True
             return photo_beat
         o = {"kind": "bigtext", "title": "", "text": fallback_text or "…"}
+        if degraded:
+            o["_fallback"] = True
         if b.get("sub"):
             o["sub"] = _words(b.get("sub"), 8)
         if b.get("layout") in ("center", "stack", "diag", "left"):
@@ -330,6 +339,17 @@ def normalize_beat(b, sentence="", geo=None):
             o["approach"] = _s(b["approach"], 40)
         if b.get("subtitle"):
             o["subtitle"] = _words(b["subtitle"], 7)
+        return _add_camera(o, b)
+
+    if kind in ("cinematic_dramatic", "architectural_blueprint", "celestial_constellation",
+                "kinetic_wave_field", "radial_light_cathedral", "topographic_contour"):
+        # These kinds were in KINDS but had no handler, so every one silently became bigtext. The renderer
+        # draws them through GenerativeCanvasBeat (scene_spec.cinematic selects the lighting).
+        spec_in = dict(b.get("scene_spec")) if isinstance(b.get("scene_spec"), dict) else {}
+        spec_in.setdefault("cinematic", kind)
+        o = {"kind": kind, "title": _words(b.get("title") or fallback_text, 6), "scene_spec": spec_in}
+        if b.get("subtitle") or b.get("sub"):
+            o["subtitle"] = _words(b.get("subtitle") or b.get("sub"), 7)
         return _add_camera(o, b)
 
     if kind == "generative_canvas":
@@ -557,6 +577,28 @@ def normalize_beat(b, sentence="", geo=None):
             return bigtext()
         out["items"] = items
         return _add_camera(out, b)
+    if kind == "authored":
+        if not b.get("scene_id"):
+            return bigtext()
+        return _add_camera({"kind": "authored", "scene_id": str(b["scene_id"]), "data": b.get("data") if isinstance(b.get("data"), dict) else {}}, b)
+    if kind == "year_counter":
+        y = _num(b.get("year"), -5000, 2100, None)
+        if y is None:
+            return bigtext()
+        o = {"kind": "year_counter", "year": int(y), "title": _words(b.get("title"), 5), "label": _words(b.get("label") or fallback_text, 6),
+             "era": _s(b.get("era") or "year", 12)}
+        ty = _num(b.get("to_year"), -5000, 2100, None)
+        if ty is not None:
+            o["to_year"] = int(ty)
+        return _add_camera(o, b)
+    if kind == "person_card":
+        nm = _words(b.get("name") or b.get("title"), 5)
+        if not nm:
+            return bigtext()
+        o = {"kind": "person_card", "name": nm, "years": _s(b.get("years"), 16), "role": _words(b.get("role"), 6), "query": _s(b.get("query"), 60)}
+        if b.get("img"):
+            o["img"] = b["img"]
+        return _add_camera(o, b)
     if kind == "city_skyline":
         o = {"kind": "city_skyline", "title": _words(b.get("title") or fallback_text, 5)}
         if b.get("subtitle") or b.get("sub"):
@@ -721,6 +763,14 @@ _PHOTO_PATTERNS = [
     (r"صحراء|رمال|واحة", "vast desert sand dunes dramatic landscape", "desert sand dunes", "watermark text"),
     (r"غابة|طبيعة|أشجار|أدغال", "dense ancient rainforest jungle nature landscape", "rainforest jungle landscape", "watermark text"),
 ]
+
+def _number_in_text(num, text: str) -> bool:
+    """True if the digits of `num` occur in `text` (Arabic-Indic digits and separators normalized)."""
+    tr = str.maketrans("٠١٢٣٤٥٦٧٨٩٫٬", "0123456789.,")
+    norm = lambda x: re.sub(r"[,\s]", "", str(x).translate(tr))
+    n = norm(num)
+    return bool(n) and n in norm(text)
+
 
 def detect_photo_beat(sentence: str, pt_name: str = "", cou_iso: str = "") -> Optional[Dict[str, Any]]:
     clean_pt = re.sub(r"\(.*?\)", "", pt_name).strip() if pt_name else ""
@@ -976,20 +1026,33 @@ def _pred_elevation_profile(b: dict, sentence: str = "", geo=None) -> bool:
     return True
 
 
+def _real_point(p: Any) -> bool:
+    """A point is real if it has numeric lat/lon in range or its name resolves to a known city."""
+    if not isinstance(p, dict):
+        return False
+    try:
+        if -90 <= float(p.get("lat")) <= 90 and -180 <= float(p.get("lon")) <= 180:
+            return True
+    except (TypeError, ValueError):
+        pass
+    name = str(p.get("name") or "").strip()
+    return bool(name) and bool(detect_city_in_text(name)[0])
+
+
 def _pred_map(b: dict, sentence: str = "", geo=None) -> bool:
+    """A map needs a real place: a valid country code, or a point with coordinates / a known city."""
     pts = b.get("points") or []
     cs = [str(c).upper() for c in (b.get("countries") or []) if isinstance(c, str)]
     hl = [str(c).upper() for c in (b.get("highlight") or cs) if isinstance(c, str)]
     if geo is not None:
         cs = [c for c in cs if geo.has(c)]
         hl = [c for c in hl if geo.has(c)]
-    has_place_name = any(isinstance(p, dict) and bool(str(p.get("name") or "").strip()) for p in pts) or bool(cs) or bool(hl)
-    return has_place_name
+    return any(_real_point(p) for p in pts) or bool(cs) or bool(hl)
 
 
 def _pred_map_pin(b: dict, sentence: str = "", geo=None) -> bool:
     pts = b.get("points") or []
-    return isinstance(pts, list) and len(pts) >= 1 and any(isinstance(p, dict) and bool(str(p.get("name") or "").strip()) for p in pts)
+    return isinstance(pts, list) and any(_real_point(p) for p in pts)
 
 
 def _pred_stat(b: dict, sentence: str = "", geo=None) -> bool:
@@ -1041,6 +1104,12 @@ def _pred_always_true(b: dict, sentence: str = "", geo=None) -> bool:
 
 
 BEAT_RULES: Dict[str, Dict[str, Any]] = {
+    "authored": {"predicate": lambda b, s="", g=None: bool(b.get("scene_id")), "reason": "authored beat requires a scene_id"},
+    "year_counter": {"predicate": lambda b, s="", g=None: _num(b.get("year"), -5000, 2100, None) is not None, "reason": "year_counter requires a real year number"},
+    "person_card": {"predicate": lambda b, s="", g=None: bool(str(b.get("name") or b.get("title") or "").strip()), "reason": "person_card requires the person's name"},
+    "city_skyline": {"predicate": lambda b, s="", g=None: bool(str(b.get("title") or "").strip()), "reason": "city_skyline requires a title naming the city"},
+    "architecture": {"predicate": lambda b, s="", g=None: bool(str(b.get("title") or "").strip()), "reason": "architecture requires a title naming the building"},
+    "mystery_scene": {"predicate": lambda b, s="", g=None: bool(str(b.get("question") or b.get("text") or "").strip()), "reason": "mystery_scene requires a question"},
     "area_map": {
         "predicate": _pred_area_map,
         "reason": "area_map requires an `area` object with a place and a value (or a compare ratio)",
@@ -1227,7 +1296,8 @@ PHOTO_RULES = """
 
 - camera: "parallax" للمناظر والمدن، "push-in" للوجوه والمباني، "static" للأحداث التاريخية.
 
-- استعمل photo فقط لما لا تستطيع city_skyline أو architecture أو mystery_scene أو generative_canvas أو map تمثيله (وجه شخص حقيقي، حدث تاريخي لا يُختزل في رمز). لا تزد عن 15-25% من المقاطع، ولا مقطعين متتاليين منه."""
+- استعمل photo فقط لما لا تستطيع city_skyline أو architecture أو mystery_scene أو generative_canvas أو map تمثيله (وجه شخص حقيقي، حدث تاريخي لا يُختزل في رمز). لا تزد عن 15-25% من المقاطع، ولا مقطعين متتاليين منه.
+- قاعدة الكيانات (إلزامية): أي سنة/قرن/حقبة تُذكر → year_counter (year رقم حقيقي)؛ أي شخصية تاريخية → person_card (name, years, role)؛ أي رقم أو قياس → stat أو bars (أرقام حقيقية فقط)؛ أي مكان → خريطة تظهر تلقائياً. لا تكرر نفس المكوّن في مقطعين متتاليين."""
 
 AREA_RULES = """
 
@@ -1293,6 +1363,11 @@ def apply_beats(script, result, geo=None, llm_retry_fn: Optional[Callable[[List[
                     if not rule or not rule["predicate"](raw_list[i], s_txt, geo):
                         failed_reasons.append(f"{sc['id']}[{i}] ({rk}): {rule['reason'] if rule else 'unknown kind'}")
             failed_reasons += areamap.missing_reasons(sc["id"], raw_list[:len(sents)])
+        try:
+            from . import entities as _ent
+            failed_reasons += _ent.plan_errors(s, got, _ent.ensure_plan(s, geo))
+        except Exception as _e:  # noqa: BLE001 - never silent
+            record_fallback(f"entity validation of the director plan unavailable: {_e}", beat_id="entities")
         if failed_reasons:
             try:
                 retry_res = llm_retry_fn(failed_reasons)
@@ -1470,6 +1545,11 @@ def apply_beats(script, result, geo=None, llm_retry_fn: Optional[Callable[[List[
         for bi, b in enumerate(beats):
             cur_kind = b.get("kind")
             sent = sents[bi] if bi < len(sents) else ""
+
+            # رقم على صورة لا يظهر في سرد المشهد = رقم لكيان آخر (مثل صورة باريس برقم ميلانو): احذفه
+            if cur_kind == "photo" and b.get("number") and not _number_in_text(b["number"], target.get("narration", "")):
+                b = {k: v for k, v in b.items() if k != "number"}
+                beats[bi] = b
 
             # في مشهد الخاتمة (cta): حوّل أي photo عشوائي إلى generative_canvas نظيف
             if (target.get("role") == "cta" or target == targets[-1]) and cur_kind == "photo":

@@ -20,6 +20,8 @@ TARGET_TSX_FILES = [
     ROOT / "remotion" / "src" / "Short.tsx",
     ROOT / "remotion" / "src" / "beats.tsx",
     ROOT / "remotion" / "src" / "visualLayer.tsx",
+    ROOT / "remotion" / "src" / "mapOverlay.tsx",
+    ROOT / "remotion" / "src" / "generativeCanvas.tsx",
 ]
 
 HARDCODED_TOP_BOTTOM_RE = re.compile(r"\b(top|bottom)\s*:\s*-?\d+(?:\.\d+)?\b")
@@ -38,7 +40,7 @@ def check_layout_sync() -> list[str]:
         if not m or int(m.group(1)) != py_val:
             errors.append(f"Mismatch for {const_name}: py={py_val}, ts={m.group(1) if m else None}")
 
-    for zone_name in ("HEADLINE_ZONE", "BEAT_ZONE", "CAPTION_ZONE"):
+    for zone_name in ("HEADLINE_ZONE", "BEAT_ZONE", "CAPTION_ZONE", "HUD_MAP_ZONE", "MAP_STAGE_ZONE", "SCENE_FIT", "CANVAS_FIT_BOX", "MAP_LENS"):
         py_zone = getattr(py_layout, zone_name, {})
         m = re.search(rf"export\s+const\s+{zone_name}\s*=\s*\{{([^}}]+)\}}", ts_text, re.S)
         if not m:

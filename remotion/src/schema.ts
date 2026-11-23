@@ -224,7 +224,7 @@ export const SceneTransitionSpecSchema = z.object({
 export type SceneTransitionSpec = z.infer<typeof SceneTransitionSpecSchema>;
 
 // 10. Unified Beat Schemas Generated from spec_schema.json
-export const BeatKindSchema = z.enum(['generative_canvas', 'custom_scene', 'map', 'map_pin', 'area_map', 'photo', 'stat', 'stat_ring_v2', 'bigtext', 'bars', 'timeline', 'timeline_card', 'versus', 'split', 'list', 'icons', 'canvas', 'ticker', 'cardstack', 'elevation_profile', 'line_chart', 'pie_chart', 'versus_battle', 'animated_route', 'balance_meter', 'deep_time_slider', 'stack_pyramid', 'macro_zoom_globe', 'subsurface_mine', 'dot_matrix_population', 'money_waterfall', 'frontline_clash', 'chart', 'typography', 'visuals', 'city_skyline', 'architecture', 'mystery_scene']);
+export const BeatKindSchema = z.enum(['generative_canvas', 'custom_scene', 'map', 'area_map', 'map_pin', 'photo', 'stat', 'stat_ring_v2', 'bigtext', 'bars', 'timeline', 'timeline_card', 'versus', 'split', 'list', 'icons', 'canvas', 'ticker', 'cardstack', 'elevation_profile', 'line_chart', 'pie_chart', 'versus_battle', 'animated_route', 'balance_meter', 'deep_time_slider', 'stack_pyramid', 'macro_zoom_globe', 'subsurface_mine', 'dot_matrix_population', 'money_waterfall', 'frontline_clash', 'chart', 'typography', 'visuals', 'city_skyline', 'architecture', 'mystery_scene', 'architectural_blueprint', 'celestial_constellation', 'cinematic_dramatic', 'kinetic_wave_field', 'radial_light_cathedral', 'topographic_contour', 'year_counter', 'person_card', 'authored']);
 export type BeatKind = z.infer<typeof BeatKindSchema>;
 
 export const CommonBeatFieldsSchema = z.object({
@@ -242,7 +242,21 @@ export const CommonBeatFieldsSchema = z.object({
   environment: z.string().optional(),
   narration_cues: z.array(z.any()).optional(),
   tsx_id: z.string().optional(),
+  concept: z.string().optional(),
+  narration: z.string().optional(),
+  video_title: z.string().optional(),
+  facts_summary: z.string().optional(),
+  video_countries: z.array(z.any()).optional(),
+  video_cities: z.array(z.any()).optional(),
+  accent: z.string().optional(),
+  secondary_accent: z.string().optional(),
+  countries: z.array(z.any()).optional(),
+  highlight: z.array(z.any()).optional(),
+  points: z.array(z.any()).optional(),
   _fallback: z.boolean().optional(),
+  hide: z.array(z.any()).optional(),
+  _entity: z.string().optional(),
+  img: z.string().optional(),
 });
 
 export const Beat_generative_canvas_Schema = CommonBeatFieldsSchema.extend({
@@ -265,6 +279,7 @@ export const Beat_custom_scene_Schema = CommonBeatFieldsSchema.extend({
   bg_mood: z.string().optional(),
   accent: z.string().optional(),
   secondary_accent: z.string().optional(),
+  approach: z.string().optional(),
   environment: z.string().optional(),
   elements: z.array(z.any()).optional(),
   svg_layers: z.array(z.any()).optional(),
@@ -522,13 +537,119 @@ export const Beat_mystery_scene_Schema = CommonBeatFieldsSchema.extend({
   variant: z.number().optional(),
   seed: z.number().optional(),
 }).strict();
+export const Beat_architectural_blueprint_Schema = CommonBeatFieldsSchema.extend({
+  kind: z.literal('architectural_blueprint'),
+  background: z.string().optional(),
+  bg_mood: z.string().optional(),
+  accent: z.string().optional(),
+  secondary_accent: z.string().optional(),
+  approach: z.string().optional(),
+  environment: z.string().optional(),
+  elements: z.array(z.any()).optional(),
+  svg_layers: z.array(z.any()).optional(),
+  scene_spec: z.record(z.string(), z.any()).optional(),
+  narration_cues: z.array(z.any()).optional(),
+  tsx_id: z.string().optional(),
+}).strict();
+export const Beat_celestial_constellation_Schema = CommonBeatFieldsSchema.extend({
+  kind: z.literal('celestial_constellation'),
+  background: z.string().optional(),
+  bg_mood: z.string().optional(),
+  accent: z.string().optional(),
+  secondary_accent: z.string().optional(),
+  approach: z.string().optional(),
+  environment: z.string().optional(),
+  elements: z.array(z.any()).optional(),
+  svg_layers: z.array(z.any()).optional(),
+  scene_spec: z.record(z.string(), z.any()).optional(),
+  narration_cues: z.array(z.any()).optional(),
+  tsx_id: z.string().optional(),
+}).strict();
+export const Beat_cinematic_dramatic_Schema = CommonBeatFieldsSchema.extend({
+  kind: z.literal('cinematic_dramatic'),
+  background: z.string().optional(),
+  bg_mood: z.string().optional(),
+  accent: z.string().optional(),
+  secondary_accent: z.string().optional(),
+  approach: z.string().optional(),
+  environment: z.string().optional(),
+  elements: z.array(z.any()).optional(),
+  svg_layers: z.array(z.any()).optional(),
+  scene_spec: z.record(z.string(), z.any()).optional(),
+  narration_cues: z.array(z.any()).optional(),
+  tsx_id: z.string().optional(),
+}).strict();
+export const Beat_kinetic_wave_field_Schema = CommonBeatFieldsSchema.extend({
+  kind: z.literal('kinetic_wave_field'),
+  background: z.string().optional(),
+  bg_mood: z.string().optional(),
+  accent: z.string().optional(),
+  secondary_accent: z.string().optional(),
+  approach: z.string().optional(),
+  environment: z.string().optional(),
+  elements: z.array(z.any()).optional(),
+  svg_layers: z.array(z.any()).optional(),
+  scene_spec: z.record(z.string(), z.any()).optional(),
+  narration_cues: z.array(z.any()).optional(),
+  tsx_id: z.string().optional(),
+}).strict();
+export const Beat_radial_light_cathedral_Schema = CommonBeatFieldsSchema.extend({
+  kind: z.literal('radial_light_cathedral'),
+  background: z.string().optional(),
+  bg_mood: z.string().optional(),
+  accent: z.string().optional(),
+  secondary_accent: z.string().optional(),
+  approach: z.string().optional(),
+  environment: z.string().optional(),
+  elements: z.array(z.any()).optional(),
+  svg_layers: z.array(z.any()).optional(),
+  scene_spec: z.record(z.string(), z.any()).optional(),
+  narration_cues: z.array(z.any()).optional(),
+  tsx_id: z.string().optional(),
+}).strict();
+export const Beat_topographic_contour_Schema = CommonBeatFieldsSchema.extend({
+  kind: z.literal('topographic_contour'),
+  background: z.string().optional(),
+  bg_mood: z.string().optional(),
+  accent: z.string().optional(),
+  secondary_accent: z.string().optional(),
+  approach: z.string().optional(),
+  environment: z.string().optional(),
+  elements: z.array(z.any()).optional(),
+  svg_layers: z.array(z.any()).optional(),
+  scene_spec: z.record(z.string(), z.any()).optional(),
+  narration_cues: z.array(z.any()).optional(),
+  tsx_id: z.string().optional(),
+}).strict();
+export const Beat_year_counter_Schema = CommonBeatFieldsSchema.extend({
+  kind: z.literal('year_counter'),
+  year: z.number(),
+  to_year: z.number().optional(),
+  era: z.string().optional(),
+  label: z.string().optional(),
+  title: z.string().optional(),
+}).strict();
+export const Beat_person_card_Schema = CommonBeatFieldsSchema.extend({
+  kind: z.literal('person_card'),
+  name: z.string(),
+  years: z.string().optional(),
+  role: z.string().optional(),
+  query: z.string().optional(),
+  img: z.string().optional(),
+  title: z.string().optional(),
+}).strict();
+export const Beat_authored_Schema = CommonBeatFieldsSchema.extend({
+  kind: z.literal('authored'),
+  scene_id: z.string(),
+  data: z.record(z.string(), z.any()).optional(),
+}).strict();
 
 export const StrictBeatSchema = z.discriminatedUnion('kind', [
   Beat_generative_canvas_Schema,
   Beat_custom_scene_Schema,
   Beat_map_Schema,
-  Beat_map_pin_Schema,
   Beat_area_map_Schema,
+  Beat_map_pin_Schema,
   Beat_photo_Schema,
   Beat_stat_Schema,
   Beat_stat_ring_v2_Schema,
@@ -562,5 +683,14 @@ export const StrictBeatSchema = z.discriminatedUnion('kind', [
   Beat_city_skyline_Schema,
   Beat_architecture_Schema,
   Beat_mystery_scene_Schema,
+  Beat_architectural_blueprint_Schema,
+  Beat_celestial_constellation_Schema,
+  Beat_cinematic_dramatic_Schema,
+  Beat_kinetic_wave_field_Schema,
+  Beat_radial_light_cathedral_Schema,
+  Beat_topographic_contour_Schema,
+  Beat_year_counter_Schema,
+  Beat_person_card_Schema,
+  Beat_authored_Schema,
 ]);
 export type GeneratedBeatSpec = z.infer<typeof StrictBeatSchema>;

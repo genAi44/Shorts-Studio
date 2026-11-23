@@ -101,14 +101,14 @@ export const Captions: React.FC<{words: Word[]}> = ({words}) => {
     return (
       <>
         <CaptionScrim captionY={captionTop - 80} />
-        <div style={{position: 'absolute', left: 0, right: 0, top: captionTop, height: c.size * 2.2, background: rgba(p.c1, 0.88), borderTop: `6px solid ${rgba(p.accent)}`, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20}}>{inner}</div>
+        <div data-caption style={{position: 'absolute', left: 0, right: 0, top: captionTop, height: c.size * 2.2, background: rgba(p.c1, 0.88), borderTop: `6px solid ${rgba(p.accent)}`, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20}}>{inner}</div>
       </>
     );
   }
   return (
     <>
       <CaptionScrim captionY={captionTop - 80} />
-      <div style={{position: 'absolute', left: CAPTION_ZONE.left, right: CAPTION_ZONE.right, top: captionTop, height: c.size * 2.2, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20}}>{inner}</div>
+      <div data-caption style={{position: 'absolute', left: CAPTION_ZONE.left, right: CAPTION_ZONE.right, top: captionTop, height: c.size * 2.2, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20}}>{inner}</div>
     </>
   );
 };

@@ -242,7 +242,8 @@ class TestRegressionGuards(unittest.TestCase):
         self.assertNotIn("<AccentShapes", photo_tsx)
         self.assertIn("<Background spec={spec} />", short_tsx)
         self.assertNotIn("{!anyCustomTsx && <Background", short_tsx)
-        self.assertIn("effectiveMode === 'split-bottom' ? 620", map_tsx)
+        self.assertIn("effectiveMode === 'split-bottom' ? MAP_STAGE_ZONE.split_svg_height", map_tsx)
+        self.assertIn("split_svg_height: 620", (ROOT / "remotion" / "src" / "layout.ts").read_text(encoding="utf-8"))
 
     def test_18_direct_detect_photo_beat_prefers_sentence_country_over_scene_country(self):
         from pipeline.direct import detect_photo_beat
@@ -266,3 +267,24 @@ class TestRegressionGuards(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_every_sfx_cue_used_by_remotion_has_a_builder():
+    import re
+    from pipeline.sfx import SFX_BUILDERS
+    src = (ROOT / "remotion" / "src" / "sfx.tsx").read_text(encoding="utf-8")
+    m = re.search(r"type SfxName = ([^;]+);", src)
+    names = set(re.findall(r"'(\w+)'", m.group(1)))
+    assert names <= set(SFX_BUILDERS), names - set(SFX_BUILDERS)
+
+
+def test_color_interpolate_is_rewritten():
+    from pipeline.storyteller import _fix_color_interpolate as f
+    out = f("interpolate(p, [0, 1], ['#c0c0c0', '#ffd700'], {x: 1}); interpolate(p, [0, 1], [0, 1])")
+    assert out.startswith("interpolateColors(") and "; interpolate(p, [0, 1], [0, 1])" in out
+
+
+def test_arabic_text_count_distinguishes_bare_scene():
+    from pipeline.storyteller import _arabic_texts as at
+    assert len(at("<AbsoluteFill><svg><rect/></svg></AbsoluteFill>")) == 0
+    assert len(at("<div>عنوان المشهد</div><div>بطاقة أولى</div><div>بطاقة ثانية</div>")) == 3

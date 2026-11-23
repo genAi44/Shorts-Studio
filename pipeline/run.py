@@ -135,8 +135,21 @@ def produce(script, style, voice_id, job_dir, log=print, progress=lambda f: None
         m = media.Media(os.path.join(job_dir, "public", "media"), log) if use_photos else None
         if m:
             log("البحث عن صور مرخّصة لكل جملة…")
+        try:
+            from . import entities
+            entities.ensure_plan(script, geo)
+        except Exception as _ee:  # noqa: BLE001
+            from .config import record_fallback
+            record_fallback(f"entity plan failed ({_ee}): legacy detection only", beat_id="entities")
         spec = rem.build_spec(script, style, plan, int(round(total * FPS)), geo,
                               photo=m.resolve if m else None, degrade=True)
+        if cfg("AUTHORED_SCENES", "0") == "1":
+            try:
+                from . import scene_author
+                spec = scene_author.author_spec(spec, job_dir, log=log)
+            except Exception as _ae:  # noqa: BLE001
+                from .config import record_fallback
+                record_fallback(f"scene authoring failed ({_ae}): built-in beats", beat_id="authoring")
         try:
             from . import visual_tools
             visual_tools.record_asset_credits(spec, job_dir)
@@ -144,7 +157,8 @@ def produce(script, style, voice_id, job_dir, log=print, progress=lambda f: None
             pass
         try:
             from . import visual_qa
-            qa_rep = visual_qa.audit_spec(spec, job_dir=job_dir, check_pixels=(cfg("VISUAL_QA", "0") == "1"))
+            facts_txt = json.dumps(script.get("_facts_data") or script.get("facts") or "", ensure_ascii=False)
+            qa_rep = visual_qa.audit_spec(spec, job_dir=job_dir, check_pixels=(cfg("VISUAL_QA", "0") == "1"), sourced_text=facts_txt)
             if not qa_rep.get("passed"):
                 log(f"تحذير QA: متوسط الدرجة {qa_rep.get('average_score')}/100 — راجع qa_report.json")
         except Exception:

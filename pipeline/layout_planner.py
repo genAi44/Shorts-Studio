@@ -37,6 +37,8 @@ def plan_scene_slots(scene: Dict[str, Any]) -> Dict[str, Any]:
         cur_from = int(cur.get("from", 0))
         cur_dur = max(1, int(cur.get("dur", 1)))
         nxt_from = int(nxt.get("from", 0))
+        if cur.get("_entity") or nxt.get("_entity"):
+            continue  # inserted entity shots overlay (and hide) the beat under them: never cut either
         if cur_from + cur_dur > nxt_from:
             cur["dur"] = max(1, nxt_from - cur_from)
 

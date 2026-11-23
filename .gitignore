@@ -39,4 +39,12 @@ frames/
 graphify-out/
 remotion/src/generated/.tsx_cache.json
 remotion/public/spec.json
+
+# runtime caches of the entity system
+data/entity_cache.json
+data/nominatim_cache.json
+
+# authored scenes are copied here per job (source of truth: outputs/<job>/scenes/)
+remotion/src/authored/*.tsx
+data/authored_cache/
 tests/fixtures/area_map_spec.json

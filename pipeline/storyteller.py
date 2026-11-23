@@ -25,6 +25,32 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from .config import ROOT
+
+# Theme of the video being built (set by generate_dynamic_tsx_file). ponytail: module-level because the prompt
+# builder runs in a ThreadPoolExecutor (a ContextVar would not propagate); two simultaneous renders could clash.
+_TSX_THEME: Optional[Dict[str, Any]] = None
+
+
+def _theme_block() -> str:
+    t = _TSX_THEME
+    if not t:
+        return ""
+    kind = "dark" if t["dark"] else "LIGHT"
+    return (
+        "\nVIDEO THEME (this wins over any colour instruction in the system rules): "
+        f"the video ground is {kind} {t['ground']} (background type `{t['bg_type']}`) and shows through the scene. "
+        "The outer <AbsoluteFill> MUST NOT set any background (no gradient, no full-canvas rect/glow): leave it transparent. "
+        f"Free-standing text and strokes use {t['text']}; accents {t['accent']} and {t['accent2']}. "
+        f"Every card: background `{t['card_bg']}`, border `1.5px solid {t['card_border']}`, text colour {t['card_text']}. "
+        "Never use white text directly on a light ground, nor dark text on a dark ground.\n"
+    )
+
+
+def _theme_sig() -> str:
+    t = _TSX_THEME
+    return json.dumps(t, sort_keys=True) if t else ""
+
+
 from .geo import AR_ISO3, detect_city_in_text, get_geo
 
 logger = logging.getLogger("pipeline.storyteller")
@@ -1197,19 +1223,19 @@ TECHNICAL STACK (STRICT):
 ARABIC TYPOGRAPHY & LEGIBILITY RULES (ZERO GARBLED OR INVERTED TEXT):
 - NEVER use SVG `<text>` for Arabic words, and NEVER use `writingMode="tb"` or `writing-mode: vertical-rl`! Vertical text breaks Arabic letter joining and reverses glyph order (producing unreadable broken letters). Always render Arabic strings horizontally inside `<foreignObject><div dir="rtl" lang="ar" style={{fontFamily: "'Cairo', 'Noto Kufi Arabic', sans-serif", ...}}>`.
 - NEVER apply negative scale transforms (`scale(-1, 1)` or `scale(1, Math.cos(...))` where `cos` becomes negative) to any group containing text, numbers, or years (e.g., never flip `1960` into mirrored `0691`!). If animating a card flip, use `Math.max(0.15, Math.abs(Math.cos(...)))`.
-- High-Contrast Readability: Every text label, subtitle, and number MUST sit inside a high-contrast dark glass card (`background: 'rgba(6, 12, 24, 0.94)'`, `border: '1.5px solid ...'`, `borderRadius: 16`, `color: '#ffffff'` or `'#fde047'`). NEVER place gray text on a dark blue/black background, NEVER let background illustrations bleed through text cards, NEVER let any bar or card extend past `x = 980` (`width <= 920` from `x = 60`), and NEVER use `fontSize < 26px` for any readable card text or linger at `opacity < 0.92` once a card has entered (snap card opacity from 0 -> 1 within 5-6 frames)!
+- High-Contrast Readability: Every text label, subtitle, and number MUST sit inside a high-contrast dark glass card (`background: 'rgba(6, 12, 24, 0.94)'`, `border: '1.5px solid ...'`, `borderRadius: 16`, `color: '#ffffff'` or `'#fde047'`). NEVER place gray text on a dark blue/black background, NEVER let background illustrations bleed through text cards, NEVER let any bar or card extend past `x = 980` (`width <= 920` from `x = 60`), and NEVER use `fontSize < 32px` for any readable card text (phone screens: 26px is unreadable) or linger at `opacity < 0.92` once a card has entered (snap card opacity from 0 -> 1 within 5-6 frames)!
 - Wide Numeric Containers & Fast Counter Completion: Large counters (e.g. `14,000,000` or `1,600+`) MUST be inside a `<foreignObject>` at least `560px` wide (`x={260} width={560}`) with `direction: 'ltr'` and `whiteSpace: 'nowrap'` so digits are NEVER clipped. Quantity/percentage counters MUST finish rolling up to their final target value by `progress = 0.45`, and NEVER linger at `0` or `0%` after `p = 0.05` (start from `Math.round(target * 0.4)` -> `target`!). CRITICAL FOR YEARS: NEVER animate or roll historical years (e.g. `1945`, `1961`, `1989`, `2024`) with `interpolate()`! Always render the exact historical year string immediately from frame 0 (e.g. `1989`) with a crisp scale/opacity entrance so the viewer never sees a wrong intermediate year like `1959` or `1931`!
 
 MULTI-PHASE VISUAL STORYTELLING & ANTI-OVERLAP RULES (MANDATORY):
 Each scene lasts 5 to 9 seconds (`dur` frames, `p = frame / dur` from `0` to `1`) and covers a complete spoken Arabic sentence with 2–3 clauses (Phase 1: `0.00..0.35`, Phase 2: `0.35..0.70`, Phase 3: `0.70..1.00`):
 - Immediate Visibility at Frame 0 (ZERO DEAD AIR): The scene background, Top Headline Banner (`y: 95..230`), AND the primary hero SVG visual stage MUST ALL be visible starting from `frame = 0` (`opacity` starting at `0.85 -> 1.0` within 8 frames)! NEVER hide the main illustration behind `ph2` (`p = 0.30+`) leaving an empty screen for the first 3–4 seconds!
-- Phase 1 (`p: 0.0 -> 0.35`): Establish the primary visual subject (iconic SVG illustration, scale, beaker, monument, or diagram) + unified Top Headline Banner (`x: 60..1020, y: 95..230`, main title `fontSize: 42px..50px`, subtitle `fontSize: 26px`, `#fde047`).
+- Phase 1 (`p: 0.0 -> 0.35`): Establish the primary visual subject (iconic SVG illustration, scale, beaker, monument, or diagram) + unified Top Headline Banner (`x: 60..1020, y: 95..230`, main title `fontSize: 52px..60px`, subtitle `fontSize: 32px`, `#fde047`).
 - Phase 2 (`p: 0.35 -> 0.70`): Reveal the second layer of evidence/comparison synced to the middle clause (e.g., proportional comparison bars where bar width is strictly `(value / maxValue) * maxBarWidth`, dated historical milestone, or metric counter).
 - Phase 3 (`p: 0.70 -> 1.00`): Reveal the final takeaway callout or interactive prompt card. For `cta` / `loop` scenes, include 2–3 concise visual recap chips + animated callout emblem so the ending feels rich and energetic, never just one lone icon.
 - ZERO CARD OR ILLUSTRATION COLLISION & ZERO DEAD CANVAS SPACE (MANDATORY):
   * NEVER leave 50%+ of the screen as a flat black/dark void with a tiny icon or small card floating in the middle!
   * ALWAYS render a multi-layered atmospheric SVG backdrop behind your scene: radial spotlight glow (`<radialGradient>`), subtle architectural/topographic depth lines or horizon ground plane, and soft ambient light beams matching the topic mood. NEVER scatter random stray `+`/`×`/`★` stars or confetti particles in empty corners.
-  * Scale hero SVG illustrations generously (`width: 500..820px`, `height: 380..540px`) and use full-width structured cards (`x: 60, width: 960` in Slot B/C) so the visual stage (`y: 110..1430`) feels rich, balanced, and cinematic from top to bottom.
+  * Scale hero SVG illustrations generously (`width: 500..820px`, `height: 380..540px`) and use full-width structured cards (`x: 60, width: 960` in Slot B/C) so the visual stage (`y: 110..1430`) feels rich (the lowest card/illustration MUST end at `y >= 1250`; never leave the bottom third empty), balanced, and cinematic from top to bottom.
   * NEVER draw Phase 2 bars/cards or Phase 3 takeaway cards on top of a persistent Phase 1 SVG illustration or on top of another card!
   * Use strict non-overlapping vertical slots:
     - Slot A (Top Hero / Metric): `y: 265..590`
@@ -1234,7 +1260,7 @@ STRICT CODE & SAFE ZONE RULES:
    const frame = props.frame ?? currentFrame;
    const fps = props.fps ?? videoFps;
    const dur = Math.max(1, props.dur ?? 150);
-4. Wrap outer JSX inside <AbsoluteFill style={{pointerEvents: 'none', overflow: 'hidden', background: '...'}}>...</AbsoluteFill>.
+4. Wrap outer JSX inside <AbsoluteFill style={{pointerEvents: 'none', overflow: 'hidden'}}> with NO `background` on it (the video's own ground shows through; a VIDEO THEME block in the user message gives the colours).
 5. NO external assets: NO <img>, NO <image>, NO <canvas>, NO fetch, NO require, NO window, NO document, NO Three.js.
 6. Safe layout zones on 1080x1920:
    - Top header/title banner: `x: 60..1020, y: 110..240` (keep `y >= 110` so camera pan/zoom never clips the top edge, and NEVER place any icon, badge, or illustration inside `y: 90..245` overlapping the header text!)
@@ -1259,8 +1285,8 @@ def _build_llm_scene_prompts(
     role = _clean_text(beat.get("id") or beat.get("role") or f"scene_{scene_index}")
     video_title = _clean_text(beat.get("video_title") or "")
     facts_summary = _clean_text(beat.get("facts_summary") or "")
-    accent = beat.get("accent") or "#38bdf8"
-    sec = beat.get("secondary_accent") or "#f59e0b"
+    accent = beat.get("accent") or (_TSX_THEME or {}).get("accent") or "#38bdf8"
+    sec = beat.get("secondary_accent") or (_TSX_THEME or {}).get("accent2") or "#f59e0b"
 
     # Split full scene narration into 2-3 timed semantic clauses so the LLM animates them progressively
     clauses = [c.strip() for c in re.split(r"[،,؛;:.!؟?\-]+", narration) if c.strip()]
@@ -1345,12 +1371,23 @@ def _build_llm_scene_prompts(
         f"Previous Scene Narration: \"{prev_narration}\"\n"
         f"Next Scene Narration: \"{next_narration}\"\n"
         f"Suggested Accent Colors (customize atmosphere to fit the scene's story): primary={accent}, secondary={sec}\n"
+        f"{_theme_block()}"
         f"{geo_note}"
         f"\nCreate a rich, concrete, multi-phase visual storytelling composition specifically explaining this scene's narration within the context of \"{video_title}\". "
         f"Include recognizable domain-specific SVG illustrations/diagrams + crisp horizontal Arabic infographic cards/labels via `<foreignObject><div dir=\"rtl\" lang=\"ar\" style={{{{fontFamily: \"'Cairo', 'Noto Kufi Arabic', sans-serif\"}}}}>...</div></foreignObject>`. "
         f"Export exact component symbol `export const {tsx_id}: React.FC<{{frame?: number; fps?: number; dur?: number}}> = (props) => {{ ... }};`."
     )
     return _LLM_TSX_SYSTEM, user_prompt
+
+
+_AR_LITERAL_RE = re.compile(
+    r"""(?:>([^<>{}]*[؀-ۿ][^<>{}]*)<)|(?:['"`]([^'"`\n]*[؀-ۿ][^'"`\n]*)['"`])"""
+)
+
+
+def _arabic_texts(code: str) -> set:
+    """Distinct non-empty Arabic text nodes/string literals in a TSX component."""
+    return {t.strip() for m in _AR_LITERAL_RE.findall(code) for t in m if t.strip()}
 
 
 def _sanitize_llm_tsx(raw_code: str, tsx_id: str) -> Optional[str]:
@@ -1611,6 +1648,10 @@ def _synthesize_beat_tsx_via_llm(
         logger.warning("LLM TSX synthesis skipped for scene %d (%s): %s", scene_index, tsx_id, last_err)
         return None
     sanitized = _sanitize_llm_tsx(resp.content, tsx_id)
+    # Richness gate: a scene with (almost) no Arabic text (e.g. three bare bars) is an empty frame, not a scene.
+    if sanitized is not None and len(_arabic_texts(sanitized)) < 3:
+        logger.warning("LLM TSX rejected for scene %d (%s): fewer than 3 Arabic text nodes", scene_index, tsx_id)
+        return None
     if sanitized is None:
         logger.warning(
             "LLM TSX rejected by sanitizer for scene %d (%s); raw_len=%d head=%r",
@@ -1649,7 +1690,52 @@ def _run_tsc_check() -> Tuple[bool, List[int], str]:
         return True, [], ""
 
 
+def _top_level_args(args: str) -> List[str]:
+    parts, depth, cur, q = [], 0, [], ""
+    for ch in args:
+        if q:
+            q = "" if ch == q else q
+        elif ch in "'\"`":
+            q = ch
+        elif ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            parts.append("".join(cur))
+            cur = []
+            continue
+        cur.append(ch)
+    parts.append("".join(cur))
+    return parts
+
+
+def _fix_color_interpolate(code: str) -> str:
+    """Remotion's interpolate() throws on color strings ("Non-numeric strings can only be interpolated using
+    Easing.step1") and killed the whole render. LLM code does this often: switch such calls to interpolateColors."""
+    out, i = [], 0
+    pat = re.compile(r"\binterpolate(?:Colors)?\(")
+    while True:
+        m = pat.search(code, i)
+        if not m:
+            out.append(code[i:])
+            break
+        depth, j = 1, m.end()
+        while j < len(code) and depth:
+            depth += (code[j] == "(") - (code[j] == ")")
+            j += 1
+        args = code[m.end(): j - 1]
+        is_color = m.group(0).startswith("interpolateColors") or re.search(r"""\[\s*['"](?:#|rgb|hsl)""", args) is not None
+        out.append(code[i: m.start()])
+        if is_color:
+            args = ",".join(_top_level_args(args)[:3])  # interpolateColors takes no extrapolate/easing options
+        out.append(("interpolateColors(" if is_color else "interpolate(") + args + ")")
+        i = j
+    return "".join(out)
+
+
 def _assemble_dynamic_file(header: str, blocks: List[str], registry_entries: List[str]) -> str:
+    blocks = [_fix_color_interpolate(b) for b in blocks]
     return (
         header
         + "\n\n".join(blocks)
@@ -1698,7 +1784,8 @@ def _compute_beat_tsx_sig(beat: Dict[str, Any], geo_ctx: Dict[str, Any]) -> str:
     import hashlib
     payload = json.dumps(
         {
-            "sig_v": 11,
+            "sig_v": 12,
+            "theme": _theme_sig(),
             "tsx_id": beat.get("tsx_id", ""),
             "narration": _clean_text(beat.get("narration") or ""),
             "title": _clean_text(beat.get("title") or beat.get("on_screen") or ""),
@@ -1761,10 +1848,14 @@ def generate_dynamic_tsx_file(
     scenes_beats: List[Dict[str, Any]],
     use_llm: Optional[bool] = None,
     only_indices: Optional[set] = None,
+    theme: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """Generates bespoke, original React/TSX components in `remotion/src/generated/DynamicScenes.tsx`
     for every scene beat, synthesizing custom TSX via LLM and verifying with TypeScript `tsc --noEmit`.
+    `theme` (style.theme_from_style) makes the scenes follow the video's ground / palette.
     """
+    global _TSX_THEME
+    _TSX_THEME = theme
     os.makedirs(DYNAMIC_TSX_PATH.parent, exist_ok=True)
     total = len(scenes_beats)
     seen_ids: set = set()
@@ -1795,7 +1886,7 @@ def generate_dynamic_tsx_file(
     header = (
         "/* AUTO-GENERATED ORIGINAL TSX SCENES BY AI VIDEO ARCHITECT */\n"
         "import React from 'react';\n"
-        "import {AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig, Easing} from 'remotion';\n\n"
+        "import {AbsoluteFill, interpolate, interpolateColors, spring, useCurrentFrame, useVideoConfig, Easing} from 'remotion';\n\n"
         + ("\n".join(geo_const_lines) + "\n\n" if geo_const_lines else "")
     )
 

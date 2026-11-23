@@ -613,10 +613,13 @@
                     : `<span class="bad">⚠ بديل: ${esc(rep.fallback || 'text')}</span> — السبب: ${esc(rep.reason || 'تعذر العثور على صورة مناسبة')}`}
               </div>`).join('') + `</div>`;
             }
+            const wr = r.warnings || [];
+            const wH = wr.length ? `<div class="card" style="margin-top:14px"><h3 style="margin:0 0 8px;font-size:15px">⚠ تقرير البدائل والتحذيرات (${wr.length})</h3><ul style="margin:0;padding-inline-start:18px;font-size:13px;direction:ltr;text-align:left">${wr.map(w => `<li>${esc(w)}</li>`).join('')}</ul></div>` : '';
             $('#result').innerHTML = `<video src="${r.url}" controls playsinline></video>
           <div class="row" style="justify-content:center"><a href="${r.url}" download="short.mp4"><button>تنزيل MP4</button></a></div>
           <p class="cnt" style="text-align:center">المدة ${r.duration} ث</p>
           ${mrH}
+          ${wH}
           ${r.credits ? `<p class="cnt">مصادر الصور (أُضيفت إلى الوصف):</p><pre style="white-space:pre-wrap;direction:ltr;font-size:12px">${esc(r.credits)}</pre>` : ''}
           ${r.sources && r.sources.length ? `<p class="cnt" style="margin-top:8px">مصادر الحقائق الموثقة (أُضيفت إلى الوصف):</p><pre style="white-space:pre-wrap;direction:ltr;font-size:12px">${esc(r.sources.join('\n'))}</pre>` : ''}`;
             break

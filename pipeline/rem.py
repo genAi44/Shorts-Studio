@@ -1,5 +1,6 @@
 """جسر Remotion: يبني مواصفة الفيديو (JSON) من السكربت والستايل والتوقيت، ويشغّل الرندر عبر Node."""
 import copy
+import re
 import glob
 import json
 import os
@@ -204,6 +205,53 @@ def _make_cues(kind: str, fps: int, visual_mode: str = "") -> list:
     return cues
 
 
+_AR_PUNCT = re.compile(r"[،؛؟.,:!?\"'()\-]")
+
+
+def _norm_ar(t: str) -> str:
+    t = _AR_PUNCT.sub("", str(t or "")).strip()
+    return t[2:] if t.startswith("ال") and len(t) > 4 else t
+
+
+def _entity_word_frame(sent_text: str, words, lo: int, hi: int):
+    """Frame of the first word (in tokens lo..hi) naming the place the sentence is about, else None."""
+    try:
+        from .geo_overlay import extract_timed_geo_mentions
+        gm = extract_timed_geo_mentions(sent_text, "", [], 150)
+    except Exception:
+        return None
+    m0 = next((x for x in gm if x.get("kind") in ("landmark", "capital", "city", "country")), None)
+    if not m0:
+        return None
+    want = [_norm_ar(w) for w in str(m0.get("matched_token") or m0.get("name_ar") or "").split() if w]
+    want = [w for w in want if len(w) >= 3]
+    if not want:
+        return None
+    for i in range(max(lo, 0), min(hi, len(words) - 1) + 1):
+        tok = _norm_ar(words[i].get("t", ""))
+        tok = tok[1:] if tok[:1] in "وبلف" and len(tok) > 4 and tok[1:] and tok not in want else tok
+        if any(w == tok or (len(w) >= 4 and w in tok) for w in want):
+            return int(round(words[i]["s"] * FPS))
+    return None
+
+
+def _align_photo_starts(beats, starts, groups, sents, words, ntok):
+    """A photo of a place must appear when the place is NAMED (like its map waypoint), not at sentence start.
+    Shifts a photo beat's start to the entity word (anticipation 3 frames) when that is <= 2.5 s later."""
+    if len(words) != ntok:
+        return
+    for i, b in enumerate(beats):
+        if i == 0 or i >= len(starts) or i >= len(groups) or not isinstance(b, dict) or b.get("kind") != "photo":
+            continue
+        fr = _entity_word_frame(sents[i] if i < len(sents) else "", words, groups[i][0], groups[i][-1])
+        if fr is None:
+            continue
+        new = fr - 3
+        limit = starts[i + 1] - 14 if i + 1 < len(starts) else new
+        if 0 < new - starts[i] <= 75 and new <= limit:
+            starts[i] = new
+
+
 # ------------------------------------------------------------------ مقاطع المشهد بالتوقيت
 def scene_beats(scene, words, dur_frames, geo, hook_first=None, photo=None, degrade=True, visual_mode=""):
     """يقسّم الجمل على توقيت الكلمات: كل مقطع يبدأ عند نطق أول كلمة في جملته."""
@@ -240,6 +288,7 @@ def scene_beats(scene, words, dur_frames, geo, hook_first=None, photo=None, degr
             wi = min(g[0], len(words) - 1) if len(words) == ntok else min(int(g[0] / max(ntok, 1) * len(words)), len(words) - 1)
             starts.append(max(int(round(words[wi]["s"] * FPS)) - 3, starts[-1] + 14))
         sents = direct.sentences(scene["narration"])
+        _align_photo_starts(beats, starts, groups, sents, words, ntok)
     out = []
     for i, b in enumerate(beats):
         sent_text = sents[i] if i < len(sents) else (b.get("narration") or scene.get("narration", ""))
@@ -286,6 +335,14 @@ def scene_beats(scene, words, dur_frames, geo, hook_first=None, photo=None, degr
             b.pop("tsx_id", None)
         if b["kind"] == "map":
             b["view"] = map_view(geo, b)
+        elif b["kind"] == "person_card" and photo and not b.get("img"):
+            try:
+                pb = photo({"kind": "photo", "query": b.get("query") or b.get("name"), "text": b.get("name"), "must_show": b.get("query") or b.get("name")}, sent_text)
+                if isinstance(pb, dict) and pb.get("img"):
+                    b["img"] = pb["img"]
+            except Exception as _pe:  # noqa: BLE001
+                from .config import record_fallback
+                record_fallback(f"person photo unavailable ({_pe}): symbolic silhouette", beat_id="person_card")
         elif b["kind"] == "area_map":
             b["view"] = areamap.build_view(b)
         elif b["kind"] == "map_pin":
@@ -326,6 +383,13 @@ def build_spec(script, style, plan, total_frames, geo, audio_name="audio.wav", p
         words = [{"t": w, "s": round(s, 3), "e": round(e, 3)} for (w, s, e) in p["audio"]["words"]]
         sc_vi = sc.get("_vi") if isinstance(sc.get("_vi"), dict) else {}
         beats = scene_beats(sc, words, dur, geo, hook_first, photo, degrade, visual_mode=sc_vi.get("visual_mode", ""))
+        # entity -> visual rule: every registered entity gets its visual (insert shot if the plan missed it); places go to the overlay
+        per_sentence = (script.get("_entities") or {}).get(sc["id"]) if isinstance(script, dict) else None
+        entity_mentions = None
+        if per_sentence:
+            from . import entities as _ent
+            beats = _ent.ensure_visuals(beats, per_sentence, words, dur, photo=photo)
+            entity_mentions = _ent.geo_mentions(per_sentence, words, [])
         if sc["role"] == "hook":
             # first frame must be thumbnail-quality; settle beat[0] so springs render at full state
             if beats:
@@ -348,11 +412,13 @@ def build_spec(script, style, plan, total_frames, geo, audio_name="audio.wav", p
             inh_locs = sc_vi.get("explicit_and_inherited_locations") or []
             map_overlay = build_scene_map_overlay(
                 sc, words, dur, geo=geo, scene_idx=idx, prev_overlay=prev_map_overlay,
-                inherited_locations=inh_locs,
+                inherited_locations=inh_locs, entity_mentions=entity_mentions,
             )
             if map_overlay:
                 prev_map_overlay = map_overlay
-        except Exception:
+        except Exception as _mo_err:  # noqa: BLE001
+            from .config import record_fallback
+            record_fallback(f"map overlay failed for scene {sc.get('id')}: {_mo_err}", beat_id=str(sc.get("id")))
             map_overlay = None
         sc_vi = sc.get("_vi") if isinstance(sc.get("_vi"), dict) else {}
         scene_obj = {
@@ -364,6 +430,7 @@ def build_spec(script, style, plan, total_frames, geo, audio_name="audio.wav", p
             "beats": beats,
             "visuals": visuals,
             "entities": entities,
+            "entity_plan": per_sentence or [],
             "transition": transition,
             "map_overlay": map_overlay,
             "visual_mode": sc_vi.get("visual_mode"),
@@ -392,7 +459,8 @@ def build_spec(script, style, plan, total_frames, geo, audio_name="audio.wav", p
         ]
         if all_tsx_beats:
             only_set = {only_scene_idx} if only_scene_idx is not None else None
-            generate_dynamic_tsx_file(all_tsx_beats, only_indices=only_set)
+            from .style import theme_from_style
+            generate_dynamic_tsx_file(all_tsx_beats, only_indices=only_set, theme=theme_from_style(style))
     except Exception as _tsx_err:
         import logging as _log
         _log.getLogger("pipeline.rem").exception("Dynamic TSX generation failed: %s", _tsx_err)
@@ -447,7 +515,9 @@ def render_video(spec, out_mp4, work_dir, audio_wav, progress=None):
     spec = _icons.sanitize_spec_assets(copy.deepcopy(spec))
     sp = os.path.join(work_dir, "spec.json")
     json.dump(spec, open(sp, "w", encoding="utf-8"), ensure_ascii=False)
-    _run(["node", "render.mjs", sp, out_mp4, pub], progress)
+    from .scene_author import sync_to_remotion  # authored scenes: the job's files are what gets rendered
+    with sync_to_remotion(spec.get("authored_dir")):
+        _run(["node", "render.mjs", sp, out_mp4, pub], progress)
     shutil.rmtree(pub, ignore_errors=True)
 
 
@@ -460,5 +530,7 @@ def render_still(spec, out_jpg, frame, work_dir):
     spec = _icons.sanitize_spec_assets(copy.deepcopy(spec))
     sp = os.path.join(work_dir, "spec_still.json")
     json.dump(spec, open(sp, "w", encoding="utf-8"), ensure_ascii=False)
-    _run(["node", "still.mjs", sp, out_jpg, str(frame), pub])
+    from .scene_author import sync_to_remotion  # same files as the final render
+    with sync_to_remotion(spec.get("authored_dir")):
+        _run(["node", "still.mjs", sp, out_jpg, str(frame), pub])
     shutil.rmtree(pub, ignore_errors=True)
