@@ -140,3 +140,8 @@ def test_fixture_authored_files_pass_the_static_gate():
     assert files, "build with scripts/build_authored_fixture.py"
     for f in files:
         assert sa.static_check(f) == [], f.name
+
+
+def test_recipe_fixture_scenes_pass_the_static_gate():
+    for f in sorted((ROOT / "tests" / "fixtures" / "recipes").glob("s_*.tsx")):
+        assert sa.static_check(f) == [], f.name

@@ -33,6 +33,54 @@ export default function Scene({dur, data}: SceneProps) {
 4. Output only code: the first line must be an `import`. No reasoning text before or after.
 5. Text must be >= 24 px (hero text 56-150 px) and stay inside `LAYOUT.beat`; do not place text where it overlaps other text.
 
+## Design direction (read before you compose)
+Good short-form scenes share a few habits. Apply them; do not imitate any specific video.
+1. **One hero idea per screen.** One hero object/graphic + one short line. Leave generous empty space; never fill the beat zone.
+2. **Text is part of the layout**, not a caption: put it next to the hero. Inside one line, make the KEY word big, heavy and in the
+   accent colour and the rest small and light (`KeyLine`): a 2.5-3x size contrast reads as design, equal sizes read as a form.
+3. **Two colours.** Ground + text + ONE accent (`c('accent')`) with alphas of it. Do not introduce other hues.
+4. **Build up, do not swap.** Items appear one by one on the same canvas and stay (`Stack`, `Hub`, `Steps`): the viewer sees the idea assemble.
+5. **No boxes around everything.** Prefer a bare shape, a circle, a ribbon or a pinned card over a card-in-a-card.
+6. **A continuous element behind the content** (`Ribbon`) gives scenes the same visual family; keep it at low alpha.
+7. **One metaphor per scene**: hub (sources), rising steps (progress/stages), list that grows (consequences), pinned card (a fact).
+8. Stagger by 0.1-0.35 s; the key word enters first or on the spoken word (`data.words` has the times).
+
+## Layout recipes (ready-made, in `../kit`)
+| recipe | use it for | props |
+|---|---|---|
+| `KeyLine` | the headline of nearly every scene | `keyword` (big accent word/phrase), `lead?` (small line above), `tail?` (small line below), `size=120`, `delay`, `maxWidth` |
+| `Hub` | something with 2-7 sources/parts/causes | `items=[{icon?: 'lucide:x', label?}]`, `center` (node: an `Icon` ~130 px), `cy`, `radius=300`, `delay` |
+| `Steps` | stages, progress, ranking (first item is on the right) | `items: string[]` (2-5 short labels), `w=900`, `bottom`, `maxH=540` |
+| `Stack` | consequences, features, a numbered list | `items=[{text, icon?}]` (2-6 rows, 150 px apart), `top`, `step=0.5` |
+| `Pinned` | one fact/number on a card hanging from a string | `x,y,w,h,rotate`, children = `Counter` / `ArText` / `Icon` (no photos) |
+| `Ribbon` | background decoration behind everything | `variant` 0 / 1 / 2 |
+
+Layout rule: `KeyLine` goes in `y = LAYOUT.beat.top + 10` (width 900, centred with `display:flex; justifyContent:center`), the
+recipe body below it (`Hub` `cy = LAYOUT.beat.center_y + 120`, `Stack` `top = LAYOUT.beat.top + 220`, `Steps` default). Recipes may be
+combined or used as inspiration for your own composition (inline SVG shapes + `useSpr` staggers).
+
+```tsx
+import React from 'react';
+import {AbsoluteFill} from 'remotion';
+import {Abs, Hub, Icon, KeyLine, LAYOUT, Ribbon, SceneProps, useKit} from '../kit';
+
+export default function Scene({data}: SceneProps) {
+  const k = useKit();
+  return (
+    <AbsoluteFill>
+      <Ribbon variant={0} />
+      <Abs x={90} y={LAYOUT.beat.top + 10} w={900} style={{display: 'flex', justifyContent: 'center'}}>
+        <KeyLine lead="مصدر الدخل" keyword="خمسة روافد" size={110} />
+      </Abs>
+      <Hub cy={LAYOUT.beat.center_y + 120} radius={300}
+           center={<Icon name="lucide:wallet" size={130} color={k.c('accent')} />}
+           items={[{icon: 'lucide:fuel', label: 'النفط'}, {icon: 'lucide:landmark', label: 'الاستثمار'}, {icon: 'lucide:ship', label: 'الموانئ'}]} />
+    </AbsoluteFill>
+  );
+}
+```
+Working examples of each recipe: `tests/fixtures/recipes/*.tsx`.
+
 ## Props
 `dur` = scene length in frames. `data` = `{sentence, sentences[], role, entities[], words[{t,s,e}], map_overlay|null, theme}`:
 `words` are the spoken words with start/end seconds (sync accents to them), `entities` are the verified entities of the
@@ -56,10 +104,12 @@ sentence (`type`, `scale`, `name_ar`, numbers, years, `lat/lon`), `map_overlay` 
 | `useIdle(amp, period, phase)` | gentle floating offset |
 | `ease` | bezier curves: `out, inOut, in, back` (for `interpolate(..., {easing})`) |
 | `interpolate`, `Pop` | remotion interpolate / staggered entrance wrapper |
+| `KeyLine`, `Hub`, `Steps`, `Stack`, `Pinned`, `Ribbon` | layout recipes (see "Layout recipes" above) |
 
 ## Exact signatures (copy these, do not invent others)
 ```ts
-import {SceneProps, LAYOUT, useKit, Abs, Card, ArText, Counter, Ring, Bar, Icon, MapLayer, useSpr, enter, useProgress, useIdle, ease, interpolate, Pop} from '../kit';
+import {SceneProps, LAYOUT, useKit, Abs, Card, ArText, Counter, Ring, Bar, Icon, MapLayer, useSpr, enter, useProgress, useIdle, ease, interpolate, Pop,
+        KeyLine, Hub, Steps, Stack, Pinned, Ribbon} from '../kit';
 type SceneProps = {dur: number; data: any};
 LAYOUT: {cx: 540, cy: 860, W: 1080, H: 1920, safeTop: 72, safeBottom: 1780,
          headline: {top, bottom, center_y, left, right}, beat: {top: 280, bottom: 1380, center_y: 860, left: 80, right: 80},
