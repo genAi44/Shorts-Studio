@@ -78,6 +78,9 @@ def hints_for(errors: List[str]) -> List[str]:
 
 def build_prompts(ctx: Dict[str, Any], errors: Optional[List[str]] = None, previous: Optional[str] = None) -> Tuple[str, str]:
     slim = {k: v for k, v in ctx.items() if k != "map_overlay"}
+    guide = (ctx.get("theme") or {}).get("art_guide", "")
+    if guide:
+        slim["theme"] = {k: v for k, v in ctx["theme"].items() if k != "art_guide"}
     slim["has_map_overlay"] = bool(ctx.get("map_overlay"))
     if ctx.get("map_overlay"):
         ov = ctx["map_overlay"]
@@ -90,7 +93,10 @@ def build_prompts(ctx: Dict[str, Any], errors: Optional[List[str]] = None, previ
         user += ("\n\nYour previous attempt was REJECTED. Fix every problem and return the complete corrected file.\n"
                  "Problems:\n- " + "\n- ".join(errors[:14])
                  + ("\n\nHow to fix:\n- " + "\n- ".join(hints) if hints else "") + "\n\nPrevious code:\n" + previous)
-    return SYSTEM.replace("{kit}", _kit_text()), user
+    system = SYSTEM.replace("{kit}", _kit_text())
+    if guide:
+        system += "\n\nART DIRECTION OF THIS VIDEO (a style guide: follow its essence, its 'not' list and its director rules; it overrides generic taste):\n" + guide
+    return system, user
 
 
 def extract_code(text: str) -> str:

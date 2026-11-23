@@ -204,6 +204,10 @@ def normalize(style, seed=None):
     out["text"]["size"] = int(_num(stx.get("size"), 80, 140, base["text"]["size"]))
     out["pace"] = _num(st.get("pace"), 0.6, 1.5, base["pace"])
     out["seed"] = int(st.get("seed") or base["seed"])
+    if st.get("preset"):  # a ready-made art direction (styles/<slug>/): kept so the director and the scene author can follow its guide
+        from . import presets
+        if presets.has_preset(st.get("preset")):
+            out["preset"] = str(st["preset"])
     f2 = _enum(st.get("font2"), "font", base["font2"])
     out["font2"] = f2 if f2 != out["font"] else base["font2"] if base["font2"] != out["font"] else "amiri"
     out["weight2"] = int(_num(st.get("weight2"), FONTS[out["font2"]][2][0], FONTS[out["font2"]][2][1], FONTS[out["font2"]][2][0]))
@@ -264,6 +268,12 @@ def theme_from_style(style):
     else:
         card_bg = "rgba(255,255,255,0.88)"
         card_text = _hex(pal["text"])
-    return {"bg_type": style["bg"]["type"], "ground": _hex(ground), "text": _hex(pal["text"]), "accent": _hex(pal["accent"]),
-            "accent2": _hex(pal["accent2"]), "dark": dark, "card_bg": card_bg, "card_text": card_text,
-            "card_border": _hex(pal["accent"])}
+    theme = {"bg_type": style["bg"]["type"], "ground": _hex(ground), "text": _hex(pal["text"]), "accent": _hex(pal["accent"]),
+             "accent2": _hex(pal["accent2"]), "dark": dark, "card_bg": card_bg, "card_text": card_text,
+             "card_border": _hex(pal["accent"])}
+    if style.get("preset"):
+        from . import presets
+        g = presets.guide(style["preset"])
+        if g:
+            theme["art_guide"] = g  # scene_author puts it in the system prompt; it is part of the cache key
+    return theme
