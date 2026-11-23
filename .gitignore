@@ -47,3 +47,4 @@ data/nominatim_cache.json
 # authored scenes are copied here per job (source of truth: outputs/<job>/scenes/)
 remotion/src/authored/*.tsx
 data/authored_cache/
+tests/fixtures/area_map_spec.json

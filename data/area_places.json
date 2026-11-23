@@ -1,0 +1,1011 @@
+{
+ "_note": "Offline area reference for the area-map beat. Countries are NOT listed here: their outline comes from data/world.geojson (Natural Earth based) and their area is computed from it. Values below are reference figures (Wikipedia / NOAA / Natural Earth). Entries without 'rings' get an equal-area disc outline flagged synthetic (drawn with a visible 'approximate shape' tag). Ring points are [lon, lat]; Pacific uses unwrapped lon (>180). country_area_km2 holds official total areas (CIA/UN) for common countries; other countries fall back to the area computed from world.geojson (approximate).",
+ "country_aliases_ar": {
+  "الفاتيكان": "VAT",
+  "مدينة الفاتيكان": "VAT",
+  "دولة الفاتيكان": "VAT",
+  "موناكو": "MCO",
+  "سان مارينو": "SMR"
+ },
+ "continents": {
+  "africa": {
+   "name_ar": "أفريقيا",
+   "aliases_ar": [
+    "افريقيا",
+    "القارة الأفريقية"
+   ],
+   "name_en": "Africa",
+   "area_km2": 30370000,
+   "lat": 2,
+   "lon": 20,
+   "members": "AGO BDI BEN BFA BWA CAF CIV CMR COD COG COM CPV DJI DZA EGY ERI ESH ETH GAB GHA GIN GMB GNB GNQ KEN LBR LBY LSO MAR MDG MLI MOZ MRT MUS MWI NAM NER NGA RWA SDN SEN SHN SLE SOM SSD STP SWZ SYC TCD TGO TUN TZA UGA ZAF ZMB ZWE"
+  },
+  "europe": {
+   "name_ar": "أوروبا",
+   "aliases_ar": [
+    "اوروبا",
+    "القارة الأوروبية"
+   ],
+   "name_en": "Europe",
+   "area_km2": 10180000,
+   "lat": 52,
+   "lon": 15,
+   "members": "ALA ALB AND AUT BEL BGR BIH BLR CHE CYP CZE DEU DNK ESP EST FIN FRA FRO GBR GGY GIB GRC HRV HUN IMN IRL ISL ITA JEY LIE LTU LUX LVA MCO MDA MKD MLT MNE NLD NOR POL PRT ROU SMR SRB SVK SVN SWE UKR VAT",
+   "russia": "west"
+  },
+  "asia": {
+   "name_ar": "آسيا",
+   "aliases_ar": [
+    "اسيا",
+    "القارة الآسيوية"
+   ],
+   "name_en": "Asia",
+   "area_km2": 44580000,
+   "lat": 34,
+   "lon": 90,
+   "members": "AFG ARE ARM AZE BGD BHR BRN BTN CHN GEO HKG IDN IND IOT IRN IRQ ISR JOR JPN KAZ KGZ KHM KOR KWT LAO LBN LKA MAC MDV MMR MNG MYS NPL OMN PAK PHL PRK PSE QAT SAU SGP SYR THA TJK TKM TLS TUR TWN UZB VNM YEM",
+   "russia": "east"
+  },
+  "north_america": {
+   "name_ar": "أمريكا الشمالية",
+   "aliases_ar": [
+    "امريكا الشمالية",
+    "أمريكا الشمالية"
+   ],
+   "name_en": "North America",
+   "area_km2": 24710000,
+   "lat": 48,
+   "lon": -100,
+   "members": "ABW AIA ATG BHS BLM BLZ BMU BRB CAN CRI CUB CUW CYM DMA DOM GRD GRL GTM HND HTI JAM KNA LCA MAF MEX MSR NIC PAN PRI SLV SPM SXM TCA TTO USA VCT VGB VIR"
+  },
+  "south_america": {
+   "name_ar": "أمريكا الجنوبية",
+   "aliases_ar": [
+    "امريكا الجنوبية"
+   ],
+   "name_en": "South America",
+   "area_km2": 17840000,
+   "lat": -15,
+   "lon": -60,
+   "members": "ARG BOL BRA CHL COL ECU FLK GUY PER PRY SUR URY VEN"
+  },
+  "oceania": {
+   "name_ar": "أستراليا وأوقيانوسيا",
+   "aliases_ar": [
+    "اوقيانوسيا",
+    "أوقيانوسيا",
+    "أستراليا وأوقيانوسيا"
+   ],
+   "name_en": "Oceania",
+   "area_km2": 8526000,
+   "lat": -22,
+   "lon": 140,
+   "members": "ASM AUS COK FJI FSM GUM KIR MHL MNP NCL NFK NIU NRU NZL PCN PLW PNG PYF SLB TON TUV VUT WLF WSM"
+  },
+  "antarctica": {
+   "name_ar": "القارة القطبية الجنوبية",
+   "aliases_ar": [
+    "أنتاركتيكا",
+    "انتاركتيكا",
+    "أنتاركتيكا"
+   ],
+   "name_en": "Antarctica",
+   "area_km2": 14200000,
+   "lat": -82,
+   "lon": 0,
+   "members": "ATA"
+  }
+ },
+ "places": [
+  {
+   "id": "pacific",
+   "type": "ocean",
+   "name_ar": "المحيط الهادئ",
+   "aliases_ar": [
+    "المحيط الهادي",
+    "الباسفيك"
+   ],
+   "name_en": "Pacific Ocean",
+   "area_km2": 165250000,
+   "lat": 0,
+   "lon": 200,
+   "rings": [
+    [
+     [
+      140,
+      60
+     ],
+     [
+      160,
+      60
+     ],
+     [
+      190,
+      66
+     ],
+     [
+      205,
+      66
+     ],
+     [
+      220,
+      58
+     ],
+     [
+      235,
+      48
+     ],
+     [
+      243,
+      33
+     ],
+     [
+      250,
+      22
+     ],
+     [
+      262,
+      12
+     ],
+     [
+      278,
+      7
+     ],
+     [
+      282,
+      -5
+     ],
+     [
+      286,
+      -18
+     ],
+     [
+      289,
+      -40
+     ],
+     [
+      285,
+      -55
+     ],
+     [
+      240,
+      -60
+     ],
+     [
+      180,
+      -60
+     ],
+     [
+      150,
+      -60
+     ],
+     [
+      147,
+      -43
+     ],
+     [
+      153,
+      -30
+     ],
+     [
+      150,
+      -14
+     ],
+     [
+      142,
+      -11
+     ],
+     [
+      131,
+      -8
+     ],
+     [
+      122,
+      -9
+     ],
+     [
+      119,
+      2
+     ],
+     [
+      120,
+      15
+     ],
+     [
+      122,
+      25
+     ],
+     [
+      128,
+      34
+     ],
+     [
+      135,
+      40
+     ],
+     [
+      143,
+      50
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "atlantic",
+   "type": "ocean",
+   "name_ar": "المحيط الأطلسي",
+   "aliases_ar": [
+    "المحيط الاطلسي",
+    "الأطلسي"
+   ],
+   "name_en": "Atlantic Ocean",
+   "area_km2": 106460000,
+   "lat": 0,
+   "lon": -30,
+   "rings": [
+    [
+     [
+      -55,
+      70
+     ],
+     [
+      -20,
+      70
+     ],
+     [
+      -5,
+      60
+     ],
+     [
+      -8,
+      50
+     ],
+     [
+      -10,
+      36
+     ],
+     [
+      -17,
+      22
+     ],
+     [
+      -17,
+      10
+     ],
+     [
+      -8,
+      4
+     ],
+     [
+      8,
+      3
+     ],
+     [
+      10,
+      -5
+     ],
+     [
+      12,
+      -18
+     ],
+     [
+      18,
+      -33
+     ],
+     [
+      20,
+      -40
+     ],
+     [
+      20,
+      -60
+     ],
+     [
+      -60,
+      -60
+     ],
+     [
+      -68,
+      -55
+     ],
+     [
+      -65,
+      -42
+     ],
+     [
+      -50,
+      -28
+     ],
+     [
+      -40,
+      -15
+     ],
+     [
+      -35,
+      -6
+     ],
+     [
+      -45,
+      -1
+     ],
+     [
+      -52,
+      5
+     ],
+     [
+      -62,
+      11
+     ],
+     [
+      -70,
+      12
+     ],
+     [
+      -80,
+      9
+     ],
+     [
+      -85,
+      16
+     ],
+     [
+      -90,
+      21
+     ],
+     [
+      -82,
+      26
+     ],
+     [
+      -76,
+      38
+     ],
+     [
+      -65,
+      45
+     ],
+     [
+      -55,
+      50
+     ],
+     [
+      -55,
+      60
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "indian",
+   "type": "ocean",
+   "name_ar": "المحيط الهندي",
+   "aliases_ar": [],
+   "name_en": "Indian Ocean",
+   "area_km2": 70560000,
+   "lat": -15,
+   "lon": 80,
+   "rings": [
+    [
+     [
+      42,
+      12
+     ],
+     [
+      52,
+      12
+     ],
+     [
+      58,
+      22
+     ],
+     [
+      62,
+      25
+     ],
+     [
+      68,
+      22
+     ],
+     [
+      73,
+      15
+     ],
+     [
+      77,
+      8
+     ],
+     [
+      80,
+      15
+     ],
+     [
+      88,
+      22
+     ],
+     [
+      92,
+      15
+     ],
+     [
+      98,
+      6
+     ],
+     [
+      100,
+      0
+     ],
+     [
+      105,
+      -8
+     ],
+     [
+      115,
+      -9
+     ],
+     [
+      125,
+      -12
+     ],
+     [
+      114,
+      -22
+     ],
+     [
+      116,
+      -34
+     ],
+     [
+      120,
+      -60
+     ],
+     [
+      20,
+      -60
+     ],
+     [
+      20,
+      -35
+     ],
+     [
+      32,
+      -28
+     ],
+     [
+      40,
+      -16
+     ],
+     [
+      41,
+      -3
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "southern",
+   "type": "ocean",
+   "name_ar": "المحيط الجنوبي",
+   "aliases_ar": [
+    "المحيط المتجمد الجنوبي"
+   ],
+   "name_en": "Southern Ocean",
+   "area_km2": 21960000,
+   "lat": -72,
+   "lon": 0,
+   "rings": [
+    [
+     [
+      -180,
+      -60
+     ],
+     [
+      -150,
+      -60
+     ],
+     [
+      -120,
+      -60
+     ],
+     [
+      -90,
+      -60
+     ],
+     [
+      -60,
+      -60
+     ],
+     [
+      -30,
+      -60
+     ],
+     [
+      0,
+      -60
+     ],
+     [
+      30,
+      -60
+     ],
+     [
+      60,
+      -60
+     ],
+     [
+      90,
+      -60
+     ],
+     [
+      120,
+      -60
+     ],
+     [
+      150,
+      -60
+     ],
+     [
+      180,
+      -60
+     ]
+    ],
+    [
+     [
+      -180,
+      -70
+     ],
+     [
+      -150,
+      -70
+     ],
+     [
+      -120,
+      -70
+     ],
+     [
+      -90,
+      -70
+     ],
+     [
+      -60,
+      -70
+     ],
+     [
+      -30,
+      -70
+     ],
+     [
+      0,
+      -70
+     ],
+     [
+      30,
+      -70
+     ],
+     [
+      60,
+      -70
+     ],
+     [
+      90,
+      -70
+     ],
+     [
+      120,
+      -70
+     ],
+     [
+      150,
+      -70
+     ],
+     [
+      180,
+      -70
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "arctic",
+   "type": "ocean",
+   "name_ar": "المحيط المتجمد الشمالي",
+   "aliases_ar": [
+    "المحيط القطبي الشمالي",
+    "المحيط المتجمد"
+   ],
+   "name_en": "Arctic Ocean",
+   "area_km2": 15558000,
+   "lat": 85,
+   "lon": 0,
+   "rings": [
+    [
+     [
+      -180,
+      72
+     ],
+     [
+      -150,
+      72
+     ],
+     [
+      -120,
+      72
+     ],
+     [
+      -90,
+      72
+     ],
+     [
+      -60,
+      72
+     ],
+     [
+      -30,
+      72
+     ],
+     [
+      0,
+      72
+     ],
+     [
+      30,
+      72
+     ],
+     [
+      60,
+      72
+     ],
+     [
+      90,
+      72
+     ],
+     [
+      120,
+      72
+     ],
+     [
+      150,
+      72
+     ],
+     [
+      180,
+      72
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "mediterranean",
+   "type": "sea",
+   "name_ar": "البحر المتوسط",
+   "aliases_ar": [
+    "البحر الأبيض المتوسط"
+   ],
+   "name_en": "Mediterranean Sea",
+   "area_km2": 2500000,
+   "lat": 35,
+   "lon": 18
+  },
+  {
+   "id": "redsea",
+   "type": "sea",
+   "name_ar": "البحر الأحمر",
+   "aliases_ar": [],
+   "name_en": "Red Sea",
+   "area_km2": 438000,
+   "lat": 20,
+   "lon": 38
+  },
+  {
+   "id": "blacksea",
+   "type": "sea",
+   "name_ar": "البحر الأسود",
+   "aliases_ar": [],
+   "name_en": "Black Sea",
+   "area_km2": 436000,
+   "lat": 43.5,
+   "lon": 34.5
+  },
+  {
+   "id": "caspian",
+   "type": "lake",
+   "name_ar": "بحر قزوين",
+   "aliases_ar": [
+    "بحيرة قزوين"
+   ],
+   "name_en": "Caspian Sea",
+   "area_km2": 371000,
+   "lat": 41.5,
+   "lon": 50.5
+  },
+  {
+   "id": "victoria",
+   "type": "lake",
+   "name_ar": "بحيرة فيكتوريا",
+   "aliases_ar": [],
+   "name_en": "Lake Victoria",
+   "area_km2": 68800,
+   "lat": -1,
+   "lon": 33
+  },
+  {
+   "id": "sicily",
+   "type": "island",
+   "name_ar": "صقلية",
+   "aliases_ar": [
+    "جزيرة صقلية"
+   ],
+   "name_en": "Sicily",
+   "area_km2": 25711,
+   "lat": 37.6,
+   "lon": 14.0
+  },
+  {
+   "id": "paris",
+   "type": "city",
+   "name_ar": "باريس",
+   "aliases_ar": [],
+   "name_en": "Paris",
+   "area_km2": 105.4,
+   "lat": 48.8566,
+   "lon": 2.3522,
+   "iso3": "FRA"
+  },
+  {
+   "id": "london",
+   "type": "city",
+   "name_ar": "لندن",
+   "aliases_ar": [],
+   "name_en": "London",
+   "area_km2": 1572,
+   "lat": 51.5072,
+   "lon": -0.1276,
+   "iso3": "GBR"
+  },
+  {
+   "id": "newyork",
+   "type": "city",
+   "name_ar": "نيويورك",
+   "aliases_ar": [
+    "مدينة نيويورك"
+   ],
+   "name_en": "New York City",
+   "area_km2": 783.8,
+   "lat": 40.7128,
+   "lon": -74.006,
+   "iso3": "USA"
+  },
+  {
+   "id": "tokyo",
+   "type": "city",
+   "name_ar": "طوكيو",
+   "aliases_ar": [],
+   "name_en": "Tokyo",
+   "area_km2": 2194,
+   "lat": 35.6762,
+   "lon": 139.6503,
+   "iso3": "JPN"
+  },
+  {
+   "id": "istanbul",
+   "type": "city",
+   "name_ar": "إسطنبول",
+   "aliases_ar": [
+    "اسطنبول",
+    "إستانبول"
+   ],
+   "name_en": "Istanbul",
+   "area_km2": 5343,
+   "lat": 41.0082,
+   "lon": 28.9784,
+   "iso3": "TUR"
+  },
+  {
+   "id": "riyadh",
+   "type": "city",
+   "name_ar": "الرياض",
+   "aliases_ar": [],
+   "name_en": "Riyadh",
+   "area_km2": 1973,
+   "lat": 24.7136,
+   "lon": 46.6753,
+   "iso3": "SAU"
+  },
+  {
+   "id": "cairo",
+   "type": "city",
+   "name_ar": "القاهرة",
+   "aliases_ar": [],
+   "name_en": "Cairo",
+   "area_km2": 3085,
+   "lat": 30.0444,
+   "lon": 31.2357,
+   "iso3": "EGY"
+  },
+  {
+   "id": "dubai",
+   "type": "city",
+   "name_ar": "دبي",
+   "aliases_ar": [],
+   "name_en": "Dubai",
+   "area_km2": 4114,
+   "lat": 25.2048,
+   "lon": 55.2708,
+   "iso3": "ARE"
+  }
+ ],
+ "country_area_km2": {
+  "SAU": 2149690,
+  "EGY": 1001450,
+  "RUS": 17098246,
+  "CAN": 9984670,
+  "CHN": 9596961,
+  "USA": 9833517,
+  "BRA": 8515767,
+  "AUS": 7692024,
+  "IND": 3287263,
+  "ARG": 2780400,
+  "KAZ": 2724900,
+  "DZA": 2381741,
+  "COD": 2344858,
+  "GRL": 2166086,
+  "LBY": 1759540,
+  "IRN": 1648195,
+  "MNG": 1564116,
+  "PER": 1285216,
+  "TCD": 1284000,
+  "NER": 1267000,
+  "AGO": 1246700,
+  "MLI": 1240192,
+  "ZAF": 1221037,
+  "COL": 1141748,
+  "ETH": 1104300,
+  "BOL": 1098581,
+  "MRT": 1030700,
+  "TZA": 945087,
+  "NGA": 923768,
+  "VEN": 916445,
+  "PAK": 881913,
+  "TUR": 783562,
+  "CHL": 756102,
+  "ZMB": 752612,
+  "MOZ": 801590,
+  "MMR": 676578,
+  "AFG": 652230,
+  "SOM": 637657,
+  "FRA": 643801,
+  "UKR": 603550,
+  "MDG": 587041,
+  "KEN": 580367,
+  "ESP": 505992,
+  "SWE": 450295,
+  "MAR": 446550,
+  "IRQ": 438317,
+  "JPN": 377975,
+  "DEU": 357022,
+  "ITA": 301340,
+  "GBR": 243610,
+  "SYR": 185180,
+  "JOR": 89342,
+  "ARE": 83600,
+  "LBN": 10452,
+  "KWT": 17818,
+  "QAT": 11586,
+  "BHR": 780,
+  "OMN": 309500,
+  "YEM": 527968,
+  "SDN": 1861484,
+  "SSD": 619745,
+  "TUN": 163610,
+  "IDN": 1904569,
+  "MEX": 1964375,
+  "THA": 513120,
+  "VNM": 331212,
+  "PHL": 300000,
+  "POL": 312696,
+  "NOR": 385207,
+  "FIN": 338145,
+  "NZL": 268021,
+  "VAT": 0.44,
+  "MCO": 2.02,
+  "SMR": 61,
+  "MLT": 316,
+  "LIE": 160,
+  "SGP": 734,
+  "MDV": 298,
+  "LUX": 2586,
+  "ISR": 22072,
+  "PSE": 6020,
+  "CYP": 9251,
+  "DJI": 23200,
+  "COM": 1861,
+  "ISL": 103000,
+  "IRL": 70273,
+  "PRT": 92212,
+  "GRC": 131957,
+  "ROU": 238397,
+  "BGR": 110879,
+  "HUN": 93028,
+  "AUT": 83871,
+  "CHE": 41285,
+  "NLD": 41543,
+  "BEL": 30528,
+  "DNK": 42943,
+  "CUB": 109884,
+  "BGD": 147570,
+  "NPL": 147181,
+  "LKA": 65610,
+  "KHM": 181035,
+  "LAO": 236800,
+  "MYS": 330803,
+  "UZB": 447400,
+  "TKM": 488100,
+  "UGA": 241550,
+  "GHA": 238533,
+  "CIV": 322463,
+  "CMR": 475440,
+  "GAB": 267668,
+  "COG": 342000,
+  "ZWE": 390757,
+  "NAM": 825615,
+  "BWA": 581730,
+  "PRY": 406752,
+  "URY": 176215,
+  "ECU": 283561,
+  "GUY": 214969,
+  "SUR": 163820,
+  "ERI": 117600,
+  "RWA": 26338,
+  "BDI": 27834,
+  "MWI": 118484,
+  "SEN": 196722,
+  "GIN": 245857,
+  "BFA": 272967,
+  "BEN": 114763,
+  "TGO": 56785,
+  "SLE": 71740,
+  "LBR": 111369,
+  "GEO": 69700,
+  "ARM": 29743,
+  "AZE": 86600,
+  "BLR": 207600,
+  "LTU": 65300,
+  "LVA": 64589,
+  "EST": 45339,
+  "SRB": 88361,
+  "HRV": 56594,
+  "BIH": 51209,
+  "ALB": 28748,
+  "MKD": 25713,
+  "SVN": 20273,
+  "SVK": 49035,
+  "CZE": 78871,
+  "MDA": 33846,
+  "TJK": 143100,
+  "KGZ": 199951,
+  "PRK": 120538,
+  "KOR": 100210,
+  "TWN": 36193,
+  "BTN": 38394,
+  "BRN": 5765,
+  "TLS": 14874,
+  "PNG": 462840,
+  "FJI": 18274,
+  "PAN": 75417,
+  "CRI": 51100,
+  "NIC": 130373,
+  "HND": 112492,
+  "GTM": 108889,
+  "SLV": 21041,
+  "BLZ": 22966,
+  "JAM": 10991,
+  "HTI": 27750,
+  "DOM": 48671,
+  "MUS": 2040,
+  "SYC": 459,
+  "LSO": 30355,
+  "SWZ": 17364,
+  "GMB": 11300,
+  "GNQ": 28051,
+  "CAF": 622984,
+  "ESH": 266000
+ }
+}

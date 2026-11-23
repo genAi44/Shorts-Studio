@@ -9,7 +9,7 @@ import subprocess
 
 import numpy as np
 
-from . import direct, sfx as _sfx
+from . import areamap, direct, sfx as _sfx
 from . import icons as _icons
 from .config import ROOT, FPS
 
@@ -343,6 +343,8 @@ def scene_beats(scene, words, dur_frames, geo, hook_first=None, photo=None, degr
             except Exception as _pe:  # noqa: BLE001
                 from .config import record_fallback
                 record_fallback(f"person photo unavailable ({_pe}): symbolic silhouette", beat_id="person_card")
+        elif b["kind"] == "area_map":
+            b["view"] = areamap.build_view(b)
         elif b["kind"] == "map_pin":
             # Use scene's visual data (has lat/lon + ISO codes) to build a real GeoJSON view
             vis = scene.get("visual", {})

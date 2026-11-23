@@ -224,7 +224,7 @@ export const SceneTransitionSpecSchema = z.object({
 export type SceneTransitionSpec = z.infer<typeof SceneTransitionSpecSchema>;
 
 // 10. Unified Beat Schemas Generated from spec_schema.json
-export const BeatKindSchema = z.enum(['generative_canvas', 'custom_scene', 'map', 'map_pin', 'photo', 'stat', 'stat_ring_v2', 'bigtext', 'bars', 'timeline', 'timeline_card', 'versus', 'split', 'list', 'icons', 'canvas', 'ticker', 'cardstack', 'elevation_profile', 'line_chart', 'pie_chart', 'versus_battle', 'animated_route', 'balance_meter', 'deep_time_slider', 'stack_pyramid', 'macro_zoom_globe', 'subsurface_mine', 'dot_matrix_population', 'money_waterfall', 'frontline_clash', 'chart', 'typography', 'visuals', 'city_skyline', 'architecture', 'mystery_scene', 'architectural_blueprint', 'celestial_constellation', 'cinematic_dramatic', 'kinetic_wave_field', 'radial_light_cathedral', 'topographic_contour', 'year_counter', 'person_card', 'authored']);
+export const BeatKindSchema = z.enum(['generative_canvas', 'custom_scene', 'map', 'area_map', 'map_pin', 'photo', 'stat', 'stat_ring_v2', 'bigtext', 'bars', 'timeline', 'timeline_card', 'versus', 'split', 'list', 'icons', 'canvas', 'ticker', 'cardstack', 'elevation_profile', 'line_chart', 'pie_chart', 'versus_battle', 'animated_route', 'balance_meter', 'deep_time_slider', 'stack_pyramid', 'macro_zoom_globe', 'subsurface_mine', 'dot_matrix_population', 'money_waterfall', 'frontline_clash', 'chart', 'typography', 'visuals', 'city_skyline', 'architecture', 'mystery_scene', 'architectural_blueprint', 'celestial_constellation', 'cinematic_dramatic', 'kinetic_wave_field', 'radial_light_cathedral', 'topographic_contour', 'year_counter', 'person_card', 'authored']);
 export type BeatKind = z.infer<typeof BeatKindSchema>;
 
 export const CommonBeatFieldsSchema = z.object({
@@ -294,6 +294,13 @@ export const Beat_map_Schema = CommonBeatFieldsSchema.extend({
   points: z.array(z.any()).optional(),
   view: z.record(z.string(), z.any()).optional(),
   region: z.string().optional(),
+}).strict();
+export const Beat_area_map_Schema = CommonBeatFieldsSchema.extend({
+  kind: z.literal('area_map'),
+  area: z.record(z.string(), z.any()),
+  mode: z.string().optional(),
+  layout: z.string().optional(),
+  view: z.record(z.string(), z.any()).optional(),
 }).strict();
 export const Beat_map_pin_Schema = CommonBeatFieldsSchema.extend({
   kind: z.literal('map_pin'),
@@ -641,6 +648,7 @@ export const StrictBeatSchema = z.discriminatedUnion('kind', [
   Beat_generative_canvas_Schema,
   Beat_custom_scene_Schema,
   Beat_map_Schema,
+  Beat_area_map_Schema,
   Beat_map_pin_Schema,
   Beat_photo_Schema,
   Beat_stat_Schema,
