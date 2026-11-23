@@ -611,6 +611,16 @@
         "img": "string",
         "title": "string"
       }
+    },
+    "authored": {
+      "required": [
+        "kind",
+        "scene_id"
+      ],
+      "fields": {
+        "scene_id": "string",
+        "data": "object"
+      }
     }
   }
 }

@@ -81,7 +81,7 @@ KINDS = [
     "stack_pyramid",     "macro_zoom_globe", "subsurface_mine", "dot_matrix_population",
     "money_waterfall", "frontline_clash",
     "line_chart", "pie_chart", "map", "stat", "bigtext", "bars", "timeline", "versus", "list", "icons", "canvas", "photo", "split", "ticker", "cardstack",
-    "city_skyline", "architecture", "mystery_scene", "year_counter", "person_card",
+    "city_skyline", "architecture", "mystery_scene", "year_counter", "person_card", "authored",
     # أنماط مشاهد سينمائية جديدة لتنويع الحركة والإضاءة
     "cinematic_dramatic", "architectural_blueprint", "celestial_constellation",
     "kinetic_wave_field", "radial_light_cathedral", "topographic_contour",
@@ -573,6 +573,10 @@ def normalize_beat(b, sentence="", geo=None):
             return bigtext()
         out["items"] = items
         return _add_camera(out, b)
+    if kind == "authored":
+        if not b.get("scene_id"):
+            return bigtext()
+        return _add_camera({"kind": "authored", "scene_id": str(b["scene_id"]), "data": b.get("data") if isinstance(b.get("data"), dict) else {}}, b)
     if kind == "year_counter":
         y = _num(b.get("year"), -5000, 2100, None)
         if y is None:
@@ -1092,6 +1096,7 @@ def _pred_always_true(b: dict, sentence: str = "", geo=None) -> bool:
 
 
 BEAT_RULES: Dict[str, Dict[str, Any]] = {
+    "authored": {"predicate": lambda b, s="", g=None: bool(b.get("scene_id")), "reason": "authored beat requires a scene_id"},
     "year_counter": {"predicate": lambda b, s="", g=None: _num(b.get("year"), -5000, 2100, None) is not None, "reason": "year_counter requires a real year number"},
     "person_card": {"predicate": lambda b, s="", g=None: bool(str(b.get("name") or b.get("title") or "").strip()), "reason": "person_card requires the person's name"},
     "city_skyline": {"predicate": lambda b, s="", g=None: bool(str(b.get("title") or "").strip()), "reason": "city_skyline requires a title naming the city"},

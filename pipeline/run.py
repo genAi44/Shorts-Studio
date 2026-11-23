@@ -143,6 +143,13 @@ def produce(script, style, voice_id, job_dir, log=print, progress=lambda f: None
             record_fallback(f"entity plan failed ({_ee}): legacy detection only", beat_id="entities")
         spec = rem.build_spec(script, style, plan, int(round(total * FPS)), geo,
                               photo=m.resolve if m else None, degrade=True)
+        if cfg("AUTHORED_SCENES", "0") == "1":
+            try:
+                from . import scene_author
+                spec = scene_author.author_spec(spec, job_dir, log=log)
+            except Exception as _ae:  # noqa: BLE001
+                from .config import record_fallback
+                record_fallback(f"scene authoring failed ({_ae}): built-in beats", beat_id="authoring")
         try:
             from . import visual_tools
             visual_tools.record_asset_credits(spec, job_dir)

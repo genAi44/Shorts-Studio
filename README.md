@@ -136,6 +136,23 @@ python -m pytest tests/test_entities.py                                  # fails
 
 Fallbacks are listed in `qa_report.json`, returned as `warnings` by `/api/job/<id>` and shown under the video in the UI.
 
+## 🧑‍🎨 Authored scenes (the art director writes the scene as code)
+
+With `AUTHORED_SCENES=1` the director writes each scene as ONE React/TSX file against a documented kit
+([`docs/SCENE_KIT.md`](docs/SCENE_KIT.md), `remotion/src/kit.tsx`). Nothing runs before it passes the gate:
+static check (AST allowlist + tsc, `remotion/scripts/check-scene.mjs`) → sandboxed render of 3 frames → automated checks
+(not blank, no overflow/overlap, nothing in the caption zone, Arabic RTL, text ≥ 22 px). Failures go back to the model
+(2 retries), then the built-in beats are kept and a warning is recorded. Accepted scenes are cached by content hash
+(`data/authored_cache/`) and saved in the job folder: `outputs/<job>/scenes/s_*.tsx` (+ `authoring_report.json`).
+
+```bash
+python scripts/build_authored_fixture.py                                   # author map / timeline / stat / person / comparison (needs the llm keys)
+SMOKE_FIXTURE=tests/fixtures/authored_spec.json python scripts/smoke_test.py
+python scripts/rerender_authored.py outputs/<job>                          # after editing a scene file
+```
+
+Preview and final render use the same files (synced into `remotion/src/authored/` only while rendering). Old specs are unaffected.
+
 ## 🔬 Visual smoke test
 
 Renders one scene per beat kind (plus map-overlay and LLM-scene cases) and checks every frame automatically.

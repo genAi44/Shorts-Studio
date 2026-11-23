@@ -513,7 +513,9 @@ def render_video(spec, out_mp4, work_dir, audio_wav, progress=None):
     spec = _icons.sanitize_spec_assets(copy.deepcopy(spec))
     sp = os.path.join(work_dir, "spec.json")
     json.dump(spec, open(sp, "w", encoding="utf-8"), ensure_ascii=False)
-    _run(["node", "render.mjs", sp, out_mp4, pub], progress)
+    from .scene_author import sync_to_remotion  # authored scenes: the job's files are what gets rendered
+    with sync_to_remotion(spec.get("authored_dir")):
+        _run(["node", "render.mjs", sp, out_mp4, pub], progress)
     shutil.rmtree(pub, ignore_errors=True)
 
 
@@ -526,5 +528,7 @@ def render_still(spec, out_jpg, frame, work_dir):
     spec = _icons.sanitize_spec_assets(copy.deepcopy(spec))
     sp = os.path.join(work_dir, "spec_still.json")
     json.dump(spec, open(sp, "w", encoding="utf-8"), ensure_ascii=False)
-    _run(["node", "still.mjs", sp, out_jpg, str(frame), pub])
+    from .scene_author import sync_to_remotion  # same files as the final render
+    with sync_to_remotion(spec.get("authored_dir")):
+        _run(["node", "still.mjs", sp, out_jpg, str(frame), pub])
     shutil.rmtree(pub, ignore_errors=True)

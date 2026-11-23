@@ -407,6 +407,9 @@ def preview():
     if rem.available() and pick_engine(b.get("engine")) == "remotion":
         try:
             spec = rem.build_spec(script, st, plan, int(round(total * 30)), get_geo(), None, degrade=False, only_scene_idx=i)
+            if cfg("AUTHORED_SCENES", "0") == "1":  # preview = the cached authored scene (same file the final render uses)
+                from pipeline import scene_author
+                spec = scene_author.author_spec(spec, str(work / "authored"), cache_only=True, only_ids={spec["scenes"][i]["id"]})
             sc = spec["scenes"][i]
             bi = max(0, min(int(b.get("beat", 0)), len(sc["beats"]) - 1))
             fr = sc["from"] + sc["beats"][bi]["from"] + int(float(b.get("t", 2.0)) * 30)

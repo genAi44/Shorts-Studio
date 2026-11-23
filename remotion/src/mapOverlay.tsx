@@ -209,6 +209,7 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
         dir="rtl"
         lang="ar"
         data-slot={slotName}
+        data-audit-kit="map"
         style={{
           position: 'absolute',
           ...posStyle,

@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {continueRender, delayRender, useCurrentFrame} from 'remotion';
-import {CANVAS_HEIGHT, CANVAS_WIDTH} from './layout';
+import {CANVAS_HEIGHT, CANVAS_WIDTH, CAPTION_ZONE, SAFE_TOP} from './layout';
 
 /**
  * Dev-only DOM audit (enabled by the `audit` input prop, used by scripts/smoke_test.py).
@@ -13,7 +13,7 @@ import {CANVAS_HEIGHT, CANVAS_WIDTH} from './layout';
 const EDGE = 20;
 const MIN_FONT = 22;
 
-type Item = {text: string; l: number; t: number; r: number; b: number; fs: number; el: Element; caption: boolean};
+type Item = {dir: string; text: string; l: number; t: number; r: number; b: number; fs: number; el: Element; caption: boolean};
 
 const ancestorOpacity = (el: Element): number => {
   let op = 1;
@@ -47,7 +47,9 @@ const collect = (): Item[] => {
     } else if ((el as HTMLElement).offsetWidth > 0) {
       fs *= el.getBoundingClientRect().width / (el as HTMLElement).offsetWidth;
     }
+    const dir = cs.direction;
     items.push({
+      dir,
       text: own.map((n) => (n.textContent || '').trim()).join(' ').slice(0, 40),
       l: r.left, t: r.top, r: r.right, b: r.bottom, fs, el,
       caption: !!el.closest('[data-caption]'),
@@ -61,7 +63,11 @@ export const auditItems = (items: Item[]) => {
   for (const it of items) {
     const box = [it.l, it.t, it.r, it.b].map(Math.round);
     if (it.l < EDGE || it.r > CANVAS_WIDTH - EDGE || it.t < 0 || it.b > CANVAS_HEIGHT) issues.push({type: 'edge', text: it.text, box});
-    if (it.fs > 0 && it.fs < MIN_FONT) issues.push({type: 'tiny', text: it.text, box, fs: Math.round(it.fs)});
+    if (it.fs > 0 && it.fs < MIN_FONT && !it.el.closest('[data-audit-kit]')) issues.push({type: 'tiny', text: it.text, box, fs: Math.round(it.fs)});
+    // Arabic must be right-to-left (the kit's ArText sets dir=rtl); a LTR Arabic run is mis-ordered
+    if (/[\u0600-\u06FF]/.test(it.text) && it.dir !== 'rtl') issues.push({type: 'rtl', text: it.text, box});
+    // scene text must stay inside the safe zones: not in the caption zone, not above the safe top
+    if (!it.caption && !it.el.closest('[data-audit-kit]') && (it.b > CAPTION_ZONE.top + 12 && it.t < CAPTION_ZONE.bottom || it.t < SAFE_TOP - 8)) issues.push({type: 'zone', text: it.text, box});
   }
   for (let i = 0; i < items.length; i++) {
     for (let j = i + 1; j < items.length; j++) {
@@ -88,7 +94,8 @@ export const LayoutAudit: React.FC = () => {
   useEffect(() => {
     const id = setTimeout(() => {
       try {
-        console.log('[AUDIT]' + JSON.stringify({frame, issues: auditItems(collect())}));
+        const items = collect();
+        console.log('[AUDIT]' + JSON.stringify({frame, texts: items.filter((i) => !i.caption).length, issues: auditItems(items)}));
       } finally {
         continueRender(handle);
       }

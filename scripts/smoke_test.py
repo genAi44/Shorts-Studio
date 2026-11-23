@@ -66,8 +66,13 @@ def main() -> int:
     out_pat = str(OUT / "f_%d.jpg")
     print(f"rendering {len(jobs)} frames from {len(scenes)} scenes (audit on)...")
     env = dict(os.environ, AUDIT="1")
-    proc = subprocess.run(["node", "still.mjs", str(FIXTURE), out_pat, ",".join(str(j[2]) for j in jobs), str(REMOTION / "public")],
-                          cwd=REMOTION, env=env, capture_output=True, text=True)
+    sys.path.insert(0, str(ROOT))
+    from pipeline.scene_author import sync_to_remotion
+    ad = spec.get("authored_dir")  # authored scenes: copy the fixture's / job's scene files in for the render
+    ad = str((ROOT / ad).resolve()) if ad and not os.path.isabs(ad) else ad
+    with sync_to_remotion(ad):
+        proc = subprocess.run(["node", "still.mjs", str(FIXTURE), out_pat, ",".join(str(j[2]) for j in jobs), str(REMOTION / "public")],
+                              cwd=REMOTION, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if proc.returncode != 0:
         print(proc.stdout[-1500:], proc.stderr[-1500:])
         return 2
@@ -90,7 +95,7 @@ def main() -> int:
                 for it in aud.get("issues", []):
                     msg = f"{it['type']}: {it['text']!r}" + (f" x {it['other']!r}" if it.get("other") else "") + f" @{it['box']}" + (f" fs={it['fs']}" if it.get("fs") else "")
                     # entrance animations (first ~second) legitimately cross edges / overlap: judge settled frames only
-                    soft = it["type"] == "tiny" or rel_frame < ENTRANCE_FRAMES
+                    soft = it["type"] in ("tiny", "rtl", "zone") or rel_frame < ENTRANCE_FRAMES
                     (entry["warn"] if soft else entry["fail"]).append(msg)
         fails += len(entry["fail"])
         warns += len(entry["warn"])
