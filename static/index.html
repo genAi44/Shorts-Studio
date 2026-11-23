@@ -375,7 +375,7 @@
         <p class="sub">لا قوالب ثابتة: «المدير الفني» (DeepSeek) يصمّم الألوان والخط والخلفية والحركة وشكل الترجمة
           والخريطة والأرقام لهذا الفيديو. تُولَّد ستايلات عشوائية تلقائياً عند كل سكربت جديد.</p>
         <div class="row"><button id="bArt">صمّم ستايلاً (مدير فني)</button><button class="sec" id="bRand">ستايل عشوائي
-            جديد</button><span class="cnt" id="stMsg"></span></div>
+            جديد</button><select id="presetSel" title="ستايل جاهز بدليل إخراج"><option value="">ستايل جاهز…</option></select><span class="cnt" id="stMsg"></span></div>
         <div id="stInfo" style="margin:10px 0"></div>
         <label>تفاصيل الستايل (JSON قابل للتعديل)</label><textarea class="vis" id="stJson"
           style="min-height:140px"></textarea>
@@ -637,7 +637,7 @@
       $('#stInfo').innerHTML = `<div class="row"><b>${esc(ST.name)}</b> ${[p.c1, p.c2, p.accent, p.accent2, p.text].map(sw).join('')}
     <span class="chip">خط: ${ST.font}</span><span class="chip">خلفية: ${ST.bg.type}</span><span class="chip">عنوان: ${ST.headline.pos}/${ST.headline.box}</span>
     <span class="chip">ترجمة: ${ST.caption.mode}</span><span class="chip">أرقام: ${ST.stat.layout}</span><span class="chip">نص: ${ST.text.layout}</span>
-    ${by ? `<span class="chip on">${(by === 'deepseek' || by === 'style_model') ? 'صمّمه المدير الفني (AI)' : 'عشوائي'}</span>` : ''}</div>`;
+    ${by ? `<span class="chip on">${(by === 'deepseek' || by === 'style_model') ? 'صمّمه المدير الفني (AI)' : by === 'preset' ? 'ستايل جاهز' : 'عشوائي'}</span>` : ''}</div>`;
       $('#stJson').value = JSON.stringify(ST, null, 1);
     }
     async function newStyle(rand) {
@@ -711,6 +711,19 @@
     };
     loadVisualLibrary();
     $('#stJson').oninput = e => { try { ST = JSON.parse(e.target.value); e.target.style.borderColor = '' } catch { e.target.style.borderColor = 'var(--bad)' } };
+    async function loadPresets() {
+      try {
+        const r = await fetch('/api/presets').then(x => x.json());
+        $('#presetSel').innerHTML = '<option value="">ستايل جاهز…</option>' + (r.presets || []).map(p => `<option value="${p.slug}" title="${p.line}">${p.name} — ${p.en}</option>`).join('');
+      } catch (e) { /* the presets are optional */ }
+    }
+    $('#presetSel').onchange = async () => {
+      const slug = $('#presetSel').value; if (!slug) return;
+      $('#stMsg').textContent = '…';
+      try { const r = await api('/api/style', { preset: slug }); ST = r.style; showStyle('preset'); $('#stMsg').textContent = '' }
+      catch (e) { $('#stMsg').textContent = '⛔ ' + e.message }
+    };
+    loadPresets();
     $('#bArt').onclick = () => newStyle(false);
     $('#bRand').onclick = () => newStyle(true);
     $('#bPrev').onclick = async () => {

@@ -1,0 +1,21 @@
+{
+ "slug": "chalkboard",
+ "name": "سبورة المعلّم",
+ "en": "Teacher's Chalkboard",
+ "line": "A clean green board: write the popular claim, wipe it, write what is true in the same place.",
+ "uses": ["misconceptions", "where a name comes from", "one lesson, one idea"],
+ "style": {
+  "name": "سبورة المعلّم", "font": "reem", "weight": 700, "font2": "cairo", "weight2": 500,
+  "palette": {"c1": [30, 62, 54], "c2": [20, 44, 38], "accent": [246, 214, 96], "accent2": [150, 214, 232], "text": [244, 244, 236],
+              "ctx": [62, 98, 88], "ctx_edge": [124, 164, 150], "hl": [[246, 214, 96], [150, 214, 232], [248, 160, 140]]},
+  "bg": {"type": "solid", "angle": 90, "motion": false, "intensity": 0.6},
+  "headline": {"pos": "upper", "size": 84, "box": "none", "enter": "wipe"},
+  "caption": {"mode": "plain", "y": 1470, "size": 62, "hl": "color"},
+  "map": {"fill": "flat", "edge": 3, "ctx_alpha": 0.45, "marker": "ring"},
+  "stat": {"layout": "ring"},
+  "text": {"layout": "center", "size": 112},
+  "deco": {"frame": "border", "progress": "none"},
+  "pace": 0.85,
+  "edit": {"photo": "circle", "cutout": "ring", "mixpat": "alt", "shapes": "none", "ken": "in", "glow": false, "blur": false, "duo": false}
+ }
+}

@@ -1,0 +1,21 @@
+{
+ "slug": "dossier",
+ "name": "ملف التحقيق",
+ "en": "Investigation Dossier",
+ "line": "A dark case file: one evidence at a time, stamped labels, a red thread between places.",
+ "uses": ["mysteries", "why did it fail", "who decided and why"],
+ "style": {
+  "name": "ملف التحقيق", "font": "kufi", "weight": 900, "font2": "cairo", "weight2": 500,
+  "palette": {"c1": [20, 22, 28], "c2": [10, 12, 16], "accent": [255, 196, 0], "accent2": [232, 72, 62], "text": [246, 244, 236],
+              "ctx": [66, 72, 86], "ctx_edge": [122, 130, 148], "hl": [[255, 196, 0], [232, 72, 62], [120, 200, 255]]},
+  "bg": {"type": "grid", "angle": 90, "motion": false, "intensity": 0.45},
+  "headline": {"pos": "top", "size": 80, "box": "bar", "enter": "slide"},
+  "caption": {"mode": "bar", "y": 1480, "size": 62, "hl": "box"},
+  "map": {"fill": "gradient", "edge": 2, "ctx_alpha": 0.5, "marker": "diamond"},
+  "stat": {"layout": "stack"},
+  "text": {"layout": "left", "size": 112},
+  "deco": {"frame": "corners", "progress": "bottom"},
+  "pace": 1.1,
+  "edit": {"photo": "bleed", "cutout": "plain", "mixpat": "head", "shapes": "none", "ken": "pan", "glow": false, "blur": false, "duo": false}
+ }
+}

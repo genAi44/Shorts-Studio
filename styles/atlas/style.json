@@ -1,0 +1,21 @@
+{
+ "slug": "atlas",
+ "name": "أطلس قديم",
+ "en": "Old Atlas",
+ "line": "A page of an old atlas: ink, hatching and one red pin; the map is the star.",
+ "uses": ["geography", "history of places", "why is the capital there"],
+ "style": {
+  "name": "أطلس قديم", "font": "amiri", "weight": 700, "font2": "markazi", "weight2": 700,
+  "palette": {"c1": [234, 218, 184], "c2": [216, 194, 152], "accent": [140, 40, 24], "accent2": [24, 84, 96], "text": [40, 28, 18],
+              "ctx": [196, 174, 134], "ctx_edge": [120, 96, 70], "hl": [[140, 40, 24], [24, 84, 96], [100, 70, 24]]},
+  "bg": {"type": "paper", "angle": 90, "motion": false, "intensity": 0.5},
+  "headline": {"pos": "top", "size": 88, "box": "underline", "enter": "wipe"},
+  "caption": {"mode": "underline", "y": 1480, "size": 64, "hl": "color"},
+  "map": {"fill": "hatch", "edge": 3, "ctx_alpha": 0.6, "marker": "pin"},
+  "stat": {"layout": "plain"},
+  "text": {"layout": "center", "size": 116},
+  "deco": {"frame": "ticks", "progress": "top"},
+  "pace": 0.9,
+  "edit": {"photo": "free", "cutout": "plain", "mixpat": "tail", "shapes": "none", "ken": "in", "glow": false, "blur": false, "duo": true}
+ }
+}

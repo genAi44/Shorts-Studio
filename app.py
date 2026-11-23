@@ -337,10 +337,23 @@ def make_script():
 RECENT = []  # أسماء آخر الستايلات لتجنّب التكرار
 
 
+@app.get("/api/presets")
+def list_style_presets():
+    from pipeline import presets
+    return jsonify({"presets": presets.list_presets()})
+
+
 @app.post("/api/style")
 def make_style():
     """مدير فني: يصمّم ستايلاً للفيديو عبر نموذج style؛ وإلا ستايل عشوائي مبذور."""
     b = body()
+    if b.get("preset"):  # a ready-made art direction from styles/<slug>/
+        from pipeline import presets
+        if not presets.has_preset(b["preset"]):
+            return jsonify({"error": "ستايل جاهز غير موجود"}), 404
+        st = presets.load_style(b["preset"])
+        RECENT.append(st["name"])
+        return jsonify({"style": st, "by": "preset"})
     script = sp.normalize(b.get("script"))
     session_id = b.get("session_id")
     used = "random"
@@ -371,6 +384,10 @@ def make_beats():
             use_ph = b.get("photos", True) is not False and media.enabled()
             sys_p = direct.director_system(use_ph)
             usr_p = direct.director_prompt(script, sp.scenes_of(script), mood)
+            from pipeline import presets as _presets
+            _guide = _presets.guide((b.get("style") or {}).get("preset"))
+            if _guide:
+                usr_p += "\n\nدليل الإخراج الفني لهذا الفيديو (التزم بجوهره وبقائمة «ليس» وبتعليمات المخرج البصري):\n" + _guide
             raw = llm.call_llm_json("director", sys_p, usr_p, temperature=0.8, session_id=session_id)
             retry_fn = lambda reasons: llm.call_llm_json(
                 "director",
