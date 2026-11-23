@@ -366,6 +366,7 @@ class Media:
         self.dest, self.log = dest_dir, log
         self.credits, self.used, self.n = [], set(), 0
         self.reports = []
+        self.done = {}  # query / iso3 -> accepted image file: a place named again reuses its photo
         os.makedirs(dest_dir, exist_ok=True)
 
     def resolve(self, beat, sentence="", vi_scene=None):
@@ -387,6 +388,13 @@ class Media:
             alt_queries.append(beat_q)
         if vi_q and vi_q != q and vi_q not in alt_queries:
             alt_queries.insert(0, vi_q)
+        iso_key = str(beat.get("entity_iso3") or "").strip().upper()
+        for key in (("q", q.lower()), ("iso", iso_key) if iso_key else None):
+            if key and key in self.done and not beat.get("cutout"):
+                self.log(f"  نفس المكان ذُكر سابقاً ← إعادة استخدام صورته: «{q}»")
+                self.reports.append({"sentence": sentence, "query": q, "queries_tried": [q], "candidates_count": 0, "score": 8,
+                                     "status": "accepted", "reason": "إعادة استخدام صورة المكان نفسه", "image": self.done[key], "credit": "", "fallback": None})
+                return {**beat, "img": self.done[key], "cut": False}
         queries_tried = [q]
         self.log(f"صورة للجملة: «{sentence[:50]}…» | استعلام: «{q}»{f' | must_show: {must_show}' if must_show else ''}")
 
@@ -555,6 +563,10 @@ class Media:
         }
         self.reports.append(rep)
         self.log(f"  [تقرير الوسائط] تم اعتماد صورة: «{sentence[:40]}…» (استعلام: «{q}» | نتائج: {len(cands)} | تقييم: {score}/10 | مصدر: {c.get('source')})")
+        if cut is None:
+            self.done[("q", q.lower())] = f"media/{name}"
+            if iso_key:
+                self.done[("iso", iso_key)] = f"media/{name}"
         return {**beat, "img": f"media/{name}", "cut": cut is not None}
 
     def media_report_text(self):
