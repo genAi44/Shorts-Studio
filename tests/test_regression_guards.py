@@ -131,7 +131,8 @@ class TestRegressionGuards(unittest.TestCase):
         ]
         im = Image.new("RGB", (800, 600), (100, 120, 140))
         with patch.object(media, "fetch_image", return_value=im), \
-             patch("pipeline.llm.gemini_vision_json", side_effect=RuntimeError("429 Quota")):
+             patch("pipeline.llm.gemini_vision_json", side_effect=RuntimeError("429 Quota")), \
+             patch("pipeline.llm.freellmapi_vision_json", side_effect=RuntimeError("down")):
             picked, score, _ = media.pick(cands, "Great Wall of China landmark", "سور الصين العظيم", lambda *_: None, must_show="Great Wall of China")
         self.assertIsNotNone(picked)
         self.assertEqual(picked["url"], "http://ex/2.jpg")
@@ -178,7 +179,8 @@ class TestRegressionGuards(unittest.TestCase):
         ]
         im = Image.new("RGB", (800, 600), (100, 120, 140))
         with patch.object(media, "fetch_image", return_value=im), \
-             patch("pipeline.llm.gemini_vision_json", side_effect=RuntimeError("429 Quota")):
+             patch("pipeline.llm.gemini_vision_json", side_effect=RuntimeError("429 Quota")), \
+             patch("pipeline.llm.freellmapi_vision_json", side_effect=RuntimeError("down")):
             picked, score, _ = media.pick(cands, "Panama Canal shipping", "تعتمد على قناة بنما", lambda *_: None, must_show="Panama Canal")
         self.assertIsNone(picked)
         self.assertEqual(score, 0)

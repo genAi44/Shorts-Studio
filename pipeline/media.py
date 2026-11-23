@@ -283,8 +283,8 @@ def pick(cands, query, sentence, log=print, must_show="", avoid="", entity_iso3=
     if not cands:
         return None, 0, "تم استبعاد النتائج غير المرتبطة جغرافياً"
 
-    if not cfg("GEMINI_API_KEY"):
-        log(f"  مفتاح Gemini غير مضبوط — اعتماد النتيجة الأكثر تطابقاً: «{cands[0].get('title')}»")
+    if not llm.vision_providers():
+        log(f"  التحقق بالرؤية معطّل أو غير مضبوط (PHOTO_VERIFY) — اعتماد النتيجة الأكثر تطابقاً: «{cands[0].get('title')}»")
         return cands[0], 8, f"تم الاعتماد بناء على التطابق الجغرافي ({cands[0].get('title')[:40]})"
     try:
         ims, keep = [], []
@@ -301,11 +301,11 @@ def pick(cands, query, sentence, log=print, must_show="", avoid="", entity_iso3=
             payload["must_show"] = must_show
         if avoid:
             payload["avoid"] = avoid
-        res = llm.gemini_vision_json(PICK_SYSTEM, json.dumps(payload, ensure_ascii=False), ims)
+        res = llm.vision_json(PICK_SYSTEM, json.dumps(payload, ensure_ascii=False), ims)
         score = int(res.get("score", 0))
         reason = str(res.get("reason", ""))[:100]
         i = int(res.get("pick", -1))
-        log(f"  Gemini pick={i} score={score} — {reason}")
+        log(f"  رؤية pick={i} score={score} — {reason}")
         if score >= MIN_SCORE and (0 <= i < len(keep)):
             return keep[i], score, reason
         elif not entity_iso3 and 0 <= i < len(keep) and score >= 4:
