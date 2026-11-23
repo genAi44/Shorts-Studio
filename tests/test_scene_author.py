@@ -162,3 +162,10 @@ def test_failed_batch_render_is_isolated_per_scene(tmp_path, monkeypatch):
     out = sa.sandbox_render({"a": {"ctx": ctx}, "b": {"ctx": ctx}}, norm_style({"seed": 1}), tmp_path)
     assert set(out) == {"a", "b"} and all("sandbox render failed" in p[0] for p in out.values())
     assert len(calls) == 5  # batch, then each scene alone with one retry
+
+
+def test_year_counter_must_use_the_year_prop(tmp_path):
+    bad = GOOD.replace("<ArText size={56}>{String(data.sentence)}</ArText>", "<Counter to={1956} size={150} />").replace("ArText, Card", "ArText, Counter, Card")
+    assert any("looks like a year" in e for e in _check(tmp_path, bad))
+    assert _check(tmp_path, bad.replace("<Counter to={1956}", "<Counter year to={1956}")) == []
+    assert _check(tmp_path, bad.replace("<Counter to={1956}", "<Counter to={1956} suffix=\" ن\"")) == []   # a real count with a unit is fine
