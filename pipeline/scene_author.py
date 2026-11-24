@@ -43,7 +43,9 @@ Design brief: the scene must express THIS sentence and its entities visually, wi
 Arabic typographic hierarchy, layered (semi-transparent) decoration, staggered entrances, something always gently moving.
 Never a plain card or a bare emoji. Use the entities' real data (numbers, years, names); do not invent facts.
 If data.map_overlay exists, the places must be shown on the map with <MapLayer overlay={data.map_overlay} /> (you may add
-supporting elements, but do not cover the map or the caption zone). Keep the video's ground visible (no opaque full-canvas fill).
+supporting elements, but do not cover the map or the caption zone). The map engine already DRAWS what the sentence names: countries,
+cities, rivers, mountain ranges (a ridge drawn frame by frame) and, when a line divides a country (the Urals: Europe | Asia), the country
+cut in two coloured halves with labels. Never re-draw those yourself and never replace them by a text card. Keep the video's ground visible (no opaque full-canvas fill).
 
 {kit}
 """
@@ -342,6 +344,9 @@ def author_spec(spec: Dict[str, Any], job_dir: str, llm: Optional[Callable[[str,
             path.write_text(code, encoding="utf-8")
             pending[sid]["code"] = code
             errs = static_check(path)
+            if not errs and pending[sid]["ctx"].get("map_overlay") and "MapLayer" not in code:
+                errs = ["the sentence names places / lines / ranges and data.map_overlay is ready: the scene must show it with <MapLayer overlay={data.map_overlay} /> "
+                        "(it draws the country, drawn mountain ranges and dividing lines, and a country cut in two halves with labels); build your composition around it"]
             if errs:
                 path.unlink(missing_ok=True)
                 rep["errors"].append(f"attempt {attempt + 1} static: {errs[:4]}")

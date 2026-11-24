@@ -595,10 +595,14 @@ def mention_from_entity(e: Dict[str, Any], words: List[Dict[str, Any]]) -> List[
         ext = _geojson_extent(e["geojson"]) if e.get("geojson") else []
         ext = ext or [(e["lat"] - 1.4, e["lon"] - 1.8), (e["lat"] + 1.4, e["lon"] + 1.8)]
         shape = sc if sc in ("river", "lake", "mountain") else "area"
+        if e.get("line_id"):
+            shape = "range"                       # a drawn line from data/geo_lines.json (range, boundary, equator ...)
         if shape in ("river", "lake") and not e.get("geojson"):
             shape = "area"
         ft: Dict[str, Any] = {"shape": shape, "geojson": e.get("geojson"), "approx": bool(e.get("approx")),
                               "half_h": (ext[1][0] - ext[0][0]) / 2.0, "half_w": (ext[1][1] - ext[0][1]) / 2.0}
+        if e.get("line_id"):
+            ft.update(line_id=e["line_id"], line_kind=e.get("line_kind"), divides=e.get("divides"))
         return [mk("terrain", label, e["name_ar"], e["name_en"], e["lat"], e["lon"], token, scale=sc, extent=ext, feature=ft)]
     if t == "route":
         out = []
@@ -681,6 +685,10 @@ def build_scene_map_overlay(
         iso3 = m.get("iso3") or ""
         if iso3 and geo.has(iso3) and iso3 not in isos:
             isos.append(iso3)
+        dv = (m.get("feature") or {}).get("divides") if isinstance(m.get("feature"), dict) else None
+        for c_iso in ((dv or {}).get("countries") or []):   # a line that divides a country: that country is drawn so it can be cut
+            if geo.has(c_iso) and c_iso not in isos:
+                isos.append(c_iso)
         # If this is a country mention and we already have a city/capital in the same country,
         # use the city coordinates so the country centroid doesn't skew the pin or bbox.
         ref_m = city_by_iso3.get(iso3, m) if m.get("kind") == "country" else m
@@ -774,6 +782,16 @@ def build_scene_map_overlay(
         item: Dict[str, Any] = {"id": f"ft_{scene_idx}_{idx_f}", "shape": ft.get("shape"), "label": m["name_ar"], "kind_label": m["kind_label"],
                                 "cx": fx, "cy": fy, "approx": bool(ft.get("approx")),
                                 "trigger_frame": max(0, int(round(m["start_sec"] * FPS)) - 4), "d": "", "rx": 0.0, "ry": 0.0}
+        if ft.get("shape") == "range" and ft.get("geojson"):
+            try:
+                geom = json.loads(ft["geojson"])
+                xy = proj_arr(np.asarray(geom["coordinates"], np.float64)[:, :2])
+                item["d"] = "M" + "L".join(f"{x:.1f} {y:.1f}" for x, y in xy)
+                item["line_kind"] = ft.get("line_kind") or "range"
+                step = max(1, len(xy) // 7)
+                item["pts"] = [[round(float(x), 1), round(float(y), 1)] for x, y in xy[::step]]   # where the ridge glyphs stand
+            except Exception:
+                item["d"] = ""
         if ft.get("shape") in ("river", "lake") and ft.get("geojson"):
             try:
                 geom = json.loads(ft["geojson"])
@@ -793,6 +811,49 @@ def build_scene_map_overlay(
             item["rx"] = max(14.0, float(ft.get("half_w", 3.0)) * S * K)
             item["ry"] = max(14.0, float(ft.get("half_h", 3.0)) * S)
         features.append(item)
+
+    # a dividing line (the Urals) cuts its country into two coloured halves with labels
+    split_out: Optional[Dict[str, Any]] = None
+    for m in mentions:
+        ft_s = m.get("feature") if isinstance(m.get("feature"), dict) else {}
+        dv = ft_s.get("divides")
+        if not dv or not ft_s.get("geojson"):
+            continue
+        try:
+            from . import geolines
+            line_pts = json.loads(ft_s["geojson"])["coordinates"]
+            iso_s = next((c for c in dv["countries"] if c in isos and geo.has(c)), None)
+            if not iso_s:
+                continue
+            west_parts, east_parts = [], []
+            wpts, epts = [], []
+            for poly, bb in zip(geo.c[iso_s]["polys"], geo.c[iso_s]["bbs"]):
+                if not sect(bb) or ((bb[2] - bb[0]) * S * K < 1.5 and (bb[3] - bb[1]) * S < 1.5):
+                    continue
+                for ring in poly:
+                    w_r, e_r = geolines.split_polygon(np.asarray(ring, np.float64).tolist(), line_pts)
+                    if w_r:
+                        xy_w = proj_arr(w_r)
+                        west_parts.append(_d_svg(xy_w, min_d=1.6))
+                        wpts.append(xy_w)
+                    if e_r:
+                        xy_e = proj_arr(e_r)
+                        east_parts.append(_d_svg(xy_e, min_d=1.6))
+                        epts.append(xy_e)
+            if not west_parts or not east_parts:
+                continue
+            big_w = max(wpts, key=lambda a: len(a))
+            big_e = max(epts, key=lambda a: len(a))
+            line_xy = proj_arr(np.asarray(line_pts, np.float64)[:, :2])
+            split_out = {"iso3": iso_s, "west_d": "".join(p for p in west_parts if p), "east_d": "".join(p for p in east_parts if p),
+                         "line_d": "M" + "L".join(f"{x:.1f} {y:.1f}" for x, y in line_xy),
+                         "west_label": dv.get("west_label", ""), "east_label": dv.get("east_label", ""),
+                         "west_xy": [round(float(big_w[:, 0].mean()) - 70.0, 1), round(float(big_w[:, 1].mean()) + 40.0, 1)],
+                         "east_xy": [round(float(big_e[:, 0].mean()) + 60.0, 1), round(float(big_e[:, 1].mean()), 1)],
+                         "trigger_frame": max(0, int(round(m["start_sec"] * FPS)) - 4)}
+            break
+        except Exception:  # noqa: BLE001 - the split is decoration: the line itself is still drawn
+            split_out = None
 
     # Compute frame timing for each waypoint synced to the voiceover
     single_country_scene = len(isos) <= 1
@@ -904,6 +965,7 @@ def build_scene_map_overlay(
         "waypoints": waypoints,
         "prev_waypoint": prev_projected,
         "features": features,
+        "split": split_out,
         "zoom_hierarchy": zoom_hierarchy,
         "map_style": "historical" if is_hist_map else "modern",
     }

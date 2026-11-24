@@ -2,7 +2,7 @@ import React, {useMemo} from 'react';
 import {interpolate, spring} from 'remotion';
 import {rgba} from './theme';
 import {MAP_LENS} from './layout';
-import type {MapCountryShape, MapFeature, MapWaypoint} from './mapOverlay';
+import type {MapCountryShape, MapFeature, MapSplit, MapWaypoint} from './mapOverlay';
 
 /**
  * Vector map engine (SVG, offline, deterministic).
@@ -29,6 +29,7 @@ export type MapViewportProps = {
   prevWp: {x: number; y: number; name_ar?: string} | null;
   camTransition: number;
   features: MapFeature[];
+  split?: MapSplit | null;
   main: MapCam;
   lens: MapCam | null; // zoomed view shown in the magnifier when the place is tiny
   lensC: {cx: number; cy: number}; // lens centre inside the VISIBLE part of the viewBox
@@ -169,6 +170,33 @@ const World: React.FC<{p: MapViewportProps; cam: MapCam; seed: number; isLens?: 
         <rect x={vx} y={vy} width={vwz} height={vhz} filter={`url(#${uid}terrain)`} />
       </g>
 
+      {/* a dividing line cuts its country: two halves, two colours, labelled, the line drawn across */}
+      {p.split && frame >= p.split.trigger_frame - 2 && (() => {
+        const sp = p.split as MapSplit;
+        const lp = Math.max(0, frame - sp.trigger_frame);
+        const fin = Math.min(1, lp / 16);
+        const drawLine = Math.min(1, lp / 30);
+        const lab = (xy: number[], t: string, col: string, delay: number) => {
+          const a = Math.min(1, Math.max(0, (lp - delay) / 12));
+          return (
+            <g key={t} transform={`translate(${xy[0]} ${xy[1]}) scale(${(1 / z).toFixed(3)})`} opacity={a}>
+              <rect x={-58} y={-22} width={116} height={44} rx={22} fill="#040914" fillOpacity={0.86} stroke={col} strokeWidth={2.4} />
+              <text x={0} y={9} textAnchor="middle" fontSize={26} fontWeight={800} fill="#ffffff" fontFamily={p.font}>{t}</text>
+            </g>
+          );
+        };
+        return (
+          <g>
+            <path d={sp.west_d} fill={colors.accent2} fillOpacity={0.62 * fin} stroke={colors.accent2} strokeWidth={1.4 / z} strokeOpacity={fin} />
+            <path d={sp.east_d} fill={colors.accent} fillOpacity={0.62 * fin} stroke={colors.accent} strokeWidth={1.4 / z} strokeOpacity={fin} />
+            <path d={sp.line_d} fill="none" stroke="#ffffff" strokeWidth={9 / z} strokeOpacity={0.22} strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - drawLine} filter={`url(#${uid}soft)`} />
+            <path d={sp.line_d} fill="none" stroke="#ffffff" strokeWidth={3.6 / z} strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - drawLine} />
+            {lab(sp.west_xy, sp.west_label, colors.accent2, 14)}
+            {lab(sp.east_xy, sp.east_label, colors.accent, 22)}
+          </g>
+        );
+      })()}
+
       {/* terrain / sea / region features: rivers draw themselves, lakes fill, areas are marked ellipses */}
       {p.features.map((f) => {
         const lp = Math.max(0, frame - f.trigger_frame);
@@ -181,6 +209,22 @@ const World: React.FC<{p: MapViewportProps; cam: MapCam; seed: number; isLens?: 
               <>
                 <path d={f.d} fill="none" stroke={colors.accent2} strokeWidth={9 / z} strokeOpacity={0.2} strokeLinecap="round" strokeLinejoin="round" filter={`url(#${uid}soft)`} />
                 <path d={f.d} fill="none" stroke={colors.accent2} strokeWidth={3.4 / z} strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - draw} filter={`url(#${uid}glow)`} />
+              </>
+            )}
+            {f.shape === 'range' && f.d && (
+              <>
+                <path d={f.d} fill="none" stroke={f.line_kind === 'reference' ? colors.accent2 : colors.accent} strokeWidth={f.line_kind === 'reference' ? 2.4 / z : 7 / z} strokeOpacity={f.line_kind === 'reference' ? 0.8 : 0.28} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={f.line_kind === 'reference' ? `${10 / z} ${8 / z}` : undefined} pathLength={f.line_kind === 'reference' ? undefined : 1} strokeDashoffset={f.line_kind === 'reference' ? undefined : 1 - draw} />
+                {f.line_kind !== 'reference' && (f.pts || []).map((pt, i, arr) => {
+                  const shown = Math.min(1, Math.max(0, draw * arr.length - i));   // ridge glyphs stand up one after the other along the range
+                  if (shown <= 0) return null;
+                  const h = (8 + ((i * 7) % 5) * 2) * shown;
+                  return (
+                    <g key={i} transform={`translate(${pt[0]} ${pt[1]}) scale(${(1 / z).toFixed(3)})`} filter={`url(#${uid}shadow)`}>
+                      <path d={`M${-9} 0 L0 ${-h * 2.1} L${9} 0 Z`} fill={colors.accent} stroke="#040914" strokeWidth={1.8} />
+                      <path d={`M${-3} ${-h * 1.4} L0 ${-h * 2.1} L${3} ${-h * 1.4} L0 ${-h * 1.55} Z`} fill="#fff" opacity={0.9} />
+                    </g>
+                  );
+                })}
               </>
             )}
             {f.shape === 'lake' && f.d && <path d={f.d} fill={colors.accent2} fillOpacity={0.55} stroke={colors.accent2} strokeWidth={2 / z} filter={`url(#${uid}glow)`} />}

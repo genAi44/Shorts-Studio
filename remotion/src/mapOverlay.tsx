@@ -44,9 +44,25 @@ export type MapFeature = {
   ry: number;
   approx: boolean;
   trigger_frame: number;
+  line_kind?: 'range' | 'boundary' | 'reference' | string;
+  pts?: number[][];
+};
+
+/** A country cut in two along a dividing line (the Urals: Europe | Asia). */
+export type MapSplit = {
+  iso3: string;
+  west_d: string;
+  east_d: string;
+  line_d: string;
+  west_label: string;
+  east_label: string;
+  west_xy: number[];
+  east_xy: number[];
+  trigger_frame: number;
 };
 
 export type MapOverlaySpec = {
+  split?: MapSplit | null;
   features?: MapFeature[];
   enabled: boolean;
   placement?: 'top-left' | 'top-right' | 'bottom-left' | string;
@@ -302,7 +318,7 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
           <MapViewport
             frame={frame} fps={fps} vw={vw} vh={vh} height={svgRenderHeight}
             ctxPath={ctx_path} countries={countries} waypoints={waypoints} activeIdx={activeIdx}
-            prevWp={prevWp} camTransition={camTransition} features={overlay.features || []}
+            prevWp={prevWp} camTransition={camTransition} features={overlay.features || []} split={overlay.split || null}
             main={{tx, ty, z: mainZoom}} lens={useLens ? lensCam : null} lensC={lensC}
             colors={{accent: accentSolid, accent2: accent2Solid, text: '#e2e8f0', ctxFill: rgba(th.p.text, 0.09), ctxStroke: rgba(th.p.text, 0.34), sea0: rgba(th.st.palette.c2, frameless ? 0.16 : 0.95), sea1: frameless ? rgba(th.st.palette.c2, 0) : th.dark ? '#040914' : rgba(th.st.palette.c2, 1)}}
             font={arabicFont} uid="mp"
