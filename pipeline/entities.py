@@ -127,8 +127,8 @@ def _years(e: Dict[str, Any]) -> str:
 ENTITY_REGISTRY: Dict[str, EntityType] = {r.id: r for r in [
     EntityType("place", "مكان جغرافي", "any place: village, town, city, capital, region, country, continent, ocean/sea, or the whole Earth (scale)",
                channel="overlay", scales=("village", "town", "city", "capital", "region", "country", "continent", "ocean", "globe")),
-    EntityType("terrain", "تضاريس", "river, mountain, desert, lake, strait, island (subtype)", channel="overlay",
-               scales=("river", "mountain", "desert", "lake", "strait", "island")),
+    EntityType("terrain", "تضاريس", "river, mountain range, desert, lake, strait, island, or a named geographic line such as the equator or the Europe-Asia boundary (subtype)", channel="overlay",
+               scales=("river", "mountain", "desert", "lake", "strait", "island", "boundary")),
     EntityType("conflict", "حدود/حرب/معركة", "war, battle, border or treaty (sides a and b, year)", channel="overlay"),
     EntityType("route", "طريق/رحلة", "trade route, expedition or journey with ordered stops (lat/lon each)", channel="overlay"),
     EntityType("time", "سنة/قرن/حقبة", "a year, century or era (value = year number; to = end year for a span)", channel="beat",
@@ -155,7 +155,7 @@ EXTRACT_SYSTEM = """You extract visual entities from Arabic narration for a vide
 {"scenes":[{"id":"<scene id>","sentences":[{"i":0,"entities":[ ... ]}]}]}  (same scenes and sentence order as the input, empty list if none).
 Entity shapes (text = the exact words as written in the sentence, whole words only, copy them verbatim):
  {"type":"place","scale":"village|town|city|capital|region|country|continent|ocean|globe","text":"..","name_ar":"..","name_en":"..","iso2":"..","lat":0,"lon":0}
- {"type":"terrain","scale":"river|mountain|desert|lake|strait|island","text":"..","name_ar":"..","name_en":"..","lat":0,"lon":0,"iso2":".."}
+ {"type":"terrain","scale":"river|mountain|desert|lake|strait|island|boundary","text":"..","name_ar":"..","name_en":"..","lat":0,"lon":0,"iso2":".."}  (a named mountain range is scale "mountain"; the equator / tropics / prime meridian / the Europe-Asia boundary are scale "boundary")
  {"type":"conflict","text":"..","name_ar":"..","a":{"name_ar":"..","lat":0,"lon":0},"b":{"name_ar":"..","lat":0,"lon":0},"year":0}
  {"type":"route","text":"..","name_ar":"..","stops":[{"name_ar":"..","lat":0,"lon":0}]}
  {"type":"time","scale":"year|century|era","text":"..","value":1453,"to":null,"label_ar":".."}
@@ -404,6 +404,17 @@ def _resolve_terrain(e: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     out = {"type": "terrain", "scale": scale, "name_ar": str(e.get("name_ar") or ""), "name_en": str(e.get("name_en") or ""),
            "text": e.get("text") or e.get("name_ar") or ""}
     lat, lon = _num(e.get("lat")), _num(e.get("lon"))
+    if scale in ("mountain", "boundary", "range", "line"):   # offline reference lines: the range / line is drawn, not just marked
+        from . import geolines
+        ln = geolines.find(out["name_ar"], out["name_en"]) or geolines.find(str(e.get("text") or ""), "")
+        if ln:
+            pts = ln["points"]
+            mid = pts[len(pts) // 2]
+            out.update(geojson=geolines.as_geojson(ln), lat=mid[1], lon=mid[0], verified="local-lines", approx=True,
+                       line_id=ln["id"], line_kind=ln.get("kind", "range"), name_ar=out["name_ar"] or ln["name_ar"], name_en=out["name_en"] or ln["name_en"])
+            if geolines.divides(ln):
+                out["divides"] = geolines.divides(ln)
+            return out
     if scale in ("river", "lake") and (out["name_en"] or out["name_ar"]):
         try:
             from .geo import DEFAULT_DB_PATH

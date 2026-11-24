@@ -169,3 +169,18 @@ def test_year_counter_must_use_the_year_prop(tmp_path):
     assert any("looks like a year" in e for e in _check(tmp_path, bad))
     assert _check(tmp_path, bad.replace("<Counter to={1956}", "<Counter year to={1956}")) == []
     assert _check(tmp_path, bad.replace("<Counter to={1956}", "<Counter to={1956} suffix=\" ن\"")) == []   # a real count with a unit is fine
+
+
+def test_a_scene_that_ignores_the_ready_map_is_rejected(tmp_path, monkeypatch):
+    _patch(monkeypatch, tmp_path)
+    spec = _spec()
+    spec["scenes"][0]["map_overlay"] = {"enabled": True, "waypoints": [{"name_ar": "x"}], "features": [], "countries": []}
+    calls = []
+
+    def llm(system, user):
+        calls.append(user)
+        return GOOD if len(calls) == 1 else GOOD.replace("<Abs ", "<MapLayer overlay={data.map_overlay} /><Abs ", 1).replace("Abs, ArText", "Abs, MapLayer, ArText")
+
+    out = sa.author_spec(spec, str(tmp_path / "job"), llm=llm, log=lambda m: None)
+    assert len(calls) == 2 and "MapLayer" in calls[1]                  # the first (map-less) attempt went back with the reason
+    assert out["scenes"][0]["beats"][0]["kind"] == "authored"
