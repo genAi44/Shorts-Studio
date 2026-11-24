@@ -129,3 +129,15 @@ def test_ordinary_adjective_is_not_a_historical_place():
     from pipeline import geo
     assert geo.detect_city_in_text("في البرازيل، بنوا عاصمة جديدة")[0] is None
     assert geo.detect_city_in_text("نقلت البرازيل عاصمتها إلى برازيليا")[0] == "برازيليا"
+
+
+def test_arabic_proclitics_do_not_hide_a_named_place():
+    """«وأوروبا» / «وآسيا» / «بآسيا» / «للعراق»: the place is named, only a one-letter proclitic is glued to it."""
+    from pipeline.entities import find_span
+    s = "تفصل جبال الأورال بين أوروبا وآسيا"
+    assert find_span(s, "أوروبا") == (4, 4) and find_span(s, "آسيا") == (5, 5) and find_span(s, "الأورال") == (2, 2)
+    assert find_span("تقع روسيا بآسيا", "آسيا") == (2, 2)
+    assert find_span("سافر للعراق أمس", "العراق") == (1, 1)
+    assert find_span("بين أوروبا وآسيا", "بين أوروبا") == (0, 1)       # multi-word: the proclitic is only allowed on the first word
+    # still whole words: no cutting inside a word
+    assert find_span("عاصمة جديدة", "جدة") is None and find_span("الكويتي", "كويت") is None and find_span("هذا مثال", "ثال") is None
