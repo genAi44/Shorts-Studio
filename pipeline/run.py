@@ -216,6 +216,13 @@ def produce(script, style, voice_id, job_dir, log=print, progress=lambda f: None
                 os.remove(os.path.join(job_dir, f))
             except OSError:
                 pass
+    if cfg("CRITIC", "0") == "1":  # Phase 0: grades the finished video, report only (critic/report.html)
+        try:
+            from . import critic
+            r = critic.critique_job(job_dir, log=log)
+            log(f"الناقد: {r['passed_scenes']}/{r['total_scenes']} مشاهد ناجحة، تقرير: critic/report.html")
+        except Exception as e:  # noqa: BLE001 - the critic must never break a render
+            log(f"⚠️ تعذر تشغيل الناقد: {e}")
     progress(1.0)
     log("اكتمل.")
     return {"video": "short.mp4", **meta}

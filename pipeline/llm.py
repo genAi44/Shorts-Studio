@@ -128,7 +128,7 @@ def _shrink_jpeg(data: bytes, max_side: int = 448, quality: int = 70) -> bytes:
         return data
 
 
-def freellmapi_vision_json(system: str, user: str, images: List[bytes]) -> Any:
+def freellmapi_vision_json(system: str, user: str, images: List[bytes], max_images: int = 4, max_side: int = 448) -> Any:
     """Vision through FreeLLMAPI (model "auto" routes to a vision-capable free model): the free alternative to Gemini Vision."""
     from .llm_providers import FreeLLMAPIProvider
     prov = FreeLLMAPIProvider()
@@ -136,9 +136,9 @@ def freellmapi_vision_json(system: str, user: str, images: List[bytes]) -> Any:
         raise LLMError("FreeLLMAPI غير مضبوط (FREELLMAPI_API_KEY / FREELLMAPI_BASE_URL)", provider="freellmapi")
     parts: List[Dict[str, Any]] = [{"type": "text", "text": user}]
     # free routed models reject / time out on big multi-image payloads: 4 images, <= 448 px, JPEG q70 is enough to recognise a place
-    for i, im in enumerate(images[:4]):
+    for i, im in enumerate(images[:max_images]):
         parts.append({"type": "text", "text": f"Image {i}:"})
-        parts.append({"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + base64.b64encode(_shrink_jpeg(im)).decode()}})
+        parts.append({"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + base64.b64encode(_shrink_jpeg(im, max_side)).decode()}})
     messages = [{"role": "system", "content": system}, {"role": "user", "content": parts}]
 
     def call(msgs):
