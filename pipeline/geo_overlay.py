@@ -499,14 +499,26 @@ def extract_timed_geo_mentions(
     return mentions[:4]
 
 
+MAP_FILL = 0.70  # share of the view the main subject fills. 0.86 was tried: it zoomed Russia to 1.27 and the camera, centred on the pin, cut its east off
+
+
+def _fills_width(geo: Any, iso: Any, S: float, K: float) -> bool:
+    """True when the country already spans (almost) the whole view width: any extra zoom would crop its far edge
+    (Russia's east, USA's Alaska), so such a country is shown at zoom 1."""
+    if not iso or not geo.has(iso):
+        return False
+    bb = geo.main_bbox(iso)
+    return (bb[2] - bb[0]) * S * K >= 0.9 * 688.0
+
+
 def _fit_zoom(geo: Any, iso: Any, S: float, K: float) -> Optional[float]:
-    """Zoom (1..4) at which the country's main bbox fills ~70% of the 688x412 view; None if unknown."""
+    """Zoom (1..4) at which the country's main bbox fills ~MAP_FILL of the 688x412 view; None if unknown."""
     if not iso or not geo.has(iso):
         return None
     bb = geo.main_bbox(iso)
     w_px = max((bb[2] - bb[0]) * S * K, 1.0)
     h_px = max((bb[3] - bb[1]) * S, 1.0)
-    return max(1.0, min(4.0, 0.7 * min(688.0 / w_px, 412.0 / h_px)))
+    return max(1.0, min(4.0, MAP_FILL * min(688.0 / w_px, 412.0 / h_px)))
 
 
 _SCALE_LABEL = {"village": "قرية", "town": "بلدة", "city": "مدينة", "capital": "عاصمة", "region": "منطقة", "country": "دولة",
@@ -877,6 +889,8 @@ def build_scene_map_overlay(
             fit = _fit_zoom(geo, iso_m, S, K)  # tiny country (Bahrain): view scale is capped, so zoom in to fill
             if fit and fit > target_zoom:
                 target_zoom = round(fit, 2)
+            if _fills_width(geo, iso_m, S, K):
+                target_zoom = 1.0  # a wide country (Russia, USA, China) is already framed edge to edge: zooming only crops it
         else:
             # Multi-country scene: the view is fitted to ALL countries, so a small one (UAE next to Saudi) would be
             # a speck. Zoom until the active country's main bbox fills ~70% of the 688x412 view.
