@@ -76,3 +76,17 @@ From the story link, not from a random seed: `continue → fade 8f`, `contrast �
 - **Retiring the overlapping legacy generators** (`storyteller.py` LLM TSX, `generative_visuals.py`): only after
   STUDIO_MODE is measured better on the same topics, which needs the calibrated critic.
 - **Preview (`/api/preview`)** does not run the studio (it would cost one LLM call per scene per preview).
+
+## End-to-end result (script of `outputs/20261123-215737-0ed0d`, Russia; estimated word timing, silent audio)
+| run | studio scenes | fallback reason |
+|---|---|---|
+| 1 | 6/8 | body1: designer insisted on 17,080,242 (written in words, the old parser read 17,000,000); cta: the free router returned nothing 3 times |
+| 2 (word numbers) | 8/8 | one repair: body3 overflowed the edge at render time and was redesigned as steps |
+| 3 (icon budget) | 7/8 | body2: designer kept writing a 6-word list item (rejected by the validator) |
+| 4 (camera) | 8/8 | — |
+
+Deterministic critic, original vs run 4: no sparse scene (min detail 0.039 vs 0.005 for the original open_loop1);
+the longest still span is 1.4 s in body3 (stack finished building), every other scene ≤ 1.2 s. The original kept
+moving thanks to drifting particles; the studio scenes rely on the camera push-in + bob, which is gentler.
+Weak spots that are the model's, not the pipeline's: icon choice within the 280-icon bundle (e.g. `%` for a continent)
+and generic `versus` labels. A stronger, fixed director model is the next lever (llm_config.json `director` role).
