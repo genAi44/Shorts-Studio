@@ -191,7 +191,8 @@ shot types. List defects first (with the image numbers), then score. Write "deta
 def vision(system: str, user: str, images: List[bytes], provider: Optional[str] = None) -> Any:
     from . import llm
     # the critic needs every frame at a size where icons and layout are legible (photo verification keeps 4 x 448 px)
-    fns = {"gemini": llm.gemini_vision_json,
+    from .config import cfg
+    fns = {"gemini": lambda s, u, im: llm.gemini_vision_json(s, u, im, model=cfg("CRITIC_GEMINI_MODEL") or None),
            "freellmapi": lambda s, u, im: llm.freellmapi_vision_json(s, u, im, max_images=len(im), max_side=PANEL_H)}
     order = [provider] if provider else ["gemini", "freellmapi"]
     errors = []
@@ -413,14 +414,18 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--calibrate", action="store_true")
     ap.add_argument("--no-vision", action="store_true")
     ap.add_argument("--provider", choices=["gemini", "freellmapi"])
+    ap.add_argument("--model", help="Gemini model for this run (default: CRITIC_GEMINI_MODEL, then GEMINI_MODEL)")
     a = ap.parse_args(argv)
+    if a.model:
+        import os
+        os.environ["CRITIC_GEMINI_MODEL"] = a.model
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     if a.calibrate:
         res = calibrate(Path(a.target), Path(a.review or "docs/FRAME_REVIEW.md"), a.provider)
         print(json.dumps({k: v for k, v in res.items() if k not in ("pred", "labels")}, ensure_ascii=False, indent=1))
         Path("qa").mkdir(exist_ok=True)
-        Path(f"qa/critic_calibration_{a.provider or 'auto'}.json").write_text(json.dumps(res, ensure_ascii=False, indent=1), encoding="utf-8")
+        Path(f"qa/critic_calibration_{a.provider or 'auto'}{'_' + a.model if a.model else ''}.json").write_text(json.dumps(res, ensure_ascii=False, indent=1), encoding="utf-8")
     elif a.baseline:
         s = baseline(Path(a.target), not a.no_vision, a.provider)
         print(json.dumps({k: v for k, v in s.items() if k != "jobs"}, ensure_ascii=False, indent=1))

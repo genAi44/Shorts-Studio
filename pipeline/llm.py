@@ -66,12 +66,12 @@ def _post(url: str, headers: dict, payload: dict, timeout: int = 120) -> dict:
 
 
 
-def gemini_vision_json(system: str, user: str, images: List[bytes]) -> Any:
+def gemini_vision_json(system: str, user: str, images: List[bytes], model: Optional[str] = None) -> Any:
     """استدعاء الرؤية الحاسوبية لاختيار الصور (Gemini Vision)."""
     key = cfg("GEMINI_API_KEY")
     if not key:
         raise LLMError("مفتاح GEMINI_API_KEY غير مضبوط في ملف .env لاختيار الصور بالرؤية الحاسوبية", provider="gemini")
-    model = cfg("GEMINI_MODEL", "gemini-2.5-flash")
+    model = model or cfg("GEMINI_MODEL", "gemini-2.5-flash")
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     parts: List[Dict[str, Any]] = [{"text": user}]
     for i, im in enumerate(images):
