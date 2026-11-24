@@ -40,10 +40,20 @@ class TestValidator(unittest.TestCase):
         studio.count_use(used, {"device": "stack", "items": [{"icon": "lucide:landmark"}]})
         self.assertTrue(any("already used 2 times" in e for e in studio.validate_shot(shot, CTX, None, used)))
 
+    def test_no_line_twice_on_screen(self):
+        shot = {"device": "stack", "keyword": "انحسار", "tail": "حفر تبتلع الشواطئ",
+                "items": [{"text": "سقوط", "icon": "lucide:landmark"}, {"text": "حفر تبتلع الشواطئ", "icon": "lucide:swords"}]}
+        self.assertTrue(any("appears twice" in e for e in studio.validate_shot(shot, CTX, None, {})))
+
+    def test_counter_value_not_repeated_in_a_label(self):
+        shot = {"device": "versus", "keyword": "قبل وبعد", "sides": [{"label": "٨٠٠٠٠ جندي", "icon": "lucide:landmark", "value": 80000},
+                                                                  {"label": "المدينة", "icon": "lucide:swords"}]}
+        self.assertTrue(any("already shown by the counter" in e for e in studio.validate_shot(shot, CTX, None, {})))
+
     def test_map_scene_must_use_map_and_device_budget(self):
         ctx = dict(CTX, map_overlay={"waypoints": []})
         self.assertTrue(any("must be 'map'" in e for e in studio.validate_shot({"device": "number", "keyword": "x"}, ctx, None, {})))
-        self.assertTrue(any("already used" in e for e in studio.validate_shot({"device": "steps", "keyword": "x"}, CTX, None, {"steps": 2})))
+        self.assertTrue(any("already used" in e for e in studio.validate_shot({"device": "steps", "keyword": "x"}, CTX, None, {"steps": 1})))
 
 
 class TestNumbers(unittest.TestCase):
@@ -73,9 +83,10 @@ class TestDirection(unittest.TestCase):
     def test_anchor_timing_with_anticipation_and_hero_cap(self):
         code = studio.compile_shot({"device": "number", "keyword": "عام الفتح", "keyword_at": "عام",
                                     "number": {"value": 1453, "year": True, "at": "جندي"}}, CTX, studio.design_system(STYLE, {}))
-        # keyword 'عام' at 0.4 s -> KeyLine delay 0.4 - 0.1 - 0.12; 'جندي' at 4.0 s is capped at 35 % of 5 s = 1.75 s
+        # keyword 'عام' at 0.4 s -> KeyLine delay 0.4 - 0.1 - 0.12; 'جندي' at 4.0 s is capped at 25 % of 5 s = 1.25 s
         self.assertIn("delay={0.18}", code)
-        self.assertIn("delay={1.75}", code)
+        self.assertIn("delay={1.25}", code)
+        self.assertIn("opacity: interpolate(k.frame, [34, 40]", code)  # the counter is hidden until its word (no '0' on screen)
         self.assertIn("year", code)
 
 

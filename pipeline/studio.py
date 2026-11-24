@@ -22,14 +22,15 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from .config import FPS, record_fallback
 
-COMPILER_VERSION = 2
+COMPILER_VERSION = 3
 CAMERA_PUSH = 1.06  # protocol 5.5: push-in 100 % -> 106 % across a scene
 CAMERA_BOB = 6      # px of idle float, so a finished build never sits still
 MAX_DESIGN_TRIES = 3          # first design + 2 retries on validator errors
 MAX_REPAIRS = 2               # redesigns after a failed render gate
 DEVICES = ("statement", "number", "pinned", "hub", "steps", "stack", "versus", "map")
 REPEATABLE = {"map"}          # the only device that may follow itself (the map is the continuity)
-MAX_SAME_DEVICE = 2
+MAX_SAME_DEVICE = 1           # a device is a look: twice in one video reads as a template
+DEVICE_BUDGET = {"statement": 2}  # the plain fallback device may come back once
 MAX_SAME_ICON = 2
 FUNCTIONS = ("claim", "contrast", "quantity", "sequence", "cause", "place", "person", "question")
 LINKS = ("continue", "contrast", "deeper", "next_step")
@@ -149,8 +150,8 @@ DEVICES (pick the one that PROVES the sentence; ask "what must the viewer see to
 - steps: 2-5 rising steps (labels). Stages, growth, ranking, "from X to Y".
 - stack: 2-5 rows that build up (text + icon). Consequences, features, a dated list.
 - versus: two sides (icon + label + optional number). Comparison, before/after, contrast.
-- map: the vector map of the scene's places (only and always when the scene has a map) + the key line + optionally one
-  number or hero icon.
+- map: the vector map of the scene's places, big (only and always when the scene has a map) + the key line +
+  optionally one number. The map is the hero: no hero icon.
 
 TEXT: keyword = the KEY idea in 1-4 words (big, accent colour); lead / tail = optional small lines (<= 7 words each).
 On-screen text is the punchline, NOT a copy of the narration (the narration is already captioned). Arabic.
@@ -158,8 +159,8 @@ TIMING: every slot that appears has "at": a word copied EXACTLY from the scene's
 ICONS: ONLY names from "available_icons" in the brief (any other name renders as a star).
 Choose icons whose meaning matches (never a lightbulb for heritage, a star for corruption, a rising chart for a decline).
 NUMBERS: only numbers that are spoken in the sentence or listed in its entities; "year": true for a year.
-CONTINUITY: one visual world for the whole video; do not reuse the previous scene's device (except map) and vary the
-composition; the transition into this scene is already chosen from the story link.
+CONTINUITY: one visual world for the whole video; every device at most ONCE per video (map unlimited, statement twice):
+see devices_used_so_far. Every on-screen line says something different (a tail never repeats an item).
 
 Return JSON only:
 {"device":"hub","why":"one line: why this device proves the sentence",
@@ -338,7 +339,7 @@ def validate_shot(shot: Any, ctx: Dict[str, Any], prev: Optional[Dict[str, Any]]
         errs.append("device 'map' is only for scenes that have a map")
     if prev and dev == prev.get("device") and dev not in REPEATABLE:
         errs.append(f"the previous scene already uses '{dev}': choose another device")
-    if dev not in REPEATABLE and used.get(dev, 0) >= MAX_SAME_DEVICE:
+    if dev not in REPEATABLE and used.get(dev, 0) >= DEVICE_BUDGET.get(dev, MAX_SAME_DEVICE):
         errs.append(f"'{dev}' was already used {used[dev]} times in this video: choose another device")
     prev_icons = set(shot_icons(prev))
     for ic in shot_icons(shot):
@@ -360,6 +361,18 @@ def validate_shot(shot: Any, ctx: Dict[str, Any], prev: Optional[Dict[str, Any]]
         errs.append("the on-screen text copies the narration: write the punchline instead")
 
     texts = [kw, shot.get("lead"), shot.get("tail")] + [it.get("text") for it in shot.get("items") or [] if isinstance(it, dict)]         + [sd.get("label") for sd in shot.get("sides") or [] if isinstance(sd, dict)]         + [(shot.get("number") or {}).get("label") if isinstance(shot.get("number"), dict) else None]
+    seen = set()
+    for txt in texts:  # the same line twice on screen (tail repeating an item) is wasted space
+        t = norm_word(str(txt or ""))
+        if t and t in seen:
+            errs.append(f"the text '{txt}' appears twice on screen: every slot must say something different")
+        seen.add(t)
+    counted = {str(v.get("value")).replace(".0", "") for v in [shot.get("number")] + list(shot.get("sides") or [])
+               if isinstance(v, dict) and v.get("value") is not None}
+    for txt in texts:  # a number already rolling in a counter is not written again next to it
+        for m in _DIGITS.findall(str(txt or "").translate(_AR_DIGITS)):
+            if m.replace(",", "") in counted:
+                errs.append(f"'{m}' in '{txt}' is already shown by the counter: remove it from the text")
     for txt in texts:  # truth rule for numbers written inside any on-screen text, not only the number slot
         for m in _DIGITS.findall(str(txt or "").translate(_AR_DIGITS)):
             n = m.replace(",", "")
@@ -420,7 +433,7 @@ def _js(v: Any) -> str:
     return json.dumps(v, ensure_ascii=False)
 
 
-HERO_CAP = 0.35  # the hero is on screen by 35 % of the scene at the latest (an empty first half fails the sparse gate)
+HERO_CAP = 0.25  # the hero is on screen by 25 % of the scene at the latest (an empty first half fails the sparse gate)
 _CAP: Dict[str, float] = {"s": 1e9}
 
 
@@ -469,6 +482,8 @@ def _counter(num: Dict[str, Any], words, size: int, color: str = "") -> str:
         attrs += f" suffix={{{_js(' ' + str(num['suffix']))}}}"
     if color:
         attrs += f" color={{{_js(color)}}}"
+    f0 = round(_at(words, num.get('at'), 0.3) * FPS)
+    attrs += f" style={{{{opacity: interpolate(k.frame, [{max(0, f0 - 4)}, {f0 + 2}], [0, 1], {{extrapolateLeft: 'clamp', extrapolateRight: 'clamp'}})}}}}"
     return f"<Counter {attrs} />"
 
 
@@ -578,15 +593,14 @@ def compile_shot(shot: Dict[str, Any], ctx: Dict[str, Any], ds: Dict[str, Any]) 
             body.append(f"      <Side x={{{x}}} label={{{_js(str(s['label']).strip())}}} icon={{{_js(s['icon'])}}} delay={{{d}}}>{kid}</Side>")
         body.append("""      <Abs x={LAYOUT.cx - 3} y={LAYOUT.beat.top + 340} w={6} h={420} style={{background: k.c('accent', 0.35), borderRadius: 3}} />""")
     elif dev == "map":
-        body = ["      <MapLayer overlay={data.map_overlay} mode=\"hud\" />", _keyline(shot, words, top, 96)]
+        body = ["      <MapLayer overlay={data.map_overlay} mode=\"split-bottom\" />", _keyline(shot, words, top, 92)]
         num = shot.get("number") if isinstance(shot.get("number"), dict) else None
         if num:
-            body.append(f"""      <Abs x={{90}} y={{LAYOUT.beat.top + 330}} w={{900}} style={{{{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16}}}}>
-        {_counter(num, words, min(130, int(900 / (0.62 * len(f"{float(num['value']):,.0f}")))))}{_label_line(num, words)}
+            lab = _unit_label(num)
+            lab_el = (f"<ArText size={{40}} weight={{700}} delay={{{_at(words, num.get('at'), 0.3) + 0.4}}} maxWidth={{420}}>{{{_js(lab)}}}</ArText>" if lab else "")
+            body.append(f"""      <Abs x={{90}} y={{LAYOUT.beat.top + 270}} w={{900}} style={{{{display: 'flex', flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 28}}}}>
+        {_counter(num, words, min(110, int(700 / (0.62 * len(f"{float(num['value']):,.0f}")))))}{lab_el}
       </Abs>""")
-        elif shot.get("hero_icon") and icon_ok(shot.get("hero_icon")):
-            helpers = HERO_ICON
-            body.append(f"      <HeroIcon name={{{_js(shot['hero_icon'])}}} delay={{{_at(words, shot.get('hero_at'), 0.2)}}} y={{LAYOUT.beat.top + 330}} />")
     return (HEADER + helpers + f"""
 // studio shot ({dev}): {str(shot.get('why') or '').replace(chr(10), ' ')[:160]}
 export default function Scene({{dur, data}}: SceneProps) {{

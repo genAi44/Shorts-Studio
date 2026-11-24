@@ -42,21 +42,24 @@ designer chooses *what* and *when*, never pixel positions.
 
 ## Rules the validator enforces (before any code)
 - A scene with a map must use `map`; `map` only with a map.
-- No device twice in a row (except `map`), at most 2 uses per video.
+- Every device at most once per video (`map` unlimited, `statement` twice): a device is a look, twice reads as a template.
 - keyword 1-4 words, lead/tail ≤ 7, all on-screen text ≤ 12 words, never a copy of the narration.
 - Every number, in the number slot **or inside any on-screen text**, is spoken in the sentence (digits or Arabic words:
   `studio.word_numbers` reads "عشرون ألف ومئتان وواحد وأربعون" as 20241) or is a verified entity value (truth rule).
 - Icon budget: the hero icon differs from the previous scene's, any icon at most twice per video, the two sides of
   `versus` differ.
+- No line twice on screen (a tail repeating an item), and no number written in a label when a counter already rolls it.
 - Every `at` is a spoken word (it is the sync anchor).
 - Every icon is in the **renderer's bundle** (`remotion/src/generated/iconifyBundle.json`, ~280 icons).
 
 ## Layout notes (Engineer)
-Numbers up to 5 characters sit in a ring; longer ones get the full width with an underline, sized to fit. Arabic units
+The map device uses the wide `split-bottom` stage: the map is the hero, no hero icon competes with it; an optional
+number sits between the key line and the map. A counter is invisible until its anchor word (no `0` on screen before the
+number is spoken). Numbers up to 5 characters sit in a ring; longer ones get the full width with an underline, sized to fit. Arabic units
 never go into `Counter` (it is not RTL) but become the label line under the number.
 
 ## Timing (Engineer)
-A slot enters 0.1 s before its anchor word (anticipation, never later). The hero element enters by 35 % of the scene at
+A slot enters 0.1 s before its anchor word (anticipation, never later). The hero element enters by 25 % of the scene at
 the latest: a late anchor would leave the scene empty, which the sparse gate rejects. Stack rows use the measured gap
 between their anchors as the stagger.
 
@@ -90,3 +93,17 @@ the longest still span is 1.4 s in body3 (stack finished building), every other 
 moving thanks to drifting particles; the studio scenes rely on the camera push-in + bob, which is gentler.
 Weak spots that are the model's, not the pipeline's: icon choice within the 280-icon bundle (e.g. `%` for a continent)
 and generic `versus` labels. A stronger, fixed director model is the next lever (llm_config.json `director` role).
+
+## New video: «لماذا يختفي البحر الميت؟» (atlas, real ElevenLabs voice, `outputs/20261124-060058-d6dc8-studio`)
+Full app path (facts search → script → director → `produce` with `STUDIO_MODE=1 CRITIC=1`): 8/8 studio scenes, 0 fallback,
+deterministic critic clean (no sparse, no static, no repeat). Looking at the frames found what the critic did not:
+| defect | fix |
+|---|---|
+| map tiny in the HUD band, a hero icon competing with it | map device on `split-bottom`, no hero icon |
+| a ring showing `0` until the number is spoken | counter hidden until its anchor |
+| body3 tail = its third row | validator: no line twice |
+| cta empty for the first third (hero word at 50 %) | hero cap 35 % → 25 % |
+| `stack` twice, white rows read as a template | each device once per video |
+Re-render of the same script (`-v2`): devices map, number, map, statement, versus, pinned, steps, statement (7 looks, was
+5). Left after v2: the versus labels repeated their counter values (`٦٠٠ كم²` above `600`): now a validator rule, not yet
+re-rendered. The free vision critic still fails 6/8 scenes with different reasons each run: it is not a signal yet.
