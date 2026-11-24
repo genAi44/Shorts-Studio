@@ -162,3 +162,16 @@ class TestSmartGeoOverlay(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
+
+
+def test_wide_countries_are_not_zoomed_into_a_crop():
+    import os
+    os.environ.setdefault("NO_NETWORK", "1")
+    from pipeline import geo_overlay as go
+    from pipeline.geo import get_geo
+    g = get_geo()
+    for iso in ("RUS", "USA", "CHN"):
+        v = g.view_for([iso], [])
+        assert go._fills_width(g, iso, v["S"], v["K"]), iso
+    v = g.view_for(["BHR"], [])
+    assert not go._fills_width(g, "BHR", v["S"], v["K"])

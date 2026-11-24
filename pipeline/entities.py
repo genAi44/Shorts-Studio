@@ -44,14 +44,38 @@ def bare(tok: str) -> str:
     return tok.strip(PUNCT)
 
 
+# Arabic proclitics glued to the first word of a phrase: "وأوروبا" = و + أوروبا, "بآسيا" = ب + آسيا, "للعراق" = لـ + العراق
+_CLITICS = ("و", "ف", "ب", "ل", "ك", "وب", "ول", "فب", "فل", "وك")   # never "ال": «كويت» is not a word of «الكويت»
+_HAMZA = str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ٱ": "ا", "ى": "ي", "ة": "ه"})
+
+
+def _norm(tok: str) -> str:
+    return "".join(ch for ch in tok if not "ً" <= ch <= "ْ" and ch != "ـ").translate(_HAMZA)
+
+
+def _same_word(sent_tok: str, target: str, allow_clitic: bool) -> bool:
+    a, b = _norm(sent_tok), _norm(target)
+    if a == b:
+        return True
+    if not allow_clitic or len(b) < 3:
+        return False
+    if a.endswith(b) and a[:-len(b)] in _CLITICS:           # و + أوروبا, ب + آسيا, وال + أورال ...
+        return True
+    return b.startswith("ال") and a.startswith(("لل", "ولل", "فلل")) and a.endswith(b[2:]) and a[:-len(b[2:])] in ("لل", "ولل", "فلل")
+
+
 def find_span(sentence: str, text: str) -> Optional[Tuple[int, int]]:
-    """(first_token, last_token) of `text` inside `sentence`, matched on whole tokens only; None if absent."""
+    """(first_token, last_token) of `text` inside `sentence`, matched on whole tokens only (a glued Arabic proclitic such as
+    و / ب / ل / ال on the FIRST word is accepted; the span still covers whole whitespace tokens); None if absent."""
     st = [bare(t) for t in tokens(sentence)]
     tt = [bare(t) for t in tokens(text) if bare(t)]
     if not tt:
         return None
     for i in range(len(st) - len(tt) + 1):
         if st[i:i + len(tt)] == tt:
+            return i, i + len(tt) - 1
+    for i in range(len(st) - len(tt) + 1):                  # second chance: diacritics / hamza forms / one glued proclitic
+        if all(_same_word(st[i + k], tt[k], allow_clitic=(k == 0)) for k in range(len(tt))):
             return i, i + len(tt) - 1
     return None
 
