@@ -101,7 +101,7 @@ export const Ring: React.FC<{value: number; size?: number; stroke?: number; dela
   const r = (size - stroke) / 2;
   const C = 2 * Math.PI * r;
   return (
-    <div style={{position: 'relative', width: size, height: size}}>
+    <div data-hero="ring" style={{position: 'relative', width: size, height: size}}>
       <svg width={size} height={size}>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={rgba(th.p.text, 0.16)} strokeWidth={stroke} />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color ?? rgba(th.p.accent)} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - clamp01(value) * p)} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
@@ -243,7 +243,7 @@ export const Pinned: React.FC<{x?: number; y?: number; w?: number; h?: number; r
   return (
     <Abs x={x} y={y} w={w} h={h} style={{...enterStyle(p, 'drop', 120), transform: `translateY(${(1 - p) * -120}px) rotate(${rotate + sway}deg)`, transformOrigin: '50% 0%', ...style}}>
       <div style={{position: 'absolute', left: w / 2 - 14, top: -26, width: 28, height: 56, borderRadius: 14, border: `5px solid ${k.c('text', 0.7)}`, background: 'transparent'}} />
-      <div style={{width: w, height: h, background: k.dark ? 'rgba(245,240,230,0.96)' : '#ffffff', borderRadius: 10, boxShadow: '0 22px 40px rgba(0,0,0,0.32)', padding: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#141210'}}>{children}</div>
+      <div data-hero="pinned" style={{width: w, height: h, background: k.dark ? 'rgba(245,240,230,0.96)' : '#ffffff', borderRadius: 10, boxShadow: '0 22px 40px rgba(0,0,0,0.32)', padding: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#141210'}}>{children}</div>
     </Abs>
   );
 };
@@ -266,3 +266,4 @@ export const Ribbon: React.FC<{variant?: 0 | 1 | 2; width?: number}> = ({variant
 };
 
 export {Pop, interpolate};
+export {Level, Flow, Filter, Tally, Shrink} from './mechanisms';

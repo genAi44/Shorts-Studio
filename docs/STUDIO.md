@@ -40,13 +40,29 @@ each scene, in order ─► Scene Designer ─► shot spec ─► validator ─
 Devices: `statement, number, pinned, hub, steps, stack, versus, map`. Each has a fixed, gate-tested layout; the
 designer chooses *what* and *when*, never pixel positions.
 
+## Mechanisms (learned from the `remotion` project: the picture IS the explanation)
+`remotion/src/mechanisms.tsx`, exported by the kit. Each one draws a physical thing that changes state on a spoken word
+(`mech.change_at`), so the motion alone tells what happens (the "no-text test", written by the designer as `behavior`):
+| device | draws | for |
+|---|---|---|
+| `level` | a tank whose level drops / rises / overflows, old level kept as a dashed ghost | levels, capacity, overload |
+| `flow` | one stream split into 2-4 branches by share, the branch the sentence is about highlighted | where something goes |
+| `filter` | a grid of N things of which all but k fade away | selection, survival, choice |
+| `tally` | two columns of countable icons in proportion | quantities compared |
+| `shrink` | an area shrinking / growing with true area (sqrt scale), old outline dashed | surfaces, territory, share |
+The designer is told to prefer a mechanism and to draw the video's `core_metaphor` / recurring `objects` (chosen by the
+creative director); the generic devices are the fallback. Numbers inside a mechanism follow the truth rule.
+**Hero gate:** the main drawing carries `[data-hero]`; at mid-scene it must be >= 520 px wide (`HERO_MIN_W`), and it counts
+as content for the sparse check. The generic heroes grew to match (icon ring 540, number ring 560, pinned card 540).
+Not taken from it: free-form LLM TSX (its own stress test failed 6/10 scenes), decorative telemetry text, tiny labels.
+
 ## Rules the validator enforces (before any code)
 - A scene with a map must use `map`; `map` only with a map.
 - Every device at most once per video (`map` unlimited, `statement` twice): a device is a look, twice reads as a template.
 - keyword 1-4 words, lead/tail ≤ 7, all on-screen text ≤ 12 words, never a copy of the narration.
 - Every number, in the number slot **or inside any on-screen text**, is spoken in the sentence (digits or Arabic words:
   `studio.word_numbers` reads "عشرون ألف ومئتان وواحد وأربعون" as 20241) or is a verified entity value (truth rule).
-- Icon budget: the hero icon differs from the previous scene's, any icon at most twice per video, the two sides of
+- Icon budget: a hero icon is the hero once per video, any icon at most twice per video, the two sides of
   `versus` differ.
 - No line twice on screen (a tail repeating an item), and no number written in a label when a counter already rolls it.
 - Every `at` is a spoken word (it is the sync anchor).
@@ -107,3 +123,10 @@ deterministic critic clean (no sparse, no static, no repeat). Looking at the fra
 Re-render of the same script (`-v2`): devices map, number, map, statement, versus, pinned, steps, statement (7 looks, was
 5). Left after v2: the versus labels repeated their counter values (`٦٠٠ كم²` above `600`): now a validator rule, not yet
 re-rendered. The free vision critic still fails 6/8 scenes with different reasons each run: it is not a signal yet.
+
+### v3: with mechanisms (same script and voice)
+Core metaphor chosen by the creative director: «حوض ماء زجاجي عليه علامات منسوب… كلما انقطع عنه الصنبور هبط سطح الماء
+وترك حلقة جافة». Devices: map, number, map, statement, **shrink** (the sea from 950 to 600 km²), **level** (the tank drops on
+«يهبط»), versus, statement. 8/8 accepted. Fixed after v3: shrink showed decimals mid-change (926.2), and two scenes shared the
+same hero icon (now once per video). lead/body1 (93 % / 7 %) would suit `flow`, but 7 is not spoken in lead and body1 has
+a map (map is mandatory there).

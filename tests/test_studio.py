@@ -39,6 +39,9 @@ class TestValidator(unittest.TestCase):
         studio.count_use(used, {"device": "hub", "hero_icon": "lucide:landmark", "items": [{"icon": "lucide:landmark"}]})
         studio.count_use(used, {"device": "stack", "items": [{"icon": "lucide:landmark"}]})
         self.assertTrue(any("already used 2 times" in e for e in studio.validate_shot(shot, CTX, None, used)))
+        once = {}
+        studio.count_use(once, {"device": "statement", "hero_icon": "lucide:landmark"})
+        self.assertTrue(any("hero of an earlier scene" in e for e in studio.validate_shot(shot, CTX, None, once)))
 
     def test_no_line_twice_on_screen(self):
         shot = {"device": "stack", "keyword": "انحسار", "tail": "حفر تبتلع الشواطئ",
@@ -54,6 +57,41 @@ class TestValidator(unittest.TestCase):
         ctx = dict(CTX, map_overlay={"waypoints": []})
         self.assertTrue(any("must be 'map'" in e for e in studio.validate_shot({"device": "number", "keyword": "x"}, ctx, None, {})))
         self.assertTrue(any("already used" in e for e in studio.validate_shot({"device": "steps", "keyword": "x"}, CTX, None, {"steps": 1})))
+
+
+class TestMechanisms(unittest.TestCase):
+    SH = "تقلصت المساحة من تسعمئة وخمسين إلى ستمئة كيلومتر مربع"
+
+    def ctx(self, text):
+        w = [{"t": x, "s": round(0.4 * i, 2), "e": round(0.4 * i + 0.3, 2)} for i, x in enumerate(text.split())]
+        return dict(CTX, sentence=text, sentences=[text], entities=[], words=w)
+
+    def test_shrink_numbers_must_be_spoken_and_behavior_required(self):
+        c = self.ctx(self.SH)
+        good = {"device": "shrink", "keyword": "بحر ينكمش", "keyword_at": "تقلصت", "behavior": "the area shrinks",
+                "mech": {"from": 950, "to": 600, "unit": "كم²", "change_at": "ستمئة"}}
+        self.assertEqual(studio.validate_shot(good, c, None, {}), [])
+        bad = dict(good, behavior="", mech=dict(good["mech"], to=500))
+        errs = " | ".join(studio.validate_shot(bad, c, None, {}))
+        self.assertIn("behavior", errs)
+        self.assertIn("500", errs)
+
+    def test_flow_and_level_shapes(self):
+        c = self.ctx("تحوّل ثلاثة وتسعون بالمئة من مياه النهر إلى الري")
+        flow = {"device": "flow", "keyword": "شريان مقطوع", "behavior": "the river splits",
+                "mech": {"source": "النهر", "branches": [{"label": "الري", "share": 93}, {"label": "البحر", "share": 7}], "keep": 5}}
+        errs = " | ".join(studio.validate_shot(flow, c, None, {}))
+        self.assertIn("share 7", errs)       # 7 is not spoken in this sentence
+        self.assertIn("mech.keep", errs)
+        lvl = {"device": "level", "keyword": "منسوب", "behavior": "drops", "mech": {"from": 0.5, "to": 0.52}}
+        self.assertTrue(any("differ by at least" in e for e in studio.validate_shot(lvl, c, None, {})))
+
+    def test_compiles_with_change_inside_the_scene(self):
+        c = self.ctx(self.SH)
+        code = studio.compile_shot({"device": "shrink", "keyword": "بحر ينكمش", "keyword_at": "تقلصت", "behavior": "x",
+                                    "mech": {"from": 950, "to": 600, "unit": "كم²", "change_at": "مربع"}}, c, studio.design_system(STYLE, {}))
+        self.assertIn("<Shrink from={950.0} to={600.0}", code)
+        self.assertIn("change={3.0}", code)  # 'مربع' at 3.2 s - 0.1 = 3.1 s, capped at 5 s - 2 s so the change ends in the scene
 
 
 class TestNumbers(unittest.TestCase):

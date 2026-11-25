@@ -150,7 +150,7 @@ def scene_context(scene: Dict[str, Any], theme: Dict[str, Any]) -> Dict[str, Any
 def _gate_sig() -> str:
     """Hash of the code a scene is checked and rendered against: a changed map/audit/layout invalidates cached scenes."""
     h = hashlib.sha1()
-    for f in ("mapOverlay.tsx", "layoutAudit.tsx", "layout.ts"):
+    for f in ("mapOverlay.tsx", "layoutAudit.tsx", "layout.ts", "mechanisms.tsx"):
         p = REMOTION / "src" / f
         h.update(p.read_bytes() if p.exists() else b"")
     return h.hexdigest()[:10]
@@ -231,6 +231,7 @@ def sandbox_render(items: Dict[str, Dict[str, Any]], style: Dict[str, Any], work
         for n in problems:
             problems[n].append("sandbox render timed out")
         return problems
+    ctx_of = lambda n: items[n]["ctx"]
     for name, fs, dur in frames:
         for idx, f in enumerate(fs):
             img = workdir / f"chk_{f}.jpg"
@@ -242,7 +243,12 @@ def sandbox_render(items: Dict[str, Dict[str, Any]], style: Dict[str, Any], work
             late = idx >= 1  # entrance (first test frame) may cross edges / overlap; later frames may not
             if idx == 1 and (_flat(img) or aud.get("texts", 0) == 0):
                 problems[name].append("the scene is blank or has no visible text at mid-scene")
+            hero = aud.get("hero")  # widest [data-hero] box: the main drawing must be big (it carries the explanation)
+            if idx == 1 and hero and ctx_of(name).get("hero_min_w") and hero[2] - hero[0] < ctx_of(name)["hero_min_w"]:
+                problems[name].append(f"the hero drawing is too small: {hero[2] - hero[0]} px wide (need >= {ctx_of(name)['hero_min_w']}); make the main element bigger")
             bb = aud.get("bbox")
+            if bb and hero:  # the drawing is content too, not only text and icons
+                bb = [min(bb[0], hero[0]), min(bb[1], hero[1]), max(bb[2], hero[2]), max(bb[3], hero[3])]
             if idx == 1 and bb and (bb[3] - bb[1]) < MIN_CONTENT_H and not any(i.get("type") == "map" for i in aud.get("issues", [])):
                 problems[name].append(f"the scene is too sparse: all its content spans only {bb[3] - bb[1]} px of height (need >= {MIN_CONTENT_H}); build a real composition - lead line, hero element, supporting elements, spread over y 280..1380")
             for it in aud.get("issues", []):

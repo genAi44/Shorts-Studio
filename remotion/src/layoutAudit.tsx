@@ -122,6 +122,18 @@ const bboxOf = (items: Item[]): number[] | null => {
   return [Math.min(...v.map((i) => i.l)), Math.min(...v.map((i) => i.t)), Math.max(...v.map((i) => i.r)), Math.max(...v.map((i) => i.b))].map(Math.round);
 };
 
+/** widest visible [data-hero] element (the scene's main drawing), or null when the scene marks none */
+const heroBox = (): number[] | null => {
+  let best: DOMRect | null = null;
+  document.querySelectorAll('[data-hero]').forEach((el) => {
+    if (ancestorOpacity(el) < 0.35) return;
+    const q = el.getBoundingClientRect();
+    if (!best || q.width > best.width) best = q;
+  });
+  const b = best as DOMRect | null;
+  return b ? [b.left, b.top, b.right, b.bottom].map(Math.round) : null;
+};
+
 export const LayoutAudit: React.FC = () => {
   const frame = useCurrentFrame();
   const [handle] = useState(() => delayRender('layout-audit'));
@@ -129,7 +141,7 @@ export const LayoutAudit: React.FC = () => {
     const id = setTimeout(() => {
       try {
         const items = collect();
-        console.log('[AUDIT]' + JSON.stringify({frame, texts: items.filter((i) => !i.caption).length, bbox: bboxOf(items), issues: auditItems(items)}));
+        console.log('[AUDIT]' + JSON.stringify({frame, texts: items.filter((i) => !i.caption).length, bbox: bboxOf(items), hero: heroBox(), issues: auditItems(items)}));
       } finally {
         continueRender(handle);
       }

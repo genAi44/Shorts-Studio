@@ -22,15 +22,17 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from .config import FPS, record_fallback
 
-COMPILER_VERSION = 3
+COMPILER_VERSION = 4
 CAMERA_PUSH = 1.06  # protocol 5.5: push-in 100 % -> 106 % across a scene
 CAMERA_BOB = 6      # px of idle float, so a finished build never sits still
 MAX_DESIGN_TRIES = 3          # first design + 2 retries on validator errors
 MAX_REPAIRS = 2               # redesigns after a failed render gate
-DEVICES = ("statement", "number", "pinned", "hub", "steps", "stack", "versus", "map")
+MECHANISMS = ("level", "flow", "filter", "tally", "shrink")  # the drawing IS the explanation (remotion/src/mechanisms.tsx)
+DEVICES = MECHANISMS + ("statement", "number", "pinned", "hub", "steps", "stack", "versus", "map")
 REPEATABLE = {"map"}          # the only device that may follow itself (the map is the continuity)
 MAX_SAME_DEVICE = 1           # a device is a look: twice in one video reads as a template
-DEVICE_BUDGET = {"statement": 2}  # the plain fallback device may come back once
+DEVICE_BUDGET = {"statement": 2, **{m: 2 for m in MECHANISMS}}  # a mechanism may return (the same sea, later): continuity
+HERO_MIN_W = 520  # px: the [data-hero] drawing must be at least this wide at mid-scene (render gate)
 MAX_SAME_ICON = 2
 FUNCTIONS = ("claim", "contrast", "quantity", "sequence", "cause", "place", "person", "question")
 LINKS = ("continue", "contrast", "deeper", "next_step")
@@ -55,12 +57,15 @@ suggestions. Do not choose colours or fonts (the art director owns those).
 For the whole video: the one-sentence message, ONE visual world that every scene lives in (e.g. "an atlas being drawn
 in front of us", "a ledger filling up", "a museum label wall") and its recurring motif, the scene of the climax
 (strongest contrast) and the one breathing scene before it.
+Also the CORE VISUAL METAPHOR: the one physical thing the explanation is drawn with (the sea whose level drops, the
+river that is split, the jar shelf that empties), and 1-4 recurring OBJECTS that come back from scene to scene so the
+scenes read as one story (Arabic nouns).
 For every scene: its intent (what the viewer must understand or feel), its rhetorical function
 (claim | contrast | quantity | sequence | cause | place | person | question), its energy 1-5 (hook high, build rising,
 breath low, climax 5) and how it links to the PREVIOUS scene (continue | contrast | deeper | next_step).
 
 Return JSON only:
-{"message":"...","world":"...","motif":"...","climax":"scene id","breath":"scene id",
+{"message":"...","world":"...","motif":"...","core_metaphor":"...","objects":["..."],"climax":"scene id","breath":"scene id",
  "scenes":[{"id":"hook","intent":"...","function":"question","energy":5,"link":"continue"}]}"""
 
 
@@ -88,7 +93,9 @@ def normalize_treatment(t: Any, scenes: List[Dict[str, Any]]) -> Dict[str, Any]:
         except (TypeError, ValueError):
             energy = 3
         out.append({"id": sc["id"], "intent": str(s.get("intent") or "")[:200], "function": fn, "energy": energy, "link": link})
+    objs = [str(o)[:40] for o in t.get("objects") or [] if str(o).strip()][:4] if isinstance(t.get("objects"), list) else []
     return {"message": str(t.get("message") or "")[:240], "world": str(t.get("world") or "")[:200], "motif": str(t.get("motif") or "")[:120],
+            "core_metaphor": str(t.get("core_metaphor") or "")[:200], "objects": objs,
             "climax": t.get("climax"), "breath": t.get("breath"), "scenes": out}
 
 
@@ -114,7 +121,8 @@ def design_system(style: Dict[str, Any], treatment_: Dict[str, Any]) -> Dict[str
     return {
         "theme": theme,
         "type_scale": {"hero": 120, "hero_long": 92, "lead": 46, "label": 34},  # KeyLine derives lead/tail from the hero size
-        "motif": {"ribbon_variant": seed % 3, "world": treatment_.get("world"), "motif": treatment_.get("motif")},
+        "motif": {"ribbon_variant": seed % 3, "world": treatment_.get("world"), "motif": treatment_.get("motif"),
+                  "core_metaphor": treatment_.get("core_metaphor"), "objects": treatment_.get("objects") or []},
         "motion": {"anticipation_s": 0.1, "entrance": "spring", "stagger_s": [0.25, 1.2], "hold_last_s": 0.4},
         "transitions": TRANSITION_GRAMMAR,
         "not": nots[:8],
@@ -142,7 +150,25 @@ SHOT_SYSTEM = """You are the scene designer of an Arabic educational Shorts stud
 shot spec: you think visually and spatially, then pick a DEVICE from the catalogue and fill its slots. You do not write
 code: an engineer compiles your spec exactly, and a validator rejects any spec that breaks the rules below.
 
-DEVICES (pick the one that PROVES the sentence; ask "what must the viewer see to believe this sentence?"):
+THINK FIRST: "what physical thing does this sentence describe, and what does it DO?" (a level drops, a stream is
+split, many become few, an area shrinks). The no-text test: with every word removed, the motion alone must still tell
+what happens. Write that in "behavior". Prefer a MECHANISM; the generic devices are the fallback when nothing physical
+changes. Draw the video's core_metaphor / recurring objects when the sentence is about them.
+
+MECHANISMS (a big drawing that changes state on the "change_at" word; slot "mech"):
+- level: a tank/sea whose level moves. mech {"from":0.9,"to":0.4,"from_label":"...","to_label":"...","change_at":"word"}
+  from/to = fill 0..1.2 (above 1 = overflow). Labels <= 4 words (e.g. the year or state at each level).
+- flow: one stream split into 2-4 branches. mech {"source":"...","branches":[{"label":"...","share":93,"icon":"lucide:x"}],
+  "keep":1,"change_at":"word"}; share in % only when spoken (else omit: equal widths); keep = index of the branch the
+  sentence is about.
+- filter: many become few. mech {"from":24,"to":6,"icon":"lucide:x","from_label":"...","to_label":"...","change_at":"word"}
+- tally: two quantities drawn as countable icons. mech {"sides":[{"label":"...","value":24,"icon":"lucide:x"},{...}]}
+- shrink: an area that shrinks or grows (true area). mech {"from":950,"to":600,"unit":"كم²","from_label":"...",
+  "to_label":"...","change_at":"word"}
+Numbers inside a mechanism (filter/tally/shrink values, flow shares) are shown on screen: spoken or entity values only.
+"mech_at" = the word on which the drawing enters.
+
+DEVICES (generic fallback):
 - statement: one hero icon (big, in a ring) + the key line. For a claim or a question with no number/list.
 - number: one big rolling number in a ring + the key line. The sentence states one number or year.
 - pinned: a card pinned on a string holding a number (or a hero icon) + a short label. One striking fact.
@@ -159,16 +185,18 @@ TIMING: every slot that appears has "at": a word copied EXACTLY from the scene's
 ICONS: ONLY names from "available_icons" in the brief (any other name renders as a star).
 Choose icons whose meaning matches (never a lightbulb for heritage, a star for corruption, a rising chart for a decline).
 NUMBERS: only numbers that are spoken in the sentence or listed in its entities; "year": true for a year.
-CONTINUITY: one visual world for the whole video; every device at most ONCE per video (map unlimited, statement twice):
+CONTINUITY: one visual world for the whole video; every device at most ONCE per video (map unlimited, statement and
+each mechanism twice, never twice in a row):
 see devices_used_so_far. Every on-screen line says something different (a tail never repeats an item).
 
 Return JSON only:
-{"device":"hub","why":"one line: why this device proves the sentence",
+{"device":"hub","why":"one line: why this device proves the sentence","behavior":"what the drawing does (mechanisms)",
  "keyword":"...","keyword_at":"word","lead":"...","tail":"...",
  "hero_icon":"lucide:x","hero_at":"word",
  "number":{"value":1453,"year":true,"suffix":"","label":"...","at":"word"},
  "items":[{"text":"...","icon":"lucide:x","at":"word"}],
- "sides":[{"label":"...","icon":"lucide:x","value":null,"at":"word"},{"label":"...","icon":"lucide:x","value":null,"at":"word"}]}
+ "sides":[{"label":"...","icon":"lucide:x","value":null,"at":"word"},{"label":"...","icon":"lucide:x","value":null,"at":"word"}],
+ "mech":{},"mech_at":"word"}
 Omit slots the device does not use."""
 
 
@@ -178,9 +206,11 @@ def shot_brief(ctx: Dict[str, Any], tscene: Dict[str, Any], ds: Dict[str, Any], 
                   "spoken_words": [w["t"] for w in ctx["words"]], "entities": ctx.get("entities", []),
                   "has_map": bool(ctx.get("map_overlay"))},
         "direction": {k: tscene.get(k) for k in ("intent", "function", "energy", "link")},
-        "video": {"world": ds["motif"].get("world"), "motif": ds["motif"].get("motif"), "not": ds.get("not", [])},
+        "video": {"world": ds["motif"].get("world"), "motif": ds["motif"].get("motif"), "core_metaphor": ds["motif"].get("core_metaphor"),
+                  "objects": ds["motif"].get("objects") or [], "not": ds.get("not", [])},
         "previous_shot": {k: prev.get(k) for k in ("device", "keyword")} if prev else None,
-        "devices_used_so_far": {k: v for k, v in used.items() if not k.startswith("icon:")},
+        "devices_used_so_far": {k: v for k, v in used.items() if ":" not in k},
+        "hero_icons_used": [k[5:] for k in used if k.startswith("hero:")],
         "icons_used_so_far": {k[5:]: v for k, v in used.items() if k.startswith("icon:")},
         "available_icons": sorted(_icon_names()),
     }
@@ -313,13 +343,16 @@ ITEM_LIMITS = {"hub": (2, 6, 3), "steps": (2, 5, 3), "stack": (2, 5, 5)}
 def shot_icons(shot: Optional[Dict[str, Any]]) -> List[str]:
     if not isinstance(shot, dict):
         return []
-    out = [shot.get("hero_icon")] + [it.get("icon") for it in shot.get("items") or [] if isinstance(it, dict)]         + [sd.get("icon") for sd in shot.get("sides") or [] if isinstance(sd, dict)]
+    m = shot.get("mech") if isinstance(shot.get("mech"), dict) else {}
+    out = [shot.get("hero_icon"), m.get("icon")] + [b.get("icon") for b in m.get("branches") or [] if isinstance(b, dict)] \
+        + [x.get("icon") for x in m.get("sides") or [] if isinstance(x, dict)] + [it.get("icon") for it in shot.get("items") or [] if isinstance(it, dict)]         + [sd.get("icon") for sd in shot.get("sides") or [] if isinstance(sd, dict)]
     return [i for i in dict.fromkeys(out) if i]
 
 
 def count_use(used: Dict[str, int], shot: Dict[str, Any], sign: int = 1) -> None:
     """Device and icon budget of the video (the validator reads it)."""
-    for key in [shot["device"]] + ["icon:" + i for i in shot_icons(shot)]:
+    hero = ["hero:" + shot["hero_icon"]] if shot.get("hero_icon") else []
+    for key in [shot["device"]] + ["icon:" + i for i in shot_icons(shot)] + hero:
         used[key] = used.get(key, 0) + sign
 
 
@@ -343,7 +376,9 @@ def validate_shot(shot: Any, ctx: Dict[str, Any], prev: Optional[Dict[str, Any]]
         errs.append(f"'{dev}' was already used {used[dev]} times in this video: choose another device")
     prev_icons = set(shot_icons(prev))
     for ic in shot_icons(shot):
-        if ic == shot.get("hero_icon") and ic in prev_icons:
+        if ic == shot.get("hero_icon") and used.get("hero:" + str(ic), 0) >= 1:
+            errs.append(f"hero_icon '{ic}' was already the hero of an earlier scene: a hero is used once per video, pick another")
+        elif ic == shot.get("hero_icon") and ic in prev_icons:
             errs.append(f"hero_icon '{ic}' was used by the previous scene: pick a different icon")
         if used.get("icon:" + str(ic), 0) >= MAX_SAME_ICON:
             errs.append(f"icon '{ic}' was already used {used['icon:' + str(ic)]} times in this video: pick a different icon")
@@ -360,15 +395,22 @@ def validate_shot(shot: Any, ctx: Dict[str, Any], prev: Optional[Dict[str, Any]]
     if norm_word(" ".join([str(shot.get("lead") or ""), kw, str(shot.get("tail") or "")])) == norm_word(ctx["sentence"]):
         errs.append("the on-screen text copies the narration: write the punchline instead")
 
-    texts = [kw, shot.get("lead"), shot.get("tail")] + [it.get("text") for it in shot.get("items") or [] if isinstance(it, dict)]         + [sd.get("label") for sd in shot.get("sides") or [] if isinstance(sd, dict)]         + [(shot.get("number") or {}).get("label") if isinstance(shot.get("number"), dict) else None]
+    mech = shot.get("mech") if isinstance(shot.get("mech"), dict) else {}
+    mech_texts = [mech.get(k) for k in ("from_label", "to_label", "source", "unit")] \
+        + [b.get("label") for b in mech.get("branches") or [] if isinstance(b, dict)] \
+        + [sd.get("label") for sd in mech.get("sides") or [] if isinstance(sd, dict)]
+    texts = mech_texts + [kw, shot.get("lead"), shot.get("tail")] + [it.get("text") for it in shot.get("items") or [] if isinstance(it, dict)]         + [sd.get("label") for sd in shot.get("sides") or [] if isinstance(sd, dict)]         + [(shot.get("number") or {}).get("label") if isinstance(shot.get("number"), dict) else None]
     seen = set()
     for txt in texts:  # the same line twice on screen (tail repeating an item) is wasted space
         t = norm_word(str(txt or ""))
         if t and t in seen:
             errs.append(f"the text '{txt}' appears twice on screen: every slot must say something different")
         seen.add(t)
-    counted = {str(v.get("value")).replace(".0", "") for v in [shot.get("number")] + list(shot.get("sides") or [])
+    counted = {str(v.get("value")).replace(".0", "") for v in [shot.get("number")] + list(shot.get("sides") or []) + list(mech.get("sides") or [])
                if isinstance(v, dict) and v.get("value") is not None}
+    if dev in ("filter", "shrink"):
+        counted |= {str(mech.get(k)).replace(".0", "") for k in ("from", "to") if mech.get(k) is not None}
+    counted |= {str(b.get("share")).replace(".0", "") for b in mech.get("branches") or [] if isinstance(b, dict) and b.get("share") is not None}
     for txt in texts:  # a number already rolling in a counter is not written again next to it
         for m in _DIGITS.findall(str(txt or "").translate(_AR_DIGITS)):
             if m.replace(",", "") in counted:
@@ -411,6 +453,12 @@ def validate_shot(shot: Any, ctx: Dict[str, Any], prev: Optional[Dict[str, Any]]
                 errs.append(f"item {i + 1}: icon '{it.get('icon')}' is not in available_icons")
             if it.get("at"):
                 need_at(f"item {i + 1}.at", it.get("at"))
+    if dev in MECHANISMS:
+        errs += _mech_errors(dev, mech, ctx, need_at)
+        if not str(shot.get("behavior") or "").strip():
+            errs.append("'behavior' is required for a mechanism: what the drawing does (the no-text test)")
+        if shot.get("mech_at"):
+            need_at("mech_at", shot.get("mech_at"))
     if dev == "versus":
         sides = [s for s in shot.get("sides") or [] if isinstance(s, dict)]
         if len(sides) != 2:
@@ -425,6 +473,71 @@ def validate_shot(shot: Any, ctx: Dict[str, Any], prev: Optional[Dict[str, Any]]
             if s.get("at"):
                 need_at(f"side {i + 1}.at", s.get("at"))
     return list(dict.fromkeys(errs))
+
+
+def _num(v: Any) -> Optional[float]:
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _mech_errors(dev: str, m: Dict[str, Any], ctx: Dict[str, Any], need_at) -> List[str]:
+    """Slot rules of the five mechanisms (shapes only; the truth rule for their numbers also runs on all texts)."""
+    e: List[str] = []
+    if not m:
+        return [f"'{dev}' needs a 'mech' object (see the catalogue)"]
+    if m.get("change_at"):
+        need_at("mech.change_at", m.get("change_at"))
+    for k in ("from_label", "to_label"):
+        if _nwords(m.get(k)) > 4:
+            e.append(f"mech.{k} must be at most 4 words")
+    if dev == "level":
+        a, b = _num(m.get("from")), _num(m.get("to"))
+        if a is None or b is None or not (0 <= a <= 1.2 and 0 <= b <= 1.2) or abs(a - b) < 0.05:
+            e.append("level: mech.from and mech.to are fills between 0 and 1.2 that differ by at least 0.05")
+    elif dev == "flow":
+        br = [b for b in m.get("branches") or [] if isinstance(b, dict)]
+        if not 2 <= len(br) <= 4:
+            e.append("flow needs 2-4 branches")
+        if not str(m.get("source") or "").strip() or _nwords(m.get("source")) > 4:
+            e.append("flow: mech.source is 1-4 words")
+        for i, b in enumerate(br):
+            if not str(b.get("label") or "").strip() or _nwords(b.get("label")) > 3:
+                e.append(f"flow branch {i + 1}: label is 1-3 words")
+            if b.get("icon") and not icon_ok(b.get("icon")):
+                e.append(f"flow branch {i + 1}: icon '{b.get('icon')}' is not in available_icons")
+            if b.get("share") is not None and not number_ok(b.get("share"), ctx):
+                e.append(f"flow branch {i + 1}: share {b.get('share')} is not spoken in the sentence nor in its entities: omit it")
+        kp = m.get("keep")
+        if kp is not None and not (isinstance(kp, int) and 0 <= kp < len(br)):
+            e.append("flow: mech.keep is the index (0-based) of one branch")
+    elif dev in ("filter", "shrink"):
+        a, b = _num(m.get("from")), _num(m.get("to"))
+        if a is None or b is None or a <= 0 or b <= 0 or a == b or (dev == "filter" and b >= a):
+            e.append(f"{dev}: mech.from and mech.to are two positive numbers" + (" with to < from" if dev == "filter" else " that differ"))
+        for k in ("from", "to"):
+            if m.get(k) is not None and not number_ok(m.get(k), ctx):
+                e.append(f"{dev}: mech.{k} = {m.get(k)} is not spoken in the sentence nor in its entities")
+        if dev == "filter" and m.get("icon") and not icon_ok(m.get("icon")):
+            e.append(f"filter: icon '{m.get('icon')}' is not in available_icons")
+        if dev == "shrink" and _nwords(m.get("unit")) > 2:
+            e.append("shrink: mech.unit is at most 2 words")
+    elif dev == "tally":
+        sd = [x for x in m.get("sides") or [] if isinstance(x, dict)]
+        if len(sd) != 2:
+            e.append("tally needs exactly 2 sides")
+        vals = [_num(x.get("value")) for x in sd]
+        for i, x in enumerate(sd[:2]):
+            if vals[i] is None or vals[i] <= 0 or not number_ok(x.get("value"), ctx):
+                e.append(f"tally side {i + 1}: value must be a positive number spoken in the sentence or its entities")
+            if not icon_ok(x.get("icon")):
+                e.append(f"tally side {i + 1}: icon '{x.get('icon')}' is not in available_icons")
+            if not str(x.get("label") or "").strip() or _nwords(x.get("label")) > 3:
+                e.append(f"tally side {i + 1}: label is 1-3 words")
+        if len(vals) == 2 and None not in vals and min(vals) > 0 and max(vals) / min(vals) > 30:
+            e.append("tally: the two values differ more than 30x (one side would be a single icon): use shrink or number")
+    return e
 
 
 # ------------------------------------------------------------------ 4. Animation Engineer (deterministic compiler)
@@ -489,7 +602,7 @@ def _counter(num: Dict[str, Any], words, size: int, color: str = "") -> str:
 
 HEADER = """import React from 'react';
 import {AbsoluteFill} from 'remotion';
-import {Abs, ArText, Counter, Hub, Icon, KeyLine, LAYOUT, MapLayer, Pinned, Ribbon, Ring, SceneProps, Stack, Steps, interpolate, useIdle, useKit, useSpr, enter} from '../kit';
+import {Abs, ArText, Counter, Filter, Flow, Hub, Icon, KeyLine, LAYOUT, Level, MapLayer, Pinned, Ribbon, Ring, SceneProps, Shrink, Stack, Steps, Tally, interpolate, useIdle, useKit, useSpr, enter} from '../kit';
 """
 
 HERO_ICON = """
@@ -498,10 +611,10 @@ const HeroIcon: React.FC<{name: string; delay: number; y: number}> = ({name, del
   const p = useSpr(delay, 'bouncy');
   const bob = useIdle(8, 3.2, 0);
   return (
-    <Abs x={LAYOUT.cx - 170} y={y + bob} w={340} h={340} style={{...enter(p, 'pop', 0), display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-      <div style={{position: 'absolute', inset: 0, borderRadius: 170, border: `6px solid ${k.c('accent', 0.85)}`, background: k.c('accent', 0.08)}} />
-      <div style={{position: 'absolute', inset: -34, borderRadius: 204, border: `2px solid ${k.c('accent', 0.25)}`}} />
-      <Icon name={name} size={190} color={k.c('accent')} />
+    <Abs x={LAYOUT.cx - 270} y={y + bob} w={540} h={540} style={{...enter(p, 'pop', 0), display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+      <div data-hero="icon" style={{position: 'absolute', inset: 0, borderRadius: 270, border: `8px solid ${k.c('accent', 0.85)}`, background: k.c('accent', 0.08)}} />
+      <div style={{position: 'absolute', inset: -36, borderRadius: 306, border: `2px solid ${k.c('accent', 0.25)}`}} />
+      <Icon name={name} size={300} color={k.c('accent')} />
     </Abs>
   );
 };
@@ -532,15 +645,37 @@ def compile_shot(shot: Dict[str, Any], ctx: Dict[str, Any], ds: Dict[str, Any]) 
     ribbon = f"      <Ribbon variant={{{int(ds['motif']['ribbon_variant'])}}} />"
     top = "LAYOUT.beat.top + 10"
     helpers, body = "", []
-    if dev == "statement":
+    if dev in MECHANISMS:
+        m = shot["mech"]
+        dur_s = ctx["dur"] / FPS
+        enter_s = _at(words, shot.get("mech_at") or shot.get("keyword_at"), 0.2)
+        ch = _at(words, m.get("change_at"), enter_s + 0.7, hero=False) if m.get("change_at") else enter_s + 0.7
+        ch = round(min(max(ch, enter_s + 0.4), max(enter_s + 0.4, dur_s - 2.0)), 2)  # the change finishes inside the scene
+        t = lambda k: _js(str(m.get(k) or "").strip())
+        if dev == "level":
+            el = f"<Level from={{{float(m['from'])}}} to={{{float(m['to'])}}} fromLabel={{{t('from_label')}}} toLabel={{{t('to_label')}}} delay={{{enter_s}}} change={{{ch}}} />"
+        elif dev == "flow":
+            br = [{"label": str(b["label"]).strip(), **({"share": float(b["share"])} if b.get("share") is not None else {}),
+                   **({"icon": b["icon"]} if b.get("icon") and icon_ok(b.get("icon")) else {})} for b in m["branches"][:4]]
+            el = f"<Flow source={{{t('source')}}} branches={{{_js(br)}}} keep={{{int(m['keep']) if isinstance(m.get('keep'), int) else -1}}} delay={{{enter_s}}} change={{{ch}}} />"
+        elif dev == "filter":
+            ic = f" icon={{{_js(m['icon'])}}}" if m.get("icon") and icon_ok(m.get("icon")) else ""
+            el = f"<Filter from={{{float(m['from'])}}} to={{{float(m['to'])}}}{ic} fromLabel={{{t('from_label')}}} toLabel={{{t('to_label')}}} delay={{{enter_s}}} change={{{ch}}} />"
+        elif dev == "tally":
+            sd = [{"label": str(x["label"]).strip(), "value": float(x["value"]), "icon": x["icon"]} for x in m["sides"][:2]]
+            el = f"<Tally sides={{{_js(sd)}}} delay={{{enter_s}}} change={{{ch}}} />"
+        else:
+            el = f"<Shrink from={{{float(m['from'])}}} to={{{float(m['to'])}}} unit={{{t('unit')}}} fromLabel={{{t('from_label')}}} toLabel={{{t('to_label')}}} delay={{{enter_s}}} change={{{ch}}} />"
+        body = [_keyline(shot, words, top, 92), "      " + el]
+    elif dev == "statement":
         helpers = HERO_ICON
-        body = [f"      <HeroIcon name={{{_js(shot['hero_icon'])}}} delay={{{_at(words, shot.get('hero_at'), 0.0)}}} y={{LAYOUT.beat.top + 60}} />",
-                _keyline(shot, words, "LAYOUT.beat.top + 470", 0)]
+        body = [f"      <HeroIcon name={{{_js(shot['hero_icon'])}}} delay={{{_at(words, shot.get('hero_at'), 0.0)}}} y={{LAYOUT.beat.top + 50}} />",
+                _keyline(shot, words, "LAYOUT.beat.top + 660", 0)]
     elif dev == "number":
         shown = len(f"{float(shot['number']['value']):,.0f}")
         if shown <= 5:  # fits the ring
-            hero = f"""      <Abs x={{LAYOUT.cx - 230}} y={{LAYOUT.beat.top + 360}} w={{460}} h={{460}}>
-        <Ring value={{1}} size={{460}} delay={{{_at(words, shot['number'].get('at'), 0.3)}}}>{_counter(shot['number'], words, 150)}</Ring>
+            hero = f"""      <Abs x={{LAYOUT.cx - 280}} y={{LAYOUT.beat.top + 320}} w={{560}} h={{560}}>
+        <Ring value={{1}} size={{560}} delay={{{_at(words, shot['number'].get('at'), 0.3)}}}>{_counter(shot['number'], words, 170)}</Ring>
       </Abs>"""
         else:  # a long number gets the full width and an underline instead of the ring; its label sits right under it
             size = min(150, int(900 / (0.62 * shown)))
@@ -550,17 +685,17 @@ def compile_shot(shot: Dict[str, Any], ctx: Dict[str, Any], ds: Dict[str, Any]) 
       </Abs>"""
         body = [_keyline(shot, words, top, 96), hero]
         if shown <= 5 and _unit_label(shot["number"]):
-            body.append(f"""      <Abs x={{90}} y={{LAYOUT.beat.top + 860}} w={{900}} style={{{{display: 'flex', justifyContent: 'center'}}}}>
+            body.append(f"""      <Abs x={{90}} y={{LAYOUT.beat.top + 910}} w={{900}} style={{{{display: 'flex', justifyContent: 'center'}}}}>
         <ArText size={{44}} weight={{700}} delay={{{_at(words, shot['number'].get('at'), 0.3) + 0.4}}} maxWidth={{900}}>{{{_js(_unit_label(shot['number']))}}}</ArText>
       </Abs>""")
     elif dev == "pinned":
         num = shot.get("number") if isinstance(shot.get("number"), dict) else None
-        inner = _counter(num, words, 92, "#141210") if num else f"<Icon name={{{_js(shot['hero_icon'])}}} size={{220}} color=\"#141210\" />"
+        inner = _counter(num, words, 110, "#141210") if num else f"<Icon name={{{_js(shot['hero_icon'])}}} size={{260}} color=\"#141210\" />"
         label = _unit_label(num) if num else ""
         lab = f"\n            <ArText size={{38}} weight={{700}} color=\"#141210\" maxWidth={{380}} reveal=\"fade\">{{{_js(label)}}}</ArText>" if label else ""
         delay = _at(words, (num or {}).get("at") or shot.get("hero_at"), 0.2)
         body = [_keyline(shot, words, top, 96),
-                f"""      <Pinned x={{LAYOUT.cx - 230}} y={{LAYOUT.beat.top + 360}} w={{460}} h={{480}} rotate={{-2}} delay={{{delay}}}>
+                f"""      <Pinned x={{LAYOUT.cx - 270}} y={{LAYOUT.beat.top + 340}} w={{540}} h={{540}} rotate={{-2}} delay={{{delay}}}>
         <div style={{{{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 56}}}}>
             {inner}{lab}
         </div>
@@ -700,7 +835,7 @@ def direct_spec(spec: Dict[str, Any], script: Dict[str, Any], job_dir: str, log:
                 errs = sa.static_check(scenes_dir / f"{nm}.tsx")
                 if errs:
                     problems[sid] = [f"compiled code failed the static check (engineer bug): {e}" for e in errs[:3]]
-            ready = {nm: {"ctx": by_id[sid]} for sid, nm in todo.items() if sid not in problems}
+            ready = {nm: {"ctx": dict(by_id[sid], hero_min_w=HERO_MIN_W)} for sid, nm in todo.items() if sid not in problems}
             if ready:
                 with sa.sync_to_remotion(str(scenes_dir), only=set(ready)):
                     pr = sa.sandbox_render(ready, spec["style"], job / "scenes_check")
