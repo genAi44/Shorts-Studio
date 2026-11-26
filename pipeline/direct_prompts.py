@@ -75,7 +75,8 @@ VISUAL_CRAFT = """
 def director_system(photos=True):
 
     pb = f"\n## دليل الحركة:\n{_PLAYBOOK}\n\n" if _PLAYBOOK else ""
-    return pb + DIRECTOR_SYSTEM + VISUAL_CRAFT + AREA_RULES + (PHOTO_RULES if photos else "")
+    from .skills import DIRECTOR_SKILLS, skills_block
+    return pb + DIRECTOR_SYSTEM + VISUAL_CRAFT + AREA_RULES + (PHOTO_RULES if photos else "") + skills_block(DIRECTOR_SKILLS)
 
 
 def director_prompt(script, scenes, mood=""):

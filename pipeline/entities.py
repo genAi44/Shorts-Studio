@@ -348,6 +348,9 @@ def ensure_visuals(beats: List[Dict[str, Any]], per_sentence: List[List[Dict[str
                     record_fallback(f"photo for {et.id} '{e.get('text')}' unavailable ({ex}): symbolic visual", beat_id=et.id)
             start = max(0, f - 4)
             dur = min(INSERT_FRAMES, max(24, dur_frames - start))
+            for b in out:  # an earlier inserted shot ends where this one starts (no two inserted shots stacked)
+                if b.get("_fallback") and int(b.get("from", 0)) < start < int(b.get("from", 0)) + int(b.get("dur", 0)):
+                    b["dur"] = start - int(b.get("from", 0))
             fb.update({"from": start, "dur": dur, "_fallback": True, "_entity": et.id})
             for b in out:  # hide whatever is under the inserted shot so texts never stack
                 if isinstance(b, dict) and int(b.get("from", 0)) < start + dur and start < int(b.get("from", 0)) + int(b.get("dur", 0)):
