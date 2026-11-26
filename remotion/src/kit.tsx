@@ -215,11 +215,14 @@ export const Steps: React.FC<{items: string[]; w?: number; bottom?: number; maxH
   );
 };
 
-const StackRow: React.FC<{y: number; delay: number; text: string; icon?: string; w: number}> = ({y, delay, text, icon, w}) => {
+const StackRow: React.FC<{y: number; delay: number; text: string; icon?: string; w: number; dimAt?: number}> = ({y, delay, text, icon, w, dimAt}) => {
   const k = useKit();
   const p = useSpring(delay, 'snappy');
+  // focus: once the next row enters, this one recedes (only the idea being said is prominent)
+  const dim = dimAt == null ? 1 : interpolate(k.frame, [dimAt * k.fps, dimAt * k.fps + 8], [1, 0.45], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+  const st = enterStyle(p, 'right', 70);
   return (
-    <Abs x={(LAYOUT.W - w) / 2} y={y} w={w} style={enterStyle(p, 'right', 70)}>
+    <Abs x={(LAYOUT.W - w) / 2} y={y} w={w} style={{...st, opacity: (st.opacity as number ?? 1) * dim}}>
       <Card style={{padding: '22px 30px', display: 'flex', alignItems: 'center', flexDirection: 'row-reverse', gap: 24}}>
         {icon ? <Icon name={icon} size={52} color={k.c('accent')} /> : null}
         <div style={{flex: 1}}><ArText size={42} weight={800} align="right" maxWidth={680} reveal="none" lineHeight={1.2}>{text}</ArText></div>
@@ -229,9 +232,10 @@ const StackRow: React.FC<{y: number; delay: number; text: string; icon?: string;
 };
 
 /** Recipe: a list that builds up row by row (rows stay). 2..6 rows. */
-export const Stack: React.FC<{items: {text: string; icon?: string}[]; top?: number; step?: number; delay?: number; w?: number}> = ({items, top = LAYOUT.beat.top + 60, step = 0.5, delay = 0.1, w = 860}) => (
+export const Stack: React.FC<{items: {text: string; icon?: string}[]; top?: number; step?: number; delay?: number; w?: number; focus?: boolean}> = ({items, top = LAYOUT.beat.top + 60, step = 0.5, delay = 0.1, w = 860, focus = false}) => (
   <>
-    {items.slice(0, 6).map((it, i) => <StackRow key={i} y={top + i * 150} delay={delay + i * step} text={it.text} icon={it.icon} w={w} />)}
+    {items.slice(0, 6).map((it, i, all) => <StackRow key={i} y={top + i * 150} delay={delay + i * step} text={it.text} icon={it.icon} w={w}
+      dimAt={focus && i < Math.min(6, all.length) - 1 ? delay + (i + 1) * step : undefined} />)}
   </>
 );
 
@@ -266,4 +270,4 @@ export const Ribbon: React.FC<{variant?: 0 | 1 | 2; width?: number}> = ({variant
 };
 
 export {Pop, interpolate};
-export {Level, Flow, Filter, Tally, Shrink} from './mechanisms';
+export {Level, Flow, Filter, Tally, Shrink, Timeline} from './mechanisms';

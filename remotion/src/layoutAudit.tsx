@@ -125,6 +125,11 @@ const bboxOf = (items: Item[]): number[] | null => {
 /** widest visible [data-hero] element (the scene's main drawing), or null when the scene marks none */
 const heroBox = (): number[] | null => {
   let best: DOMRect | null = null;
+  const ink = document.querySelector('[data-hero-ink]');  // an illustration: the bounds of what is drawn, not of its box
+  if (ink && ancestorOpacity(ink) >= 0.35) {
+    const q = ink.getBoundingClientRect();
+    return [q.left, q.top, q.right, q.bottom].map(Math.round);
+  }
   document.querySelectorAll('[data-hero]').forEach((el) => {
     if (ancestorOpacity(el) < 0.35) return;
     const q = el.getBoundingClientRect();
@@ -141,7 +146,7 @@ export const LayoutAudit: React.FC = () => {
     const id = setTimeout(() => {
       try {
         const items = collect();
-        console.log('[AUDIT]' + JSON.stringify({frame, texts: items.filter((i) => !i.caption).length, bbox: bboxOf(items), hero: heroBox(), issues: auditItems(items)}));
+        console.log('[AUDIT]' + JSON.stringify({frame, texts: items.filter((i) => !i.caption).length, bbox: bboxOf(items), hero: heroBox(), strings: items.filter((i) => !i.caption && !i.icon).map((i) => i.text).slice(0, 60), issues: auditItems(items)}));
       } finally {
         continueRender(handle);
       }

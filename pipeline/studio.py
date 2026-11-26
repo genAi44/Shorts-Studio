@@ -20,14 +20,14 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from .config import FPS, record_fallback
+from .config import FPS, cfg, record_fallback
 
-COMPILER_VERSION = 4
+COMPILER_VERSION = 5
 CAMERA_PUSH = 1.06  # protocol 5.5: push-in 100 % -> 106 % across a scene
 CAMERA_BOB = 6      # px of idle float, so a finished build never sits still
 MAX_DESIGN_TRIES = 3          # first design + 2 retries on validator errors
 MAX_REPAIRS = 2               # redesigns after a failed render gate
-MECHANISMS = ("level", "flow", "filter", "tally", "shrink")  # the drawing IS the explanation (remotion/src/mechanisms.tsx)
+MECHANISMS = ("level", "flow", "filter", "tally", "shrink", "timeline")  # the drawing IS the explanation (remotion/src/mechanisms.tsx)
 DEVICES = MECHANISMS + ("statement", "number", "pinned", "hub", "steps", "stack", "versus", "map")
 REPEATABLE = {"map"}          # the only device that may follow itself (the map is the continuity)
 MAX_SAME_DEVICE = 1           # a device is a look: twice in one video reads as a template
@@ -159,13 +159,16 @@ MECHANISMS (a big drawing that changes state on the "change_at" word; slot "mech
 - level: a tank/sea whose level moves. mech {"from":0.9,"to":0.4,"from_label":"...","to_label":"...","change_at":"word"}
   from/to = fill 0..1.2 (above 1 = overflow). Labels <= 4 words (e.g. the year or state at each level).
 - flow: one stream split into 2-4 branches. mech {"source":"...","branches":[{"label":"...","share":93,"icon":"lucide:x"}],
-  "keep":1,"change_at":"word"}; share in % only when spoken (else omit: equal widths); keep = index of the branch the
-  sentence is about.
-- filter: many become few. mech {"from":24,"to":6,"icon":"lucide:x","from_label":"...","to_label":"...","change_at":"word"}
+  "keep":1,"change_at":"word"}; share in % only when spoken, or when it is 100 minus the other spoken shares (93 spoken
+  -> 7 allowed); else omit (equal widths); keep = index of the branch the sentence is about.
+- filter: many become few (or none: to 0). mech {"from":24,"to":6,"icon":"lucide:x","from_label":"...","to_label":"...","change_at":"word"}
 - tally: two quantities drawn as countable icons. mech {"sides":[{"label":"...","value":24,"icon":"lucide:x"},{...}]}
 - shrink: an area that shrinks or grows (true area). mech {"from":950,"to":600,"unit":"كم²","from_label":"...",
   "to_label":"...","change_at":"word"}
-Numbers inside a mechanism (filter/tally/shrink values, flow shares) are shown on screen: spoken or entity values only.
+- timeline: 2-5 dated events on an axis; a marker travels to each one on its word, earlier ones recede.
+  mech {"events":[{"year":1453,"label":"...","at":"word"}]} years ascending, label <= 4 words.
+Numbers inside a mechanism (filter/tally/shrink values, flow shares, timeline years) are shown on screen: spoken or
+entity values only.
 "mech_at" = the word on which the drawing enters.
 
 DEVICES (generic fallback):
@@ -176,8 +179,9 @@ DEVICES (generic fallback):
 - steps: 2-5 rising steps (labels). Stages, growth, ranking, "from X to Y".
 - stack: 2-5 rows that build up (text + icon). Consequences, features, a dated list.
 - versus: two sides (icon + label + optional number). Comparison, before/after, contrast.
-- map: the vector map of the scene's places, big (only and always when the scene has a map) + the key line +
-  optionally one number. The map is the hero: no hero icon.
+- map: the vector map of the scene's places, big (always when the scene has a map, unless map_already_shown: then
+  the places were already seen and a mechanism may explain the sentence instead) + the key line + optionally one
+  number. The map is the hero: no hero icon.
 
 TEXT: keyword = the KEY idea in 1-4 words (big, accent colour); lead / tail = optional small lines (<= 7 words each).
 On-screen text is the punchline, NOT a copy of the narration (the narration is already captioned). Arabic.
@@ -204,7 +208,7 @@ def shot_brief(ctx: Dict[str, Any], tscene: Dict[str, Any], ds: Dict[str, Any], 
     brief = {
         "scene": {"id": ctx["id"], "role": ctx.get("role"), "seconds": round(ctx["dur"] / FPS, 1), "sentence": ctx["sentence"],
                   "spoken_words": [w["t"] for w in ctx["words"]], "entities": ctx.get("entities", []),
-                  "has_map": bool(ctx.get("map_overlay"))},
+                  "has_map": bool(ctx.get("map_overlay")), "map_already_shown": bool(ctx.get("map_seen"))},
         "direction": {k: tscene.get(k) for k in ("intent", "function", "energy", "link")},
         "video": {"world": ds["motif"].get("world"), "motif": ds["motif"].get("motif"), "core_metaphor": ds["motif"].get("core_metaphor"),
                   "objects": ds["motif"].get("objects") or [], "not": ds.get("not", [])},
@@ -272,7 +276,8 @@ def _nwords(s: Any) -> int:
     return len(str(s or "").split())
 
 
-_UNITS = {"واحد": 1, "واحده": 1, "احد": 1, "احدى": 1, "اثنان": 2, "اثنين": 2, "اثنتان": 2, "اثنتين": 2, "ثلاث": 3, "ثلاثه": 3,
+_UNITS = {"واحد": 1, "واحده": 1, "احد": 1, "احدى": 1, "اثنان": 2, "اثنين": 2, "اثنتان": 2, "اثنتين": 2, "اثنا": 2, "اثني": 2,
+          "اثنتا": 2, "اثنتي": 2, "ثلاث": 3, "ثلاثه": 3,
           "اربع": 4, "اربعه": 4, "خمس": 5, "خمسه": 5, "ست": 6, "سته": 6, "سبع": 7, "سبعه": 7, "ثمان": 8, "ثماني": 8, "ثمانيه": 8,
           "تسع": 9, "تسعه": 9, "عشر": 10, "عشره": 10}
 _TENS = {"عشرون": 20, "ثلاثون": 30, "اربعون": 40, "خمسون": 50, "ستون": 60, "سبعون": 70, "ثمانون": 80, "تسعون": 90}
@@ -284,9 +289,19 @@ _SCALES = {"الف": 1000, "الاف": 1000, "مليون": 10 ** 6, "ملايي�
 _DUALS = {"الفان": 2000, "الفين": 2000, "مليونان": 2 * 10 ** 6, "مليونين": 2 * 10 ** 6}
 
 
+_AR_PUNCT = "،؛؟٪"
+_DECIMAL = {"فاصل", "فاصله"}
+
+
 def _num_token(tok: str) -> Optional[Tuple[str, int]]:
-    t = norm_word(tok).replace("ة", "ه")
-    for cand in ((t, t[1:]) if t.startswith("و") and len(t) > 2 else (t,)):
+    t = norm_word(tok).replace("ة", "ه").strip(_AR_PUNCT)  # norm_word keeps U+060C..: the Arabic comma is in that range
+    cands = [t]
+    if t.startswith("و") and len(t) > 2:
+        cands.append(t[1:])
+    for c in list(cands):  # attached prepositions: "بألفين", "لعشرين", "كمئة"
+        if c[:1] in ("ب", "ل", "ك") and len(c) > 3:
+            cands.append(c[1:])
+    for cand in cands:
         for kind, table in (("unit", _UNITS), ("unit", _TENS), ("hundred", _HUNDREDS), ("scale", _SCALES), ("unit", _DUALS)):
             if cand in table:
                 return kind, table[cand]
@@ -295,13 +310,27 @@ def _num_token(tok: str) -> Optional[Tuple[str, int]]:
 
 def word_numbers(text: str) -> set:
     """Numbers written in Arabic words ("عشرون ألف ومئتان وواحد وأربعون" -> 20241, "سبعة عشر مليون" -> 17000000)."""
-    out, total, cur, seen = set(), 0, 0, False
+    out, total, cur, seen, whole = set(), 0, 0, False, None
+
+    def flush():
+        nonlocal total, cur, seen, whole
+        if seen:
+            n = total + cur
+            if whole is not None:  # "اثني عشر فاصل ستة" -> 12.6
+                out.add(whole)
+                n = whole + n / 10 ** len(str(n))
+            out.add(round(n, 6) if isinstance(n, float) else n)
+        total, cur, seen, whole = 0, 0, False, None
+
     for tok in str(text or "").split() + ["."]:
+        if norm_word(tok).replace("ة", "ه").strip(_AR_PUNCT) in _DECIMAL and seen and whole is None:
+            whole, total, cur, seen = total + cur, 0, 0, False
+            continue
         nt = _num_token(tok)
         if nt is None:
-            if seen:
-                out.add(total + cur)
-            total, cur, seen = 0, 0, False
+            if whole is not None and not seen:  # "فاصل" with no digits after it: keep the whole part
+                total, cur, seen, whole = whole, 0, True, None
+            flush()
             continue
         kind, v = nt
         seen = True
@@ -312,7 +341,17 @@ def word_numbers(text: str) -> set:
             cur *= 100
         else:
             cur += v
+        if tok.rstrip()[-1:] in "،,.؛:":  # a comma ends the number (after this word)
+            flush()
     return out
+
+
+_PERCENT = re.compile(r"[%٪]|بالمئ|بالمائ|في المئ|في المائ")
+
+
+def _spoken(v: float, ctx: Dict[str, Any]) -> bool:
+    from .direct import _number_in_text
+    return _number_in_text(int(v) if float(v).is_integer() else v, ctx["sentence"]) or v in word_numbers(ctx["sentence"])
 
 
 def number_ok(value: Any, ctx: Dict[str, Any]) -> bool:
@@ -323,7 +362,10 @@ def number_ok(value: Any, ctx: Dict[str, Any]) -> bool:
         v = float(value)
     except (TypeError, ValueError):
         return False
-    if _number_in_text(int(v) if v.is_integer() else v, ctx["sentence"]) or v in word_numbers(ctx["sentence"]):
+    if _spoken(v, ctx):
+        return True
+    # derived from the sentence's own logic (Rule 1.4): the rest of a spoken percentage (93 % -> 7), and the 100 % whole
+    if _PERCENT.search(ctx["sentence"]) and 0 < v <= 100 and (v == 100 or _spoken(100 - v, ctx)):
         return True
     for e in ctx.get("entities", []):  # verified entity values (numbers written in words are resolved there)
         for k in ("value", "year", "to", "from", "born", "died"):
@@ -366,7 +408,7 @@ def validate_shot(shot: Any, ctx: Dict[str, Any], prev: Optional[Dict[str, Any]]
     if dev not in DEVICES:
         return [f"device must be one of {', '.join(DEVICES)}"]
     has_map = bool(ctx.get("map_overlay"))
-    if has_map and dev != "map":
+    if has_map and dev != "map" and not ctx.get("map_seen"):
         errs.append("this scene has a map (its places must be shown): device must be 'map'")
     if dev == "map" and not has_map:
         errs.append("device 'map' is only for scenes that have a map")
@@ -398,7 +440,8 @@ def validate_shot(shot: Any, ctx: Dict[str, Any], prev: Optional[Dict[str, Any]]
     mech = shot.get("mech") if isinstance(shot.get("mech"), dict) else {}
     mech_texts = [mech.get(k) for k in ("from_label", "to_label", "source", "unit")] \
         + [b.get("label") for b in mech.get("branches") or [] if isinstance(b, dict)] \
-        + [sd.get("label") for sd in mech.get("sides") or [] if isinstance(sd, dict)]
+        + [sd.get("label") for sd in mech.get("sides") or [] if isinstance(sd, dict)] \
+        + [ev.get("label") for ev in mech.get("events") or [] if isinstance(ev, dict)]
     texts = mech_texts + [kw, shot.get("lead"), shot.get("tail")] + [it.get("text") for it in shot.get("items") or [] if isinstance(it, dict)]         + [sd.get("label") for sd in shot.get("sides") or [] if isinstance(sd, dict)]         + [(shot.get("number") or {}).get("label") if isinstance(shot.get("number"), dict) else None]
     seen = set()
     for txt in texts:  # the same line twice on screen (tail repeating an item) is wasted space
@@ -410,15 +453,18 @@ def validate_shot(shot: Any, ctx: Dict[str, Any], prev: Optional[Dict[str, Any]]
                if isinstance(v, dict) and v.get("value") is not None}
     if dev in ("filter", "shrink"):
         counted |= {str(mech.get(k)).replace(".0", "") for k in ("from", "to") if mech.get(k) is not None}
+    counted |= {str(ev.get("year")).replace(".0", "") for ev in mech.get("events") or [] if isinstance(ev, dict) and ev.get("year") is not None}
     counted |= {str(b.get("share")).replace(".0", "") for b in mech.get("branches") or [] if isinstance(b, dict) and b.get("share") is not None}
     for txt in texts:  # a number already rolling in a counter is not written again next to it
         for m in _DIGITS.findall(str(txt or "").translate(_AR_DIGITS)):
             if m.replace(",", "") in counted:
                 errs.append(f"'{m}' in '{txt}' is already shown by the counter: remove it from the text")
+    derived = {str(b.get("share")).replace(".0", "") for b in mech.get("branches") or []
+               if isinstance(b, dict) and b.get("share") is not None and _complement(b, [x for x in mech.get("branches") or [] if isinstance(x, dict)], ctx)}
     for txt in texts:  # truth rule for numbers written inside any on-screen text, not only the number slot
         for m in _DIGITS.findall(str(txt or "").translate(_AR_DIGITS)):
             n = m.replace(",", "")
-            if n and not number_ok(n, ctx):
+            if n and n not in derived and not number_ok(n, ctx):
                 errs.append(f"'{m}' in the on-screen text '{txt}' is not spoken in the sentence nor in its entities: remove it")
 
     def need_at(label: str, at: Any):
@@ -482,6 +528,16 @@ def _num(v: Any) -> Optional[float]:
         return None
 
 
+def _complement(b: Dict[str, Any], br: List[Dict[str, Any]], ctx: Dict[str, Any]) -> bool:
+    """A share that is exactly 100 minus all the other shares, which are themselves spoken: derived, not invented."""
+    others = [x for x in br if x is not b]
+    vals = [_num(x.get("share")) for x in others]
+    if not others or None in vals or not all(number_ok(x.get("share"), ctx) for x in others):
+        return False
+    v = _num(b.get("share"))
+    return v is not None and abs(100 - sum(vals) - v) < 0.01
+
+
 def _mech_errors(dev: str, m: Dict[str, Any], ctx: Dict[str, Any], need_at) -> List[str]:
     """Slot rules of the five mechanisms (shapes only; the truth rule for their numbers also runs on all texts)."""
     e: List[str] = []
@@ -507,22 +563,38 @@ def _mech_errors(dev: str, m: Dict[str, Any], ctx: Dict[str, Any], need_at) -> L
                 e.append(f"flow branch {i + 1}: label is 1-3 words")
             if b.get("icon") and not icon_ok(b.get("icon")):
                 e.append(f"flow branch {i + 1}: icon '{b.get('icon')}' is not in available_icons")
-            if b.get("share") is not None and not number_ok(b.get("share"), ctx):
-                e.append(f"flow branch {i + 1}: share {b.get('share')} is not spoken in the sentence nor in its entities: omit it")
+            if b.get("share") is not None and not number_ok(b.get("share"), ctx) and not _complement(b, br, ctx):
+                e.append(f"flow branch {i + 1}: share {b.get('share')} is not spoken in the sentence nor in its entities "
+                         "(a share is allowed when it is 100 minus the other, spoken, shares): omit it")
         kp = m.get("keep")
         if kp is not None and not (isinstance(kp, int) and 0 <= kp < len(br)):
             e.append("flow: mech.keep is the index (0-based) of one branch")
     elif dev in ("filter", "shrink"):
         a, b = _num(m.get("from")), _num(m.get("to"))
-        if a is None or b is None or a <= 0 or b <= 0 or a == b or (dev == "filter" and b >= a):
-            e.append(f"{dev}: mech.from and mech.to are two positive numbers" + (" with to < from" if dev == "filter" else " that differ"))
+        lo = 0 if dev == "filter" else 1e-9  # a filter may end with none left ("you buy nothing")
+        if a is None or b is None or a <= 0 or b < lo or a == b or (dev == "filter" and b >= a):
+            e.append(f"{dev}: mech.from and mech.to are " + ("numbers with 0 <= to < from" if dev == "filter" else "two positive numbers that differ"))
         for k in ("from", "to"):
-            if m.get(k) is not None and not number_ok(m.get(k), ctx):
+            if m.get(k) is not None and not (k == "to" and dev == "filter" and _num(m.get(k)) == 0) and not number_ok(m.get(k), ctx):
                 e.append(f"{dev}: mech.{k} = {m.get(k)} is not spoken in the sentence nor in its entities")
         if dev == "filter" and m.get("icon") and not icon_ok(m.get("icon")):
             e.append(f"filter: icon '{m.get('icon')}' is not in available_icons")
         if dev == "shrink" and _nwords(m.get("unit")) > 2:
             e.append("shrink: mech.unit is at most 2 words")
+    elif dev == "timeline":
+        ev = [x for x in m.get("events") or [] if isinstance(x, dict)]
+        if not 2 <= len(ev) <= 5:
+            e.append("timeline needs 2-5 events")
+        ys = [_num(x.get("year")) for x in ev]
+        for i, x in enumerate(ev):
+            if ys[i] is None or not number_ok(x.get("year"), ctx):
+                e.append(f"timeline event {i + 1}: year {x.get('year')} is not spoken in the sentence nor in its entities")
+            if not str(x.get("label") or "").strip() or _nwords(x.get("label")) > 4:
+                e.append(f"timeline event {i + 1}: label is 1-4 words")
+            if x.get("at"):
+                need_at(f"timeline event {i + 1}.at", x.get("at"))
+        if None not in ys and any(b <= a for a, b in zip(ys, ys[1:])):
+            e.append("timeline: events must be in strictly ascending years (two events in one year is not a timeline: use another device)")
     elif dev == "tally":
         sd = [x for x in m.get("sides") or [] if isinstance(x, dict)]
         if len(sd) != 2:
@@ -602,7 +674,7 @@ def _counter(num: Dict[str, Any], words, size: int, color: str = "") -> str:
 
 HEADER = """import React from 'react';
 import {AbsoluteFill} from 'remotion';
-import {Abs, ArText, Counter, Filter, Flow, Hub, Icon, KeyLine, LAYOUT, Level, MapLayer, Pinned, Ribbon, Ring, SceneProps, Shrink, Stack, Steps, Tally, interpolate, useIdle, useKit, useSpr, enter} from '../kit';
+import {Abs, ArText, Counter, Filter, Flow, Hub, Icon, KeyLine, LAYOUT, Level, MapLayer, Pinned, Ribbon, Ring, SceneProps, Shrink, Stack, Steps, Tally, Timeline, interpolate, useIdle, useKit, useSpr, enter} from '../kit';
 """
 
 HERO_ICON = """
@@ -664,6 +736,15 @@ def compile_shot(shot: Dict[str, Any], ctx: Dict[str, Any], ds: Dict[str, Any]) 
         elif dev == "tally":
             sd = [{"label": str(x["label"]).strip(), "value": float(x["value"]), "icon": x["icon"]} for x in m["sides"][:2]]
             el = f"<Tally sides={{{_js(sd)}}} delay={{{enter_s}}} change={{{ch}}} />"
+        elif dev == "timeline":
+            evs = [{"year": int(_num(x["year"])), "label": str(x["label"]).strip()} for x in m["events"][:5]]
+            times, last = [], enter_s
+            for i, x in enumerate(m["events"][:5]):  # each event on its word; never before the previous one; inside the scene
+                tt = _at(words, x.get("at"), last + 0.8, hero=(i == 0)) if x.get("at") else last + (0.4 if i == 0 else 0.8)
+                tt = round(min(max(tt, last + (0 if i == 0 else 0.5)), dur_s - 0.8), 2)
+                times.append(tt)
+                last = tt
+            el = f"<Timeline events={{{_js(evs)}}} times={{{_js(times)}}} delay={{{enter_s}}} />"
         else:
             el = f"<Shrink from={{{float(m['from'])}}} to={{{float(m['to'])}}} unit={{{t('unit')}}} fromLabel={{{t('from_label')}}} toLabel={{{t('to_label')}}} delay={{{enter_s}}} change={{{ch}}} />"
         body = [_keyline(shot, words, top, 92), "      " + el]
@@ -716,7 +797,7 @@ def compile_shot(shot: Dict[str, Any], ctx: Dict[str, Any], ds: Dict[str, Any]) 
         known = [a for a in ats if a >= 0]
         step = round(min(1.2, max(0.25, (known[-1] - known[0]) / (len(known) - 1))), 2) if len(known) >= 2 else 0.5
         body = [_keyline(shot, words, top, 92),
-                f"      <Stack top={{LAYOUT.beat.top + 300}} step={{{step}}} delay={{{known[0] if known else 0.3}}} items={{{_js(items)}}} />"]
+                f"      <Stack top={{LAYOUT.beat.top + 300}} step={{{step}}} delay={{{known[0] if known else 0.3}}} items={{{_js(items)}}} focus />"]
     elif dev == "versus":
         helpers = SIDE
         sides = shot["sides"][:2]
@@ -777,8 +858,83 @@ def _design_valid(ctx, tscene, ds, prev, used, ask, extra_errors=None, last=None
     return None, errs, tries
 
 
+def map_places(ov: Any) -> frozenset:
+    """The places a map overlay shows (Arabic names of its waypoints)."""
+    if not isinstance(ov, dict):
+        return frozenset()
+    return frozenset(str(w.get("name_ar") or w.get("name_en") or "") for w in ov.get("waypoints") or [] if isinstance(w, dict)) - {""}
+
+
+def illustrate_all(ctxs, shots, ds, style, job: Path, scenes_dir: Path, bible: Dict[str, Any], log, write=None) -> Dict[str, str]:
+    """Bespoke SVG hero per scene by the illustrator model, through the real render gates, max 2 repairs each.
+    The first showing of a map keeps the map device (geography is drawn from data, not imagined). Returns sid -> name."""
+    from concurrent.futures import ThreadPoolExecutor
+    from . import illustrator as il
+    from . import scene_author as sa
+    todo = {c["id"]: c for c in ctxs if (shots.get(c["id"]) or {}).get("device") != "map"}
+    names = {sid: il.name_for(c, shots.get(sid), ds) for sid, c in todo.items()}
+    accepted: Dict[str, str] = {}
+    for sid in list(todo):
+        hit = sa.CACHE_DIR / f"{names[sid]}.tsx"
+        if hit.exists():
+            shutil.copyfile(hit, scenes_dir / f"{names[sid]}.tsx")
+            accepted[sid] = names[sid]
+            bible["shots"].setdefault(sid, {})["illustration"] = {"status": "cache"}
+            todo.pop(sid)
+    codes: Dict[str, str] = {}
+    problems: Dict[str, List[str]] = {}
+    for rnd in range(MAX_REPAIRS + 1):
+        if not todo:
+            break
+        with ThreadPoolExecutor(max_workers=4) as ex:
+            futs = {sid: ex.submit(il.draw, c, shots.get(sid), ds, "_" + re.sub(r"\W", "", sid), problems.get(sid), codes.get(sid), write)
+                    for sid, c in todo.items()}
+            res = {sid: f.result() for sid, f in futs.items()}
+        now: Dict[str, List[str]] = {}
+        ready = {}
+        for sid, hero in res.items():
+            rec = bible["shots"].setdefault(sid, {}).setdefault("illustration", {"calls": 0})
+            rec["calls"] = rec.get("calls", 0) + 1
+            if not hero:
+                now[sid] = ["the reply had no `const Hero` component (return only the code)"]
+                continue
+            codes[sid] = hero
+            rec["plan"] = il.plan_of(hero)
+            path = scenes_dir / f"{names[sid]}.tsx"
+            path.write_text(il.scene_code(hero, shots.get(sid), todo[sid], ds), encoding="utf-8")
+            errs = sa.static_check(path)
+            if errs:
+                now[sid] = [f"the code failed the type/safety check: {e}" for e in errs[:5]]
+                continue
+            ready[names[sid]] = {"ctx": dict(todo[sid], hero_min_ink=il.HERO_MIN_INK, hero_min_w=il.HERO_MIN_SIDE,
+                                             allowed_numbers=il.allowed_numbers(todo[sid]))}
+        pr: Dict[str, List[str]] = {}
+        if ready:
+            with sa.sync_to_remotion(str(scenes_dir), only=set(ready)):
+                pr = sa.sandbox_render(ready, style, job / "scenes_check")
+        for sid in list(res):
+            nm = names[sid]
+            if sid not in now and pr.get(nm):
+                now[sid] = pr[nm]
+            rec = bible["shots"][sid]["illustration"]
+            if now.get(sid):
+                rec.setdefault("problems", []).append(now[sid][:6])
+                (scenes_dir / f"{nm}.tsx").unlink(missing_ok=True)
+                log(f"studio: illustration {sid} rejected ({now[sid][0][:90]})")
+            else:
+                accepted[sid] = nm
+                rec["status"] = "accepted"
+                shutil.copyfile(scenes_dir / f"{nm}.tsx", sa.CACHE_DIR / f"{nm}.tsx")
+                log(f"studio: illustrated {sid}: {rec.get('plan', '')[:90]}")
+                todo.pop(sid)
+        problems = now
+    for sid in todo:
+        bible["shots"][sid]["illustration"]["status"] = "fallback_to_device"
+    return accepted
+
+
 def direct_spec(spec: Dict[str, Any], script: Dict[str, Any], job_dir: str, log: Callable[[str], None] = print, ask=_ask,
-                gates: bool = True) -> Dict[str, Any]:
+                gates: bool = True, illustrate_write=None) -> Dict[str, Any]:
     """Replace each scene's beats by a compiled studio shot. Scenes that cannot pass keep their beats (legacy path) and
     are listed in production.json -> fallback. Mutates and returns the spec."""
     from . import scene_author as sa
@@ -798,6 +954,12 @@ def direct_spec(spec: Dict[str, Any], script: Dict[str, Any], job_dir: str, log:
                              "design_system": {k: v for k, v in ds.items() if k != "preset_guide"}, "shots": {}, "fallback": []}
     log(f"studio: treatment '{t['world'][:60]}', motif ribbon {ds['motif']['ribbon_variant']}")
 
+    seen_places: set = set()
+    for c in ctxs:  # the same places on a map twice is a repeat: the second scene may explain instead of re-showing
+        pl = map_places(c.get("map_overlay"))
+        c["map_seen"] = bool(pl) and pl <= seen_places
+        seen_places |= pl
+
     shots: Dict[str, Dict[str, Any]] = {}
     used: Dict[str, int] = {}
     prev = None
@@ -812,8 +974,12 @@ def direct_spec(spec: Dict[str, Any], script: Dict[str, Any], job_dir: str, log:
         log(f"studio: {ctx['id']} -> {shot['device'] if shot else 'INVALID'} ({tries} design call(s))")
 
     by_id = {c["id"]: c for c in ctxs}
-    pending = {sid: s for sid, s in shots.items()}
     accepted: Dict[str, str] = {}
+    illustrated: Dict[str, str] = {}
+    if gates and cfg("STUDIO_ILLUSTRATE", "1") == "1":  # bespoke drawings first; the compiled devices are the fallback
+        illustrated = illustrate_all(ctxs, shots, ds, spec["style"], job, scenes_dir, bible, log, write=illustrate_write)
+        accepted.update(illustrated)
+    pending = {sid: s for sid, s in shots.items() if sid not in illustrated}
     for rnd in range(MAX_REPAIRS + 1):
         if not pending:
             break
@@ -877,13 +1043,14 @@ def direct_spec(spec: Dict[str, Any], script: Dict[str, Any], job_dir: str, log:
             record_fallback(f"studio: scene '{s['id']}' kept its built-in beats", beat_id=s["id"])
             continue
         ctx = by_id[s["id"]]
-        s["authored"] = {"scene_id": nm, "status": "studio", "device": shots[s["id"]]["device"]}
+        s["authored"] = {"scene_id": nm, "status": "studio", "device": "illustration" if s["id"] in illustrated else shots[s["id"]]["device"]}
         s["beats"] = [{"kind": "authored", "scene_id": nm, "from": 0, "dur": s["dur"], "data": {k: v for k, v in ctx.items() if k != "id"},
                        "settled": s.get("role") == "hook"}]
         s["map_overlay"] = None  # the shot draws the map itself through MapLayer(data.map_overlay)
     spec["authored_dir"] = str(scenes_dir)
     bible["summary"] = {"scenes": len(ctxs), "accepted": len(accepted), "fallback": len(bible["fallback"]),
-                        "devices": [shots.get(c["id"], {}).get("device") for c in ctxs]}
+                        "devices": ["illustration" if c["id"] in illustrated else shots.get(c["id"], {}).get("device") for c in ctxs],
+                        "illustrated": len(illustrated)}
     (job / "production.json").write_text(json.dumps(bible, ensure_ascii=False, indent=1), encoding="utf-8")
     log(f"studio: {bible['summary']}")
     return spec

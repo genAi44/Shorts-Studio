@@ -17,6 +17,7 @@ import hashlib
 import json
 import os
 import shutil
+import re
 import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -183,6 +184,21 @@ def static_check(path: Path) -> List[str]:
         return [f"static check could not run: {e}"]
 
 
+_AR_DIG = str.maketrans("٠١٢٣٤٥٦٧٨٩٫٬", "0123456789.,")
+
+
+def _ink(path: Path, box: List[int]) -> float:
+    """Share of strong-gradient pixels inside the hero box: an empty or washed-out drawing scores ~0, a real one >= ~0.02."""
+    import numpy as np
+    from PIL import Image
+    g = np.asarray(Image.open(path).convert("L"), dtype="int16")
+    l, t, r, b = [max(0, int(v)) for v in box]
+    g = g[t:b, l:r]
+    if g.shape[0] < 4 or g.shape[1] < 4:
+        return 0.0
+    return float(((np.abs(np.diff(g, axis=1))[:-1] + np.abs(np.diff(g, axis=0))[:, :-1]) > 24).mean())
+
+
 def _flat(path: Path) -> bool:
     import numpy as np
     from PIL import Image
@@ -243,9 +259,21 @@ def sandbox_render(items: Dict[str, Dict[str, Any]], style: Dict[str, Any], work
             late = idx >= 1  # entrance (first test frame) may cross edges / overlap; later frames may not
             if idx == 1 and (_flat(img) or aud.get("texts", 0) == 0):
                 problems[name].append("the scene is blank or has no visible text at mid-scene")
+            if idx >= 1 and ctx_of(name).get("hero_min_ink") and aud.get("hero"):
+                ink = _ink(img, aud["hero"])
+                if ink < ctx_of(name)["hero_min_ink"]:
+                    problems[name].append(f"the drawing is nearly empty at {int(TEST_FRAME_FRACTIONS[idx] * 100)} % of the scene "
+                                          f"(detail {ink:.3f} < {ctx_of(name)['hero_min_ink']}): draw the subject big and detailed from the start")
+            if idx >= 1 and ctx_of(name).get("allowed_numbers") is not None:
+                for txt in aud.get("strings", []):
+                    for m in re.findall(r"\d[\d,.]*", txt.translate(_AR_DIG)):
+                        n = m.rstrip(".,").replace(",", "")
+                        if n and n not in ctx_of(name)["allowed_numbers"]:
+                            problems[name].append(f"the number {m} in '{txt}' is not spoken in the sentence: show only spoken numbers")
             hero = aud.get("hero")  # widest [data-hero] box: the main drawing must be big (it carries the explanation)
-            if idx == 1 and hero and ctx_of(name).get("hero_min_w") and hero[2] - hero[0] < ctx_of(name)["hero_min_w"]:
-                problems[name].append(f"the hero drawing is too small: {hero[2] - hero[0]} px wide (need >= {ctx_of(name)['hero_min_w']}); make the main element bigger")
+            if idx == 1 and hero and ctx_of(name).get("hero_min_w") and max(hero[2] - hero[0], hero[3] - hero[1]) < ctx_of(name)["hero_min_w"]:
+                problems[name].append(f"the hero drawing is too small: {hero[2] - hero[0]}x{hero[3] - hero[1]} px "
+                                      f"(its longest side needs >= {ctx_of(name)['hero_min_w']}); make the main subject much bigger")
             bb = aud.get("bbox")
             if bb and hero:  # the drawing is content too, not only text and icons
                 bb = [min(bb[0], hero[0]), min(bb[1], hero[1]), max(bb[2], hero[2]), max(bb[3], hero[3])]

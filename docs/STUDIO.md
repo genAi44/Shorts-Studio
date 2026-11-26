@@ -40,6 +40,21 @@ each scene, in order ─► Scene Designer ─► shot spec ─► validator ─
 Devices: `statement, number, pinned, hub, steps, stack, versus, map`. Each has a fixed, gate-tested layout; the
 designer chooses *what* and *when*, never pixel positions.
 
+## Illustrator (phase 3): a bespoke drawing per scene
+`pipeline/illustrator.py`, LLM role `illustrator` (DeepSeek V3 by default: `ILLUSTRATOR_PROVIDER` / `ILLUSTRATOR_MODEL`).
+This is the reference project's method (a phone with its dot projector, a face mesh, a jam shelf, a battery that
+overflows), kept inside our guarantees:
+- One call per scene (4 in parallel): a `/* PLAN */` (metaphor, behaviour, beats, continuity) then `const Hero`, SVG
+  children for a fixed 920x800 stage under the compiled key line. The brief carries the word timings in seconds, the
+  palette hexes, the video's core metaphor and recurring objects, the allowed numbers, an id suffix.
+- Gates: tsc + allowlist, the real render with the layout audit, `[data-hero-ink]` (the drawn bounds) longest side
+  >= 600 px, ink (strong-gradient share) >= 0.012 in the stage at mid and late scene, and the truth rule on every number
+  actually rendered (`strings` in the audit). Max 2 repairs with the problems and the previous code.
+- The first showing of a map keeps the map device (geography from data, not imagined); a drawing that still fails
+  falls back to the compiled device of the shot. `STUDIO_ILLUSTRATE=0` turns it off.
+Psychology video with it: 8/8 drawn (3 repaired: an unspoken 0, a type error, overlapping text): a jam shelf that
+empties, a mental battery draining before the choice doors, a brain with a jammed gear, a tipping scale.
+
 ## Mechanisms (learned from the `remotion` project: the picture IS the explanation)
 `remotion/src/mechanisms.tsx`, exported by the kit. Each one draws a physical thing that changes state on a spoken word
 (`mech.change_at`), so the motion alone tells what happens (the "no-text test", written by the designer as `behavior`):
@@ -50,11 +65,22 @@ designer chooses *what* and *when*, never pixel positions.
 | `filter` | a grid of N things of which all but k fade away | selection, survival, choice |
 | `tally` | two columns of countable icons in proportion | quantities compared |
 | `shrink` | an area shrinking / growing with true area (sqrt scale), old outline dashed | surfaces, territory, share |
+| `timeline` | 2-5 years on a vertical axis, a marker travels to each on its word, earlier ones recede | history, dated predictions |
 The designer is told to prefer a mechanism and to draw the video's `core_metaphor` / recurring `objects` (chosen by the
 creative director); the generic devices are the fallback. Numbers inside a mechanism follow the truth rule.
 **Hero gate:** the main drawing carries `[data-hero]`; at mid-scene it must be >= 520 px wide (`HERO_MIN_W`), and it counts
 as content for the sparse check. The generic heroes grew to match (icon ring 540, number ring 560, pinned card 540).
 Not taken from it: free-form LLM TSX (its own stress test failed 6/10 scenes), decorative telemetry text, tiny labels.
+
+## Phase 2
+- **A repeated map does not own the scene:** when an earlier scene already showed the same places (`map_places`), the
+  scene may use a mechanism instead (`map_already_shown` in the brief). The first showing stays mandatory.
+- **Derived numbers (Rule 1.4):** the rest of a spoken percentage (93 % -> 7) and the 100 % whole are allowed
+  (`number_ok`); a flow share that completes the other spoken shares to 100 too.
+- **Focus:** `Stack` rows recede to 45 % when the next row enters (studio only, `focus` prop): only the idea being said
+  is prominent. Not on `Steps` (a growth reads as one picture) nor `Hub` (parts of one whole).
+- **Number words:** the parser now ends a number at an Arabic comma (U+060C survives `norm_word`), strips attached
+  ب/ل/ك («بألفين»), reads «اثني عشر» and decimals with «فاصل» (12.6). v4 lost two scenes to these bugs.
 
 ## Rules the validator enforces (before any code)
 - A scene with a map must use `map`; `map` only with a map.
@@ -130,3 +156,13 @@ Core metaphor chosen by the creative director: «حوض ماء زجاجي علي
 «يهبط»), versus, statement. 8/8 accepted. Fixed after v3: shrink showed decimals mid-change (926.2), and two scenes shared the
 same hero icon (now once per video). lead/body1 (93 % / 7 %) would suit `flow`, but 7 is not spoken in lead and body1 has
 a map (map is mandatory there).
+
+### Phase 2 runs
+| run | studio scenes | mechanisms | note |
+|---|---|---|---|
+| Dead Sea v4 | 6/8 | flow, shrink | lead / body3 lost to number-word bugs (comma, «بألفين», «اثني عشر فاصل ستة») |
+| Dead Sea v5 (parser fixed) | 8/8 | shrink ×2, level, timeline | lead: the artery shrinks 100 % -> 7 % (derived from 93 %); body3: 2034 -> 2050 |
+| «لماذا تشلّنا كثرة الخيارات؟» (chalkboard, new topic, full app path) | 7/8 | timeline, flow | hook lost: the designer wanted 24 -> 0 (filter could not end at 0, now it can); body1 put two events in 2004 (now rejected) |
+Generalisation: on the geographic topic the mechanisms carry most scenes; on the psychology topic the abstract lines
+(«ظاهرة نفسية», «ماذا يحدث داخل دماغك») still fall back to an icon in a ring. Weak spots: Shrink puts its number at the
+centre even when the area is tiny (7 %); icon choice for questions («؟» vs a route icon).

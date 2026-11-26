@@ -122,7 +122,7 @@ export const Filter: React.FC<{from: number; to: number; icon?: string; fromLabe
   const ch = change ?? delay + 0.9;
   const q = useProgress(ch, dur);
   const n = Math.max(2, Math.min(40, Math.round(from)));
-  const kk = Math.max(1, Math.min(n - 1, Math.round((to / from) * n)));
+  const kk = to <= 0 ? 0 : Math.max(1, Math.min(n - 1, Math.round((to / from) * n)));  // to 0: every one fades
   const kept = new Set(Array.from({length: kk}, (_, j) => Math.round(((j + 0.5) * n) / kk - 0.5)));
   const cols = n <= 9 ? 3 : n <= 16 ? 4 : n <= 30 ? 6 : 8;
   const rows = Math.ceil(n / cols);
@@ -216,6 +216,46 @@ export const Shrink: React.FC<{from: number; to: number; unit?: string; fromLabe
       <Label x={cx - 300} y={cy - 40} w={600} text={`${fmt(Number.isInteger(from) && Number.isInteger(to) ? Math.round(from + (to - from) * q) : from + (to - from) * q)} ${unit}`.trim()} size={64} delay={delay + 0.2} />
       {toLabel ? <Label x={cx - 300} y={cy + 40} w={600} text={toLabel} size={38} color={k.c('text', 0.85)} delay={ch + dur * 0.7} weight={700} /> : null}
       {fromLabel ? <Label x={cx - 300} y={cy + R * s(from) * 0.86 + 24} w={600} text={`${fromLabel} ${fmt(from)} ${unit}`.trim()} size={36} color={k.c('text', 0.65)} delay={ch} weight={700} /> : null}
+    </Stage>
+  );
+};
+
+// ------------------------------------------------------------------ Timeline: years on a vertical axis, a marker that travels
+/** events: 2-5 {year, label}; `times` = second at which each event is reached (its spoken word). Earlier events recede. */
+export const Timeline: React.FC<{events: {year: number; label: string}[]; times: number[]; delay?: number}> = ({events, times, delay = 0.2}) => {
+  const k = useKit();
+  const ev = events.slice(0, 5);
+  const n = Math.max(2, ev.length);
+  const ax = 700, y0 = 50, y1 = 650;  // axis on the right part (Arabic reads from the right): years right of it, labels left
+  const yOf = (i: number) => y0 + (i * (y1 - y0)) / (n - 1);
+  const ts = ev.map((_, i) => times[i] ?? delay + 0.6 + i * 0.8);
+  // marker position: piecewise between the events it has reached
+  let pos = 0;
+  ts.forEach((t, i) => { if (i > 0) pos += clamp01((k.t - (t - 0.35)) / 0.35); });
+  const cur = Math.min(ev.length - 1, Math.floor(pos + 1e-6));
+  const my = yOf(0) + pos * ((y1 - y0) / (n - 1));
+  return (
+    <Stage delay={delay}>
+      <svg width={STAGE.w} height={STAGE.h} data-hero="timeline" style={{position: 'absolute', left: 0, top: 0, overflow: 'visible'}}>
+        <line x1={ax} x2={ax} y1={y0} y2={y1} stroke={k.c('text', 0.25)} strokeWidth={10} strokeLinecap="round" />
+        <line x1={ax} x2={ax} y1={y0} y2={my} stroke={k.c('accent')} strokeWidth={10} strokeLinecap="round" />
+        {ev.map((_, i) => <circle key={i} cx={ax} cy={yOf(i)} r={16} fill={i <= cur ? k.c('accent') : k.c('ground')} stroke={k.c('accent')} strokeWidth={6} />)}
+        <circle cx={ax} cy={my} r={30 + Math.sin(k.t * 4) * 3} fill="none" stroke={k.c('accent', 0.6)} strokeWidth={6} />
+      </svg>
+      {ev.map((e, i) => {
+        const shown = clamp01((k.t - (ts[i] - 0.3)) / 0.3);
+        const op = shown * (i === cur ? 1 : 0.45);
+        return (
+          <React.Fragment key={i}>
+            <Abs x={ax + 40} y={yOf(i) - 36} w={STAGE.w - ax - 40} style={{opacity: op}}>
+              <div style={{fontFamily: k.font, fontWeight: 900, fontSize: i === cur ? 66 : 52, color: k.c('accent'), direction: 'ltr', lineHeight: 1.1}}>{String(e.year)}</div>
+            </Abs>
+            <Abs x={ax - 50 - 560} y={yOf(i) - 38} w={560} style={{opacity: op}}>
+              <ArText size={i === cur ? 56 : 46} weight={800} align="right" reveal="none" maxWidth={560} style={{width: 560}}>{e.label}</ArText>
+            </Abs>
+          </React.Fragment>
+        );
+      })}
     </Stage>
   );
 };

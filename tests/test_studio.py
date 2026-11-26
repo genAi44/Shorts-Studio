@@ -81,7 +81,7 @@ class TestMechanisms(unittest.TestCase):
         flow = {"device": "flow", "keyword": "شريان مقطوع", "behavior": "the river splits",
                 "mech": {"source": "النهر", "branches": [{"label": "الري", "share": 93}, {"label": "البحر", "share": 7}], "keep": 5}}
         errs = " | ".join(studio.validate_shot(flow, c, None, {}))
-        self.assertIn("share 7", errs)       # 7 is not spoken in this sentence
+        self.assertNotIn("share 7", errs)    # 7 is not spoken, but 100 - 93 (spoken) = 7: derived, allowed
         self.assertIn("mech.keep", errs)
         lvl = {"device": "level", "keyword": "منسوب", "behavior": "drops", "mech": {"from": 0.5, "to": 0.52}}
         self.assertTrue(any("differ by at least" in e for e in studio.validate_shot(lvl, c, None, {})))
@@ -94,11 +94,59 @@ class TestMechanisms(unittest.TestCase):
         self.assertIn("change={3.0}", code)  # 'مربع' at 3.2 s - 0.1 = 3.1 s, capped at 5 s - 2 s so the change ends in the scene
 
 
+class TestPhase2(unittest.TestCase):
+    def ctx(self, text, **kw):
+        w = [{"t": x, "s": round(0.4 * i, 2), "e": round(0.4 * i + 0.3, 2)} for i, x in enumerate(text.split())]
+        return dict(CTX, sentence=text, sentences=[text], entities=[], words=w, **kw)
+
+    def test_repeated_map_may_be_explained_by_a_mechanism(self):
+        text = "قُطع ثلاثة وتسعون بالمئة من شريان حياته"
+        shot = {"device": "flow", "keyword": "شريان مقطوع", "behavior": "split",
+                "mech": {"source": "النهر", "branches": [{"label": "الري", "share": 93}, {"label": "البحر", "share": 7}], "keep": 1}}
+        fresh = self.ctx(text, map_overlay={"waypoints": [{"name_ar": "الأردن"}]})
+        self.assertTrue(any("must be 'map'" in e for e in studio.validate_shot(shot, fresh, None, {})))
+        self.assertEqual(studio.validate_shot(shot, dict(fresh, map_seen=True), None, {}), [])  # 7 = 100 - 93 (derived)
+        self.assertEqual(studio.map_places({"waypoints": [{"name_ar": "الأردن"}, {"name_en": "Jordan"}]}), frozenset({"الأردن", "Jordan"}))
+
+    def test_derived_share_needs_the_other_shares_spoken(self):
+        shot = {"device": "flow", "keyword": "تقسيم", "behavior": "split",
+                "mech": {"source": "النهر", "branches": [{"label": "الري", "share": 60}, {"label": "البحر", "share": 40}]}}
+        self.assertTrue(any("share 60" in e for e in studio.validate_shot(shot, self.ctx("يُقسم النهر بين الري والبحر"), None, {})))
+
+    def test_filter_may_end_with_none_and_timeline_years_differ(self):
+        c = self.ctx("أمامك أربعة وعشرون نوعاً من المربى فتشتري ولا شيء")
+        f = {"device": "filter", "keyword": "ولا شيء", "behavior": "all fade", "mech": {"from": 24, "to": 0, "icon": "lucide:package"}}
+        self.assertEqual(studio.validate_shot(f, c, None, {}), [])
+        t = {"device": "timeline", "keyword": "x", "behavior": "x", "mech": {"events": [{"year": 2004, "label": "أ"}, {"year": 2004, "label": "ب"}]}}
+        self.assertTrue(any("strictly ascending" in e for e in studio.validate_shot(t, self.ctx("في عام 2004 ثم بعد ذلك"), None, {})))
+
+    def test_timeline_rules_and_timing(self):
+        text = "سقطت القسطنطينية عام 1453 ثم وصلوا فيينا عام 1529"
+        c = self.ctx(text)
+        bad = {"device": "timeline", "keyword": "صعود", "behavior": "travel",
+               "mech": {"events": [{"year": 1529, "label": "فيينا"}, {"year": 1453, "label": "الفتح"}, {"year": 1600, "label": "x"}]}}
+        errs = " | ".join(studio.validate_shot(bad, c, None, {}))
+        self.assertIn("ascending", errs)
+        self.assertIn("1600", errs)
+        good = {"device": "timeline", "keyword": "صعود", "keyword_at": "سقطت", "behavior": "travel",
+                "mech": {"events": [{"year": 1453, "label": "الفتح", "at": "1453"}, {"year": 1529, "label": "فيينا", "at": "1529"}]}}
+        self.assertEqual(studio.validate_shot(good, c, None, {}), [])
+        code = studio.compile_shot(good, c, studio.design_system(STYLE, {}))
+        self.assertIn("times={[1.1, 3.1]}", code)  # '1453' (word 4) at 1.2 s and '1529' (word 9) at 3.2 s, 0.1 s anticipation
+
+
 class TestNumbers(unittest.TestCase):
     def test_arabic_number_words(self):
         for text, n in (("سبعة عشر مليون وثمانون ألف ومئتان واثنان وأربعون كيلومترًا", 17080242),
-                        ("بطول عشرون ألف ومئتان وواحد وأربعون كيلومترًا.", 20241), ("ثلاث مئة عام", 300), ("في ألفين وعشرين", 2020)):
+                        ("بطول عشرون ألف ومئتان وواحد وأربعون كيلومترًا.", 20241), ("ثلاث مئة عام", 300), ("في ألفين وعشرين", 2020),
+                        ("بحلول ألفين وأربعة وثلاثين، وثلاثة", 2034), ("متراً بألفين وخمسين، مخلفة", 2050),
+                        ("تتوقع اثني عشر فاصل ستة أمتار", 12.6)):
             self.assertIn(n, studio.word_numbers(text))
+
+    def test_rest_of_a_spoken_percentage_is_derived(self):
+        c = dict(CTX, sentence="كيف قُطع ٩٣٪ من شريان حياته", entities=[])
+        self.assertEqual([studio.number_ok(v, c) for v in (93, 7, 100, 8)], [True, True, True, False])
+        self.assertFalse(studio.number_ok(7, dict(c, sentence="قُطع 93 كيلومتراً")))  # not a percentage: no rest
 
     def test_numbers_inside_any_text_must_be_spoken(self):
         ctx = dict(CTX, sentence="حدود بطول عشرون ألف ومئتان وواحد وأربعون كيلومترًا", entities=[])
