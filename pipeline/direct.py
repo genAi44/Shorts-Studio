@@ -1324,14 +1324,8 @@ VISUAL_CRAFT = """
 def director_system(photos=True):
     from .director_plan import LANGUAGE_CONTRACT
     from .skills import DIRECTOR_SKILLS, skills_block
-    pb = f"
-## Motion playbook:
-{_PLAYBOOK}
-
-" if _PLAYBOOK else ""
-    return LANGUAGE_CONTRACT + "
-
-" + pb + DIRECTOR_SYSTEM + VISUAL_CRAFT + AREA_RULES + (PHOTO_RULES if photos else "") + skills_block(DIRECTOR_SKILLS)
+    pb = f"\n## Motion playbook:\n{_PLAYBOOK}\n\n" if _PLAYBOOK else ""
+    return LANGUAGE_CONTRACT + "\n\n" + pb + DIRECTOR_SYSTEM + VISUAL_CRAFT + AREA_RULES + (PHOTO_RULES if photos else "") + skills_block(DIRECTOR_SKILLS)
 
 def director_prompt(script, scenes, mood=""):
     items = []
