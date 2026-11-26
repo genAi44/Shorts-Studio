@@ -101,7 +101,7 @@ def gemini_vision_json(system: str, user: str, images: List[bytes]) -> Any:
                 "contents": [
                     {"role": "user", "parts": parts},
                     {"role": "model", "parts": [{"text": bad}]},
-                    {"role": "user", "parts": [{"text": "الرد ليس JSON صالحاً. أعده كـ JSON فقط."}]},
+                    {"role": "user", "parts": [{"text": "The reply is not valid JSON. Return it again as JSON only."}]},
                 ],
                 "generationConfig": {"temperature": 0.0, "responseMimeType": "application/json"},
             },
@@ -151,7 +151,7 @@ def freellmapi_vision_json(system: str, user: str, images: List[bytes]) -> Any:
 
     raw = call(messages)
     return _parse_with_repair(raw, lambda bad: call(messages + [{"role": "assistant", "content": bad},
-                                                                {"role": "user", "content": "الرد ليس JSON صالحاً. أعده كـ JSON فقط."}]))
+                                                                {"role": "user", "content": "The reply is not valid JSON. Return it again as JSON only."}]))
 
 
 def vision_providers() -> List[str]:
@@ -201,11 +201,11 @@ def write_script_with_facts(topic: str, facts_text: str, style: Optional[Any] = 
         + sp.SYSTEM
     )
 
-    user_message = f"الحقائق الموثقة من الويب (Facts):\n{facts_text}\n\nفكرة وموضوع الفيديو (Topic):\n{topic}"
+    user_message = f"Verified facts from the web (Arabic sources):\n{facts_text}\n\nVideo idea and topic (write the script in Arabic):\n{topic}"
     if style:
         style_name = style.get("name", "") if isinstance(style, dict) else str(style)
         if style_name:
-            user_message += f"\nالأسلوب والنمط المعتمد: {style_name}"
+            user_message += f"\nChosen style: {style_name}"
 
     raw = call_llm_json("script", system, user_message, temperature=0.7)
     script = sp.normalize(raw)
@@ -217,11 +217,11 @@ def write_script_with_facts(topic: str, facts_text: str, style: Optional[Any] = 
         errors = sp.script_errors(script, geo)
         if errors:
             repair_prompt = (
-                f"الحقائق الموثقة (Facts):\n{facts_text}\n\n"
-                "السكربت يحتوي على بعض الملاحظات الهيكلية:\n"
+                f"Verified facts:\n{facts_text}\n\n"
+                "The script has some structural problems (the problem texts are Arabic):\n"
                 + "\n".join(f"- {e}" for e in errors)
-                + f"\n\nالسكربت الحالي:\n{sp.dumps(script)}\n"
-                "أعد JSON فقط بالمفاتيح الثمانية الصالحة مع الالتزام التام بالحقائق المرفقة."
+                + f"\n\nCurrent script:\n{sp.dumps(script)}\n"
+                "Return JSON only, with the eight valid keys, written in Arabic and strictly respecting the attached facts."
             )
             fixed_raw = call_llm_json("script", system, repair_prompt, temperature=0.2)
             script = sp.normalize(fixed_raw)

@@ -61,3 +61,16 @@ def test_style_guides_given_to_the_models_are_english():
     for slug in slugs:
         g = presets.guide(slug)
         assert g and not AR.search(g), f"styles/{slug}/STYLE.md contains Arabic"
+
+
+def test_style_script_and_factcheck_prompts_are_english_but_the_script_stays_arabic():
+    from pipeline import scriptspec as sp
+    from pipeline import style as stl
+    assert not AR.search(stl.ART_SYSTEM) and not AR.search(stl.art_prompt({"title": "t"}, ["a"]).split("\n", 1)[0])
+    assert not AR.search(sp.FACT_SYSTEM) and not AR.search(sp.user_prompt("idea", "note"))
+    head, example = sp.SYSTEM.split('{\n  "title"', 1)
+    assert len(AR.findall(head)) < 150 and len(AR.findall(example)) > 500   # instructions are English; Arabic is only inline examples and the few-shot JSON
+    # the rules survived the translation: the eight parts, the word budgets and the Arabic output requirement
+    for needle in ("HOOK", "OPEN LOOP 2", "CTA", "between 100 and 150 words", "ARABIC", "10 to 18 words"):
+        assert needle in head, needle
+    assert json.loads('{"title"' + example[:example.rindex("}") + 1])["hook"]["narration"]   # the example is still valid JSON

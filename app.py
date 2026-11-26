@@ -307,21 +307,21 @@ def make_script():
     # If validation fails, send the errors back to the model once and ask it to fix them
     if errors:
         fix_prompt = (
-            "السكربت المُولّد يحتوي على مخالفات للشروط والمواصفات الإلزامية لهيكل الأجزاء الثمانية (8 parts):\n"
+            "The generated script violates the mandatory rules of the eight-part structure (8 parts). The problem texts below are Arabic:\n"
             + "\n".join(f"- {e}" for e in errors)
-            + f"\n\nالسكربت الحالي:\n{sp.dumps(script)}"
-            + "\n\nالمطلوب: أعد كتابة وتصحيح وتوسيع السكربت كاملاً بالترتيب الدقيق للأجزاء الثمانية دون أي مخالفة:\n"
-            + "1. hook: 10–18 كلمة (سؤال أو تناقض أو رقم صادم، بلا تحية ولا يكشف الجواب).\n"
-            + "2. lead: 14–24 كلمة (وعد مشوق وسياق كافٍ للبقاء).\n"
-            + "3. body1: 18–30 كلمة (حقيقة ملموسة أولى بتفاصيل كافية ومحكية).\n"
-            + "4. open_loop1: 8–16 كلمة (سطر تشويقي يطرح لغزاً جديداً بلا إجابة الآن).\n"
-            + "5. body2: 18–30 كلمة (يجيب على open_loop1 بحقيقة أقوى ومفاجئة).\n"
-            + "6. open_loop2: 8–16 كلمة (سطر تشويقي للذروة والمفاجأة الكبرى).\n"
-            + "7. body3: 18–30 كلمة (أقوى حقيقة تكشف اللغز وتفي بوعد الـ hook بالكامل).\n"
-            + "8. cta: 8–18 كلمة (إجراء واحد طبيعي، بلا شكر، وتتصل كلماته الأخيرة ببداية الـ hook).\n"
-            + "- مجموع كلمات السرد الإجمالي: بين 100 و150 كلمة (إياك أن يقل عن 95 كلمة).\n"
-            + "- facts: قائمة claims و sources موثقة لكل معلومة.\n"
-            + "أعد JSON فقط بالمفاتيح الثمانية."
+            + f"\n\nCurrent script:\n{sp.dumps(script)}"
+            + "\n\nRequired: rewrite, correct and expand the whole script, in Arabic, in the exact order of the eight parts, with no violation:\n"
+            + "1. hook: 10-18 words (a question, contradiction or shocking number; no greeting; does not reveal the answer).\n"
+            + "2. lead: 14-24 words (an exciting promise and enough context to keep watching).\n"
+            + "3. body1: 18-30 words (a first tangible fact with enough detail, in spoken language).\n"
+            + "4. open_loop1: 8-16 words (a gripping line that poses a new mystery without answering it now).\n"
+            + "5. body2: 18-30 words (answers open_loop1 with a stronger, surprising fact).\n"
+            + "6. open_loop2: 8-16 words (a gripping line for the climax and the big surprise).\n"
+            + "7. body3: 18-30 words (the strongest fact, settling the mystery and fully paying off the hook).\n"
+            + "8. cta: 8-18 words (one natural action, no thanks, and its last words connect to the start of the hook).\n"
+            + "- Total narration length: between 100 and 150 words (never below 95 words).\n"
+            + "- facts: a list of claims and sources, documented for every piece of information.\n"
+            + "Return JSON only with the eight keys."
         )
         try:
             fixed_raw = llm.call_llm_json("script", sp.SYSTEM, fix_prompt, temperature=0.2, session_id=session_id)
@@ -390,7 +390,7 @@ def make_beats():
             from pipeline import presets as _presets
             _guide = _presets.guide((b.get("style") or {}).get("preset"))
             if _guide:
-                usr_p += "\n\nدليل الإخراج الفني لهذا الفيديو (التزم بجوهره وبقائمة «ليس» وبتعليمات المخرج البصري):\n" + _guide
+                usr_p += "\n\nART DIRECTION OF THIS VIDEO (follow its essence, its 'not' list and its visual-director instructions):\n" + _guide
             raw = llm.call_llm_json("director", sys_p, usr_p, temperature=0.8, session_id=session_id)
             retry_fn = lambda reasons: llm.call_llm_json(
                 "director",
