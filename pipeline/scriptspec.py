@@ -235,6 +235,9 @@ def user_prompt(idea, note=""):
     return s
 
 
+DANGLING_ENDS = {"التي", "الذي", "الذين", "اللتي", "اللاتي", "في", "من", "إلى", "على", "عن", "مع", "أن", "عندما", "حين", "و", "أو", "ثم", "لكن"}
+
+
 def nwords(s):
     return len(re.findall(r"\S+", s or ""))
 
@@ -400,6 +403,10 @@ def validate(script, geo=None):
         if role == "cta":
             if any(d in text for d in DISALLOWED_CTA):
                 add("error", pid, "الـ CTA يحتوي على عبارات مثل 'شكراً للمشاهدة'، وهذا ممنوع.")
+            # جملة ناقصة (تنتهي بحرف جر/اسم موصول بلا تكملة) = معلومة مقطوعة
+            last = text.strip().rstrip(".،,:…؟?!").split()[-1:] or [""]
+            if last[0] in DANGLING_ENDS:
+                add("error", pid, f"الـ CTA ينتهي بجملة ناقصة ('{last[0]}'). أكمل الجملة.")
             # التحقق من أن الكلمات الأخيرة تتصل بالبداية
             if not re.search(r"[:،,…ـ-]\s*$", text) and not text.endswith("؟"):
                 add("warn", pid, "يُفضل أن تنتهي كلمات الـ CTA الأخيرة بنقطتين ':' أو فاصلة لربطها بالـ HOOK في دورة لا نهائية.")
