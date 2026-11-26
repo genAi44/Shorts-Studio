@@ -269,6 +269,8 @@ def extract_script(script: Dict[str, Any], extractor: Optional[Callable[[Dict[st
         got = by_scene.get(sc["id"], {}).get("sentences") or []
         got = got if isinstance(got, list) else []
         per: List[List[Dict[str, Any]]] = []
+        # the model also answers with bare lists ("sentences": [[ent, ..], [], ..]): sentence i = list i
+        got = [{"i": j, "entities": g} if isinstance(g, list) else g for j, g in enumerate(got)]
         for i, sentence in enumerate(sents):
             item = next((g for g in got if isinstance(g, dict) and g.get("i") == i), got[i] if i < len(got) and isinstance(got[i], dict) else {})
             ents = [v for v in (validate_entity(e, sentence, geo) for e in (item.get("entities") or []) if isinstance(e, dict)) if v]
@@ -619,6 +621,9 @@ def ensure_visuals(beats: List[Dict[str, Any]], per_sentence: List[List[Dict[str
                     record_fallback(f"photo for {et.id} '{e.get('text')}' unavailable ({ex}): symbolic visual", beat_id=et.id)
             start = max(0, f - 4)
             dur = min(INSERT_FRAMES, max(24, dur_frames - start))
+            for b in out:  # an earlier inserted shot ends where this one starts (no two inserted shots stacked)
+                if b.get("_fallback") and int(b.get("from", 0)) < start < int(b.get("from", 0)) + int(b.get("dur", 0)):
+                    b["dur"] = start - int(b.get("from", 0))
             fb.update({"from": start, "dur": dur, "_fallback": True, "_entity": et.id})
             for b in out:  # hide whatever is under the inserted shot so texts never stack
                 if isinstance(b, dict) and int(b.get("from", 0)) < start + dur and start < int(b.get("from", 0)) + int(b.get("dur", 0)):
@@ -664,6 +669,8 @@ def extraction_enabled() -> bool:
 def ensure_plan(script: Dict[str, Any], geo: Any = None) -> Dict[str, List[List[Dict[str, Any]]]]:
     """Extract (once, cached) and attach the validated entity plan to the script as `_entities`."""
     plan = script.get("_entities")
+    if isinstance(plan, dict) and not any(e for per in plan.values() if isinstance(per, list) for e in per):
+        plan = None  # a saved plan with no entity at all (e.g. a reply once misparsed) is re-read; the reply cache makes it free
     if (not isinstance(plan, dict) or not plan) and not extraction_enabled():
         return {}
     if not isinstance(plan, dict) or not plan:

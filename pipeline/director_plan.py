@@ -72,6 +72,9 @@ no seconds, frames, durations, start/end times, word timings or captions. Refer 
 Reply with JSON only:
 {"scenes":[{"scene_id":"...","objective":"...","main_concept":"...","narrative_description":"...","key_information":["..."],
 "relation_to_previous":"...","relation_to_next":"...","visual_storytelling":"...","transition_trigger":"...","continuity":"..."}]}""")
+from .skills import DIRECTOR_SKILLS, skills_block  # noqa: E402
+DIRECTOR_SYSTEM += skills_block(DIRECTOR_SKILLS)
+
 
 
 # ------------------------------------------------------------------ shared guards (director + designer)
@@ -133,6 +136,36 @@ def scene_items(spec: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 def director_prompt(items: List[Dict[str, Any]], title: str = "") -> str:
     return json.dumps({"title": title, "scenes": items}, ensure_ascii=False)
+
+
+def normalize_plan(plan: Any) -> Any:
+    """Accept the shapes models actually return: a bare list of scenes (a cut-off reply parses to its inner array)
+    or {"<anything>": [scenes]}; anything else is returned unchanged for plan_errors to reject."""
+    if isinstance(plan, list):
+        return {"scenes": plan}
+    if isinstance(plan, dict) and not isinstance(plan.get("scenes"), list):
+        lists = [v for v in plan.values() if isinstance(v, list) and v and all(isinstance(x, dict) for x in v)]
+        if len(lists) == 1:
+            return {"scenes": lists[0]}
+    return plan
+
+
+def merge_plans(base: Any, extra: Any, items: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Scenes of `extra` replace/fill those of `base` by scene_id; result in the narration's scene order."""
+    by_id: Dict[str, Any] = {}
+    for pl in (base, extra):
+        pl = normalize_plan(pl)
+        if isinstance(pl, dict) and isinstance(pl.get("scenes"), list):
+            by_id.update({str(x.get("scene_id")): x for x in pl["scenes"] if isinstance(x, dict) and x.get("scene_id")})
+    return {"scenes": [by_id[str(i["scene_id"])] for i in items if str(i["scene_id"]) in by_id]}
+
+
+def _bad_scene_ids(plan: Any, items: List[Dict[str, Any]], errs: List[str]) -> List[str]:
+    scenes = [x for x in (plan.get("scenes") or []) if isinstance(x, dict)] if isinstance(plan, dict) else []
+    got = {str(x.get("scene_id")) for x in scenes}
+    timed = {str(x.get("scene_id")) for x in scenes if timing_keys(x)}
+    return [str(i["scene_id"]) for i in items
+            if str(i["scene_id"]) not in got or str(i["scene_id"]) in timed or any(e.startswith((f"{i['scene_id']}.", f"{i['scene_id']}:")) for e in errs)]
 
 
 def plan_errors(plan: Any, items: List[Dict[str, Any]]) -> List[str]:
@@ -217,12 +250,19 @@ def plan_video(spec: Dict[str, Any], cache_dir: Path, llm: Optional[Callable[[st
         user = director_prompt(items, title)
         status = "llm"
         try:
-            plan = llm(DIRECTOR_SYSTEM, user)
-            errs = plan_errors(plan, items)
-            if errs:
-                log(f"director: plan rejected ({len(errs)} problem(s)), one repair attempt")
-                plan = llm(DIRECTOR_SYSTEM, user + "\n\nYour previous plan was REJECTED. Fix every problem and return the full plan.\nProblems:\n- "
-                           + "\n- ".join(errs[:20]) + "\n\nPrevious plan:\n" + json.dumps(plan, ensure_ascii=False)[:6000])
+            plan = merge_plans(llm(DIRECTOR_SYSTEM, user), None, items)
+            for attempt in range(2):  # re-ask ONLY the missing/invalid scenes (a short reply is not cut off), merge by scene_id
+                errs = plan_errors(plan, items)
+                bad = _bad_scene_ids(plan, items, errs)
+                if not errs or not bad:
+                    break
+                log(f"director: {len(bad)} scene(s) missing/invalid {bad}, repair {attempt + 1}/2")
+                sub = [i for i in items if str(i["scene_id"]) in bad]
+                probs = [e for e in errs[:20] if not e.startswith("scene_id list")]
+                fix = llm(DIRECTOR_SYSTEM, director_prompt(sub, title) + "\n\nPlan ONLY these scenes, all of them, in this order: "
+                          + ", ".join(bad) + '. Return {"scenes": [...]}.'
+                          + ("\nYour previous attempt was REJECTED. Problems:\n- " + "\n- ".join(probs) if probs else ""))
+                plan = merge_plans(plan, fix, items)
         except Exception as e:  # noqa: BLE001 - recorded below, the designer still gets a complete plan
             record_fallback(f"director plan llm call failed ({e}): deterministic plan", beat_id="director")
             plan = None

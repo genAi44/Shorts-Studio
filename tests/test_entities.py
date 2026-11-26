@@ -105,6 +105,30 @@ def test_injected_extractor_is_validated_locally():
     assert all(e["verified"] in ("geonames", "natural-earth") for per in out["hook"] for e in per)
 
 
+def test_bare_list_sentences_are_read():
+    """Real reply shape (short 24, Damascus): "sentences": [[entities of sentence 0], [] ...] instead of {"i","entities"}.
+    It used to be dropped silently, so no scene of the video got a map."""
+    script = {"body2": {"id": "body2", "role": "body", "narration": "دمشق، عاصمة سوريا، مأهولة منذ القدم. أي أنها الأقدم!"}}
+    fake = lambda payload: {"scenes": [{"id": "body2", "sentences": [[
+        {"type": "place", "scale": "city", "text": "دمشق", "name_ar": "دمشق", "name_en": "Damascus", "iso2": "SY", "lat": 33.51, "lon": 36.29},
+        {"type": "place", "scale": "country", "text": "سوريا", "name_ar": "سوريا", "name_en": "Syria", "iso2": "SY", "lat": 35.0, "lon": 38.0}], []]}]}
+    out = E.extract_script(script, extractor=fake)
+    names = [e["name_ar"] for per in out["body2"] for e in per]
+    assert "دمشق" in names and "سوريا" in names
+    assert out["body2"][-1] == []
+
+
+def test_saved_empty_plan_is_read_again(monkeypatch):
+    """A script saved with an all-empty plan (the misparsed reply above) is re-extracted; a real plan is kept as is."""
+    fresh = {"body2": [[{"name_ar": "دمشق"}]]}
+    monkeypatch.setattr(E, "extraction_enabled", lambda: True)
+    monkeypatch.setattr(E, "extract_script", lambda script, geo=None: fresh)
+    script = {"_entities": {"body2": [[], []], "hook": [[]]}}
+    assert E.ensure_plan(script) == fresh and script["_entities"] == fresh
+    kept = {"_entities": {"body2": [[{"name_ar": "صور"}]]}}
+    assert E.ensure_plan(kept) == {"body2": [[{"name_ar": "صور"}]]}
+
+
 def test_overlay_handles_every_scale():
     spec = _spec()
     by_id = {sc["id"]: sc["map_overlay"] for sc in spec["scenes"] if sc.get("map_overlay")}
