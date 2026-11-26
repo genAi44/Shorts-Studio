@@ -499,7 +499,7 @@ def extract_timed_geo_mentions(
     return mentions[:4]
 
 
-MAP_FILL = 0.70  # share of the view the main subject fills. 0.86 was tried: it zoomed Russia to 1.27 and the camera, centred on the pin, cut its east off
+MAP_FILL = 0.80 # share of the view the main subject fills. 0.86 was tried: it zoomed Russia to 1.27 and the camera, centred on the pin, cut its east off
 
 
 def _fills_width(geo: Any, iso: Any, S: float, K: float) -> bool:
