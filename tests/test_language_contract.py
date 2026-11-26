@@ -52,3 +52,12 @@ def test_beat_director_prompt_is_english_and_keeps_arabic_on_screen_rules():
     full = direct.director_system(True)
     assert "ARABIC headline" in full and "short ARABIC phrase" in full      # on-screen text stays Arabic
     assert 'English only' in full                                            # photo queries stay English
+
+
+def test_style_guides_given_to_the_models_are_english():
+    from pipeline import presets
+    slugs = [p["slug"] for p in presets.list_presets()]
+    assert slugs
+    for slug in slugs:
+        g = presets.guide(slug)
+        assert g and not AR.search(g), f"styles/{slug}/STYLE.md contains Arabic"

@@ -1,35 +1,36 @@
-# أطلس قديم — دليل الستايل
+# Old Atlas - style guide
 
-> صفحة من أطلس قديم: حبر داكن على ورق دافئ، تهشير على الأرض، دبوس أحمر واحد. الخريطة هي البطل، والكلام يخدمها.
-> للجغرافيا وتاريخ الأماكن ولماذا بُنيت المدينة هنا ولماذا نُقلت العاصمة.
+> A page from an old atlas: dark ink on warm paper, hatching on the land, one red pin. The map is the hero and the words serve it.
+> For geography and the history of places, why the city was built here, why the capital was moved.
+> (The video itself is Arabic: every word shown on screen is Arabic, typeset in the Amiri atlas face.)
 
-## 1. الجوهر، وما ليس هو
-- **ورق واحد ثابت.** لون ورق دافئ بحبيبة خفيفة بلا توهج ولا ضبابية ولا جزيئات عائمة.
-- **حبر وأحمر واحد.** النص حبر بني داكن، ولون التمييز أحمر طوبي لشيء واحد فقط في الشاشة (الاسم المهم أو الدبوس)، ولون ثانٍ أزرق مخضر نادر للتفاصيل.
-- **الخريطة تُرسم بالتهشير.** الأرض مهشّرة بخطوط مائلة وحدها واضحة، وما حولها خافت. لا ألوان متدرجة ولا بطاقة ولا إطار حول الخريطة.
-- **كل شاشة فكرة واحدة.** مكان واحد أو مقارنة بين مكانين، لا أكثر.
+## 1. The essence, and what it is not
+- **One fixed sheet of paper.** A warm paper colour with a light grain: no glow, no blur, no floating particles.
+- **Ink and a single red.** Text is dark brown ink; the accent is a brick red used for ONE thing on the screen (the important name or the pin); a second, rare teal is allowed for small details.
+- **The map is drawn with hatching.** The land is hatched with slanted lines and is the only clear element; everything around it is faint. No gradients, no card and no frame around the map.
+- **One idea per screen.** One place, or a comparison between two places, never more.
 
-ليس: لوحة بيانات حديثة (لا عدّادات متلألئة ولا نيون)، وليس كتاباً مدرسياً (لا مربعات ملونة)، وليس خريطة مأخوذة من تطبيق (لا أيقونات دبابيس ملونة متعددة).
+Not: a modern data dashboard (no sparkling counters, no neon), not a school textbook (no coloured boxes), not a map pulled from an app (no multiple coloured pin icons).
 
-## 2. المواد والرسم
-- الخلفية `paper` بلا حركة. الحدود تُرسم بخط رفيع بلون الحبر لا بإضاءة.
-- الدبوس `pin` بلون التمييز، وتحته اسم المكان بخط الأطلس (أميري) بحجم يُقرأ على الهاتف (>= 40 بكسل).
-- الصور الفوتوغرافية بلا إطار (`free`)، بتلاشٍ ناعم إلى الورق، وبصبغة لونين (`duo`) كي تبدو مطبوعة. لا بطاقة ولا ظل صندوقي.
-- مسارات التنقل (نقل عاصمة، رحلة) خطوط متقطعة بالحبر تُرسم تدريجياً من نقطة إلى أخرى.
+## 2. Materials and drawing
+- The `paper` background, with no motion. Borders are drawn with a thin ink-coloured line, never with light.
+- The `pin` in the accent colour, with the place name under it in the atlas face (Amiri) at a phone-readable size (>= 40 px).
+- Photographs are frameless (`free`), fade softly into the paper and are tinted with two colours (`duo`) so they look printed. No card and no boxy shadow.
+- Travel paths (moving a capital, a journey) are dashed ink lines that are drawn progressively from one point to the next.
 
-## 3. الكتابة على الشاشة
-- العنوان كلمتان إلى أربع، بخط أميري ثقيل، وتحته خط حبر يُرسم من اليمين إلى اليسار.
-- الأسماء الجغرافية تُكتب كما تُنطق في السرد، ولا يُكتب اسم مكان لم يُنطق.
-- السنة والرقم يظهران مرة واحدة فقط، بأرقام عادية بلا فاصلة آلاف للسنوات.
+## 3. Writing on screen
+- The title is two to four words in heavy Amiri, with an ink line under it drawn from right to left.
+- Geographic names are written exactly as they are spoken in the narration; a place name that is not spoken is never written.
+- A year or a number appears only once, as plain digits, with no thousands separator for years.
 
-## 4. الإيقاع والإخراج
-- الإيقاع هادئ (pace 0.9): الخريطة تدخل بالرسم لا بالقفز، وكل مشهد يحتفظ بدبوسه حتى نهاية الجملة.
-- حين يتغير المكان تنتقل الكاميرا على الخريطة نفسها (تكبير ثم انزلاق) ولا يُقطع إلى مشهد آخر.
-- مشهد الكشف (الذروة): الدبوس الأحمر يصل إلى مكانه والباقي يخفت.
-- الخاتمة: عودة إلى الخريطة الكاملة بلا دبابيس سوى الأخير.
+## 4. Rhythm and direction
+- A calm rhythm (pace 0.9): the map enters by being drawn, not by jumping, and every scene keeps its pin until the end of the sentence.
+- When the place changes, the camera travels over the same map (zoom, then glide) instead of cutting to another scene.
+- The reveal scene (the climax): the red pin arrives at its place and everything else fades.
+- The closing: back to the full map with no pins except the last one.
 
-## 5. تعليمات للمخرج البصري (تُحقن في طلبات المشاهد)
-- اختر `map` أو `area_map` لكل جملة فيها اسم مكان، ولا تستبدلها بنص.
-- لا تضع بطاقات بيضاء ولا مربعات ملونة؛ اكتب الاسم على الورق مباشرة.
-- استعمل لوناً مميِّزاً واحداً (الأحمر الطوبي) لكلمة أو دبوس في المشهد.
-- الأرقام والتواريخ: مرة واحدة، قرب الخريطة، لا في بطاقة.
+## 5. Instructions for the visual director (injected into scene requests)
+- Choose `map` or `area_map` for every sentence that contains a place name; never replace it with text.
+- No white cards and no coloured boxes; write the name directly on the paper.
+- Use one accent colour (brick red) for one word or one pin in the scene.
+- Numbers and dates: once, near the map, never in a card.
