@@ -125,6 +125,29 @@ export const Bar: React.FC<{value: number; w?: number; h?: number; delay?: numbe
 /** The vector map engine (same renderer as the built-in map scenes). `overlay` = data.map_overlay. */
 export const MapLayer: React.FC<{overlay: any; mode?: 'full-stage' | 'split-bottom' | 'hud'}> = ({overlay, mode = 'full-stage'}) => <MapOverlayLayer overlay={overlay} mode={mode} />;
 
+/**
+ * The designer's hero SVG (data.hero_svg, already checked by the SVG gate) placed in a box on the canvas. Groups marked
+ * <g data-state="N"> appear when state N starts: data.hero_states = [{state, from}] is resolved by the pipeline from the existing
+ * word timings (the trigger words of the storyboard). Groups without data-state are always visible.
+ */
+export const HeroSvg: React.FC<{data: any; x?: number; y?: number; w?: number; h?: number; style?: CSSProperties}> = ({data, x = 90, y = BEAT_ZONE.top + 60, w = 900, h = 640, style}) => {
+  const frame = useCurrentFrame();
+  const scope = 'hs' + React.useId().replace(/[^a-zA-Z0-9]/g, '');
+  const svg = typeof data?.hero_svg === 'string' ? data.hero_svg : '';
+  const states: {state: number; from: number}[] = Array.isArray(data?.hero_states) ? data.hero_states : [];
+  const css = states.filter((s) => s.state > 1).map((s) => {
+    const v = interpolate(frame, [s.from, s.from + 8], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.bezier(0.16, 1, 0.3, 1)});
+    return `#${scope} [data-state="${s.state}"]{opacity:${v.toFixed(3)}}`;
+  }).join('');
+  if (!svg) return null;
+  return (
+    <div id={scope} data-hero-svg="" style={{position: 'absolute', left: x, top: y, width: w, height: h, ...style}}>
+      <style>{`#${scope} svg{width:100%;height:100%;display:block;overflow:visible}${css}`}</style>
+      <div style={{width: '100%', height: '100%'}} dangerouslySetInnerHTML={{__html: svg}} />
+    </div>
+  );
+};
+
 // ---------------------------------------------------------------- layout recipes
 // Composition patterns (one hero idea per screen, text as part of the layout, cumulative build-up). Each one is
 // a ready, tested arrangement the art director can combine or imitate; all are frame-driven and inside LAYOUT.beat.

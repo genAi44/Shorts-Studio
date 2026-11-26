@@ -16,6 +16,7 @@ import contextlib
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -30,14 +31,71 @@ MIN_CONTENT_H = 420  # px of vertical extent of everything a scene draws (beat z
 AUTHORED_SRC = REMOTION / "src" / "authored"
 KIT_DOC = ROOT / "docs" / "SCENE_KIT.md"
 CACHE_DIR = ROOT / "data" / "authored_cache"
-KIT_VERSION = 1
-MAX_RETRIES = 2
+KIT_VERSION = 2  # 2: designer reply = storyboard + hero SVG + TSX (scenes cached by v1 have no SVG)
+MAX_RETRIES = 4
 TEST_FRAME_FRACTIONS = (0.15, 0.5, 0.9)
 FLAT_STD = 6.0
+STATE_LEAD_FRAMES = 2       # a visual state enters this many frames before its trigger word (anticipation)
+HERO_MIN_COVER = 0.06       # rendered SVG content must cover >= 6% of its viewBox
+HERO_MIN_PX = 160           # and be at least this big on the 1080x1920 canvas (both sides)
 
-SYSTEM = """You are the art director AND the motion-graphics engineer of an Arabic educational Shorts studio (1080x1920).
-You design ONE scene as real code: a single TSX file that default-exports a React component. Follow the kit documentation
-below exactly. Output ONLY the TSX source (no markdown fences, no commentary).
+# The designer's visual description of a scene: 13 fields (A elements, B visual states, C composition & layout, + the hero).
+STORYBOARD_FIELDS = (
+    "scene_id",           # 1  the scene (system-owned, overwritten)
+    "visual_concept",     # 2  how the picture expresses the director's main concept
+    "hero_element",       # 3  id of the one hero element (an `elements` id)
+    "elements",           # 4  A: [{id, draw, role, layer: "svg"|"text"}] everything that must be drawn and why
+    "visual_states",      # 5  B: [{state, elements, appearance, positions, condition, trigger_word}]
+    "composition",        # 6  C: overall composition
+    "positions",          # 7  C: {element_id: where it sits}
+    "relative_sizes",     # 8  C: {element_id: size relative to the canvas / hero}
+    "alignment",          # 9  C: alignment rules
+    "layering",           # 10 C: back-to-front order of element ids
+    "spatial_relations",  # 11 C: how elements relate in space
+    "visual_hierarchy",   # 12 C: what the eye reads 1st, 2nd, 3rd
+    "layout_changes",     # 13 C: how the layout changes from state to state
+)
+
+SYSTEM = """You are the DESIGNER of an Arabic educational Shorts studio (1080x1920): the art director AND the motion-graphics engineer.
+The DIRECTOR has already planned the story: data.director_plan gives this scene's objective, main concept, the facts to get across,
+its links to the previous/next scene, the visual storytelling approach, the transition trigger and the continuity requirements.
+Your job is to turn that plan into a picture. Follow the kit documentation below exactly.
+
+REPLY FORMAT (exactly three blocks, in this order, nothing else, no markdown fences):
+<storyboard>
+{JSON visual description with exactly these 13 fields:
+ "scene_id", "visual_concept",
+ "elements": [{"id": "...", "draw": "what exactly is drawn", "role": "why it is there", "layer": "svg" | "tsx"}],
+   (layer "svg" = drawn INSIDE your <hero_svg> with that exact id; layer "tsx" = drawn by the scene file: ArText, Counter, Icon,
+    Ribbon, MapLayer, cards... Keep "svg" elements few - the 2-5 shapes/groups of the illustration - and give each its id.)
+ "hero_element": COPY one "id" from the elements list above (never a new name; usually your main SVG group),
+ "visual_states": [{"state": 1, "elements": ["ids visible in this state"], "appearance": "how each element looks",
+                    "positions": "where they are", "condition": "what changes into this state", "trigger_word": "a word of the narration"}],
+ "composition", "positions": {"id": "where"}, "relative_sizes": {"id": "size vs canvas/hero"}, "alignment",
+ "layering": ["back-most id", "...", "front-most id"], "spatial_relations", "visual_hierarchy", "layout_changes"}
+</storyboard>
+<hero_svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 W H"> ... the scene's main graphic ... </svg>
+</hero_svg>
+<tsx>
+the scene file (first line an import)
+</tsx>
+
+Storyboard rules: write the SVG first in your head, then list its ids as the "svg" elements (same spelling). State 1 is the opening picture (its trigger_word may be ""); every later state's trigger_word is copied from the
+narration (data.sentence) and the states follow the narration's order. Every element with layer "svg" is drawn in the SVG with
+id="<its id>"; every element of state N >= 2 that appears only from that state is inside <g data-state="N">...</g> (the kit reveals
+that group when its trigger word is spoken). Prefer 1-3 states; a state that only changes TSX text still needs its <g data-state="N">
+around the SVG part that changes with it (e.g. a highlight ring). The SVG is a real illustration of the visual concept (shapes, paths, the hero object),
+never empty, never a placeholder: >= 3 painted shapes, viewBox required, colours from the theme. The SVG is STATIC: no <animate>,
+<animateTransform>, <animateMotion>, <set>, no CSS animation/transition (the kit reveals each <g data-state> on its word; any extra motion
+goes in the TSX with spring/interpolate). Also no <script>, <style>, <image>, <foreignObject>, external links or event handlers; no text
+inside the SVG (all Arabic text goes through ArText in the TSX). In the TSX never use style transition/animation either.
+The TSX must draw the SVG with <HeroSvg data={data} x=.. y=.. w=.. h=.. /> placed according to your storyboard.
+
+TIMING IS READ-ONLY: data.words carries word timings computed by the timing engine. Read them if you need to, but never invent,
+estimate, compute, copy or change timings, and never put any timing (seconds, frames, durations, start/end) in the storyboard or the
+SVG. To make something change at a moment, name the word (trigger_word); the system resolves it. Captions are built by the system:
+never draw captions or subtitles.
 
 Design brief: the scene must express THIS sentence and its entities visually, with art direction: one hero element, clear
 Arabic typographic hierarchy, layered (semi-transparent) decoration, staggered entrances, something always gently moving.
@@ -66,6 +124,13 @@ _HINTS = (
     ("blank", "blank", "Draw visible content: at least a hero element and one ArText from frame 20 on."),
     ("name", "TS2304", "Every component/helper you use must be imported from '../kit' in the first import line (Ribbon, KeyLine, Hub, Steps, Stack, Pinned, Abs, ArText, Icon, Counter ...): add the missing name to that import."),
     ("css", "TS2353", "A style object has a property that is not real CSS (e.g. 'justify'): use exact camelCase CSS names - justifyContent, alignItems, flexDirection, textAlign, gap. Check every key you wrote in style={{...}}."),
+    ("hero", "is not one of the elements' ids", "hero_element must be copied exactly from one elements[].id (the main SVG group's id); do not invent a new name."),
+    ("anim", "is forbidden in the SVG", "Remove every <animate>, <animateTransform>, <animateMotion> and <set> from the SVG: it must be static. Put appearing parts in <g data-state=\"N\"> (the kit reveals them on the trigger word) and do any other motion in the TSX with spring/interpolate on a wrapper."),
+    ("cssanim", "CSS animation/transition is not frame-deterministic", "Delete every transition/animation style key; drive opacity/transform from useCurrentFrame() with spring() or interpolate()."),
+    ("spr", "\"smooth\" | \"snappy\" | \"bouncy\"", "useSpr presets are only 'smooth', 'snappy', 'bouncy'. 'pop' is an enter() kind, not a spring: useSpr(d, 'bouncy') then enter(p, 'pop')."),
+    ("svgid","has layer 'svg' but the SVG has no element", "Give each storyboard element with layer 'svg' the SAME id in the SVG (id=\"x\" on its shape or <g>), or set its layer to 'tsx' if the scene file draws it (text, Counter, Icon, Ribbon, MapLayer)."),
+    ("state", "group in the SVG", "Wrap the SVG shapes that appear in visual state N in <g data-state=\"N\">...</g> (state 1 needs no group), or drop that state from visual_states."),
+    ("trigger", "must be copied from the narration", "trigger_word must be one word copied exactly from data.sentence, and later states must use words that come later in the sentence."),
     ("recipe", "TS2322", "A prop has the wrong type: check the recipe's exact signature in the kit doc (Steps items are strings; Stack/Hub items are objects; Hub center is a React node)."),
 )
 
@@ -87,14 +152,15 @@ def build_prompts(ctx: Dict[str, Any], errors: Optional[List[str]] = None, previ
     if ctx.get("map_overlay"):
         ov = ctx["map_overlay"]
         slim["map_places"] = [w.get("name_ar") for w in ov.get("waypoints", [])] + [f.get("label") for f in ov.get("features", [])]
-    user = ("Scene data (this is exactly `data` in your component, except map_overlay which is injected):\n"
+    user = ("Scene data (this is exactly `data` in your component, except map_overlay which is injected; director_plan is the director's "
+            "read-only plan for this scene, words are read-only timings):\n"
             + json.dumps(slim, ensure_ascii=False)
-            + f"\n\nScene length: {ctx['dur']} frames at {FPS} fps. Write the scene.")
+            + f"\n\nScene length: {ctx['dur']} frames at {FPS} fps. Write the storyboard, the hero SVG and the scene.")
     if errors and previous:
         hints = hints_for(errors)
-        user += ("\n\nYour previous attempt was REJECTED. Fix every problem and return the complete corrected file.\n"
+        user += ("\n\nYour previous attempt was REJECTED. Fix every problem and return the complete corrected reply (all three blocks).\n"
                  "Problems:\n- " + "\n- ".join(errors[:14])
-                 + ("\n\nHow to fix:\n- " + "\n- ".join(hints) if hints else "") + "\n\nPrevious code:\n" + previous)
+                 + ("\n\nHow to fix:\n- " + "\n- ".join(hints) if hints else "") + "\n\nPrevious reply:\n" + previous)
     system = SYSTEM.replace("{kit}", _kit_text())
     if guide:
         system += "\n\nART DIRECTION OF THIS VIDEO (a style guide: follow its essence, its 'not' list and its director rules; it overrides generic taste):\n" + guide
@@ -121,11 +187,110 @@ def extract_code(text: str) -> str:
     return "\n".join(lines[first:]).strip() + "\n"
 
 
+def parse_reply(text: str) -> Tuple[Optional[Dict[str, Any]], Optional[str], str]:
+    """Designer reply -> (storyboard dict | None, hero svg | None, tsx code). Missing parts come back as None / ''."""
+    t = text or ""
+    sb = None
+    m = re.search(r"<storyboard>(.*?)</storyboard>", t, re.S)
+    if m:
+        from .llm_providers import extract_json
+        try:
+            sb = extract_json(m.group(1))
+        except Exception:  # noqa: BLE001 - reported as an invalid storyboard
+            sb = None
+    m = re.search(r"<hero_svg>(.*?)</hero_svg>", t, re.S)
+    svg = None
+    if m:
+        body = m.group(1).replace("```svg", "").replace("```xml", "").replace("```", "")
+        sm = re.search(r"<svg\b.*</svg>", body, re.S)
+        svg = sm.group(0).strip() if sm else body.strip()
+    m = re.search(r"<tsx>(.*?)(?:</tsx>|$)", t, re.S)
+    rest = m.group(1) if m else re.sub(r"<storyboard>.*?</storyboard>|<hero_svg>.*?</hero_svg>", "", t, flags=re.S)
+    return (sb if isinstance(sb, dict) else None), svg, extract_code(rest) if rest.strip() else ""
+
+
+def storyboard_errors(sb: Optional[Dict[str, Any]], ctx: Dict[str, Any], svg: Optional[str]) -> List[str]:
+    """Contract of the designer's 13-field visual description, and its link to the SVG (states and svg elements exist)."""
+    from .director_plan import find_word, timing_keys
+    if not isinstance(sb, dict):
+        return ["the reply has no valid <storyboard>{...}</storyboard> JSON block"]
+    errs = [f"storyboard field '{f}' is missing or empty" for f in STORYBOARD_FIELDS[1:] if not sb.get(f)]
+    errs += [f"timing data is forbidden in the storyboard (the timing engine owns it): remove '{p}'" for p in timing_keys(sb)]
+    els = sb.get("elements") if isinstance(sb.get("elements"), list) else []
+    ids = {str(e.get("id")) for e in els if isinstance(e, dict) and e.get("id")}
+    if sb.get("elements") and (not ids or any(not isinstance(e, dict) or not e.get("id") or not e.get("draw") for e in els)):
+        errs.append("every storyboard element needs an id and a 'draw' description")
+    if sb.get("hero_element") and str(sb.get("hero_element")) not in ids:
+        errs.append(f"hero_element '{sb.get('hero_element')}' is not one of the elements' ids")
+    svg_txt = svg or ""
+    for e in els:
+        if isinstance(e, dict) and e.get("id") and str(e.get("layer", "svg")) == "svg" and not re.search(rf'\bid=["\']{re.escape(str(e["id"]))}["\']', svg_txt):
+            errs.append(f"element '{e['id']}' has layer 'svg' but the SVG has no element with id=\"{e['id']}\"")
+    words = [str(w.get("t", "")) for w in ctx.get("words") or []]
+    states = sb.get("visual_states") if isinstance(sb.get("visual_states"), list) else []
+    pos = 0
+    for st in states:
+        if not isinstance(st, dict):
+            errs.append("every visual state must be an object")
+            continue
+        n = st.get("state")
+        for f in ("elements", "appearance", "condition"):
+            if not st.get(f):
+                errs.append(f"visual state {n}: '{f}' is missing")
+        unknown = [x for x in (st.get("elements") or []) if str(x) not in ids]
+        if unknown:
+            errs.append(f"visual state {n} names unknown elements {unknown}")
+        if not isinstance(n, int) or n < 1:
+            errs.append(f"visual state numbers must be integers >= 1 (got {n!r})")
+            continue
+        if n == 1:
+            continue
+        trig = str(st.get("trigger_word") or "")
+        i = find_word(words, trig, pos) if trig else None
+        if i is None:
+            errs.append(f"visual state {n}: trigger_word '{trig}' must be copied from the narration, after the previous state's word")
+        else:
+            pos = i + 1
+        if not re.search(rf'data-state=["\']{n}["\']', svg_txt):
+            errs.append(f"visual state {n} has no <g data-state=\"{n}\"> group in the SVG")
+    return errs
+
+
+def state_frames(sb: Dict[str, Any], words: List[Dict[str, Any]], dur: int) -> List[Dict[str, Any]]:
+    """System-side: each visual state's trigger word -> the frame it appears, read from the EXISTING word timings (never computed
+    by an LLM). State 1 is the opening picture (frame 0)."""
+    from .director_plan import find_word
+    toks = [str(w.get("t", "")) for w in words]
+    out, pos = [], 0
+    for st in sorted((s for s in sb.get("visual_states") or [] if isinstance(s, dict) and isinstance(s.get("state"), int)), key=lambda s: s["state"]):
+        if st["state"] == 1:
+            out.append({"state": 1, "from": 0, "word": ""})
+            continue
+        i = find_word(toks, str(st.get("trigger_word") or ""), pos)
+        if i is None:
+            continue
+        pos = i + 1
+        fr = max(0, min(dur - 1, int(round(float(words[i].get("s", 0)) * FPS)) - STATE_LEAD_FRAMES))
+        out.append({"state": st["state"], "from": fr, "word": toks[i]})
+    return out
+
+
+def design_errors(sb: Optional[Dict[str, Any]], svg: Optional[str], code: str, ctx: Dict[str, Any]) -> List[str]:
+    """All pre-render designer gates: storyboard contract, SVG gate, the TSX draws the SVG."""
+    from .visual_qa import svg_problems
+    errs = storyboard_errors(sb, ctx, svg) + svg_problems(svg)
+    if not code.strip():
+        errs.append("the reply has no <tsx> scene file")
+    elif "<HeroSvg" not in code:
+        errs.append("the scene must draw the hero SVG with <HeroSvg data={data} x=.. y=.. w=.. h=.. /> (import HeroSvg from '../kit')")
+    return errs
+
+
 def llm_write(system: str, user: str) -> Optional[str]:
     from .llm_router import get_router
     try:
         resp = get_router().dispatch(role="director", system=system, user=user, temperature=0.7, json_mode=False, timeout=150)
-        return extract_code(resp.content)
+        return resp.content
     except Exception as e:  # noqa: BLE001 - the caller records the failure
         import logging
         logging.getLogger("pipeline.scene_author").warning("scene authoring llm call failed: %s", e)
@@ -244,7 +409,24 @@ def sandbox_render(items: Dict[str, Dict[str, Any]], style: Dict[str, Any], work
             late = idx >= 1  # entrance (first test frame) may cross edges / overlap; later frames may not
             if idx == 1 and (_flat(img) or aud.get("texts", 0) == 0):
                 problems[name].append("the scene is blank or has no visible text at mid-scene")
+            if idx == 1 and items[name]["ctx"].get("hero_svg") is not None:  # SVG gate, render half: measured in the real render
+                hero = aud.get("hero")
+                if not hero:
+                    problems[name].append("the hero SVG is not rendered at mid-scene (draw it with <HeroSvg data={data} .../> and keep it visible)")
+                else:
+                    hb = hero.get("box") or [0, 0, 0, 0]
+                    if hero.get("opacity", 1) < 0.3:
+                        problems[name].append("the hero SVG is (almost) invisible at mid-scene: keep its opacity >= 0.3")
+                    if hb[2] - hb[0] < HERO_MIN_PX or hb[3] - hb[1] < HERO_MIN_PX:
+                        problems[name].append(f"the hero SVG is too small on screen ({hb[2] - hb[0]}x{hb[3] - hb[1]} px, need >= {HERO_MIN_PX} px each side)")
+                    if hero.get("cover", 0) < HERO_MIN_COVER or hero.get("painted", 0) < 3:
+                        problems[name].append(f"the rendered hero SVG draws almost nothing (covers {hero.get('cover', 0):.0%} of its viewBox, "
+                                              f"{hero.get('painted', 0)} visible shapes): draw a real illustration that fills its viewBox")
             bb = aud.get("bbox")
+            hero = aud.get("hero") or {}
+            if bb and hero.get("box") and hero.get("opacity", 1) >= 0.3:  # the hero SVG is content too, not only text/icons
+                hb = hero["box"]
+                bb = [min(bb[0], hb[0]), min(bb[1], hb[1]), max(bb[2], hb[2]), max(bb[3], hb[3])]
             if idx == 1 and bb and (bb[3] - bb[1]) < MIN_CONTENT_H and not any(i.get("type") == "map" for i in aud.get("issues", [])):
                 problems[name].append(f"the scene is too sparse: all its content spans only {bb[3] - bb[1]} px of height (need >= {MIN_CONTENT_H}); build a real composition - lead line, hero element, supporting elements, spread over y 280..1380")
             for it in aud.get("issues", []):
@@ -292,10 +474,19 @@ def sync_to_remotion(authored_dir: Optional[str], only: Optional[set] = None) ->
 
 # ------------------------------------------------------------------ the authoring loop
 
+def _design_data(design: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """What the designer adds to the scene's `data`: its storyboard, the SVG, and the frames of its visual states (resolved by the
+    system from the existing word timings)."""
+    sb = design["storyboard"]
+    return {"storyboard": sb, "hero_svg": design["svg"], "hero_states": state_frames(sb, ctx.get("words") or [], int(ctx.get("dur", 150)))}
+
+
 def author_spec(spec: Dict[str, Any], job_dir: str, llm: Optional[Callable[[str, str], Optional[str]]] = None, cache_only: bool = False,
-                log: Callable[[str], None] = print, only_ids: Optional[set] = None) -> Dict[str, Any]:
-    """Replace the built-in beats of every scene by an authored scene when one passes all gates. Mutates and returns the
-    spec; writes outputs/<job>/scenes/*.tsx, scenes/manifest.json and authoring_report.json."""
+                log: Callable[[str], None] = print, only_ids: Optional[set] = None,
+                director_llm: Optional[Callable[[str, str], Any]] = None) -> Dict[str, Any]:
+    """Director plan -> designer (storyboard + hero SVG + TSX) -> gates, for every scene; replaces the built-in beats of a scene when
+    its authored version passes all gates. Mutates and returns the spec; writes outputs/<job>/director_plan.json,
+    scenes/*.tsx + scenes/*.json (storyboard + SVG), scenes/manifest.json and authoring_report.json."""
     from .style import theme_from_style
     llm = llm or llm_write
     theme = theme_from_style(spec["style"])
@@ -304,18 +495,29 @@ def author_spec(spec: Dict[str, Any], job_dir: str, llm: Optional[Callable[[str,
     scenes_dir.mkdir(parents=True, exist_ok=True)
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     ctxs = {s["id"]: scene_context(s, theme) for s in spec["scenes"] if only_ids is None or s["id"] in only_ids}
-    names = {sid: scene_name(content_hash(c)) for sid, c in ctxs.items()}
+    names = {sid: scene_name(content_hash(c)) for sid, c in ctxs.items()}  # the director plan is derived from the narration (hashed)
     report: Dict[str, Any] = {"scenes": {}, "started": time.strftime("%Y-%m-%d %H:%M:%S")}
     accepted: Dict[str, str] = {}
     pending: Dict[str, Dict[str, Any]] = {}
+    designs: Dict[str, Dict[str, Any]] = {}  # sid -> {"storyboard", "svg"} of the accepted designer reply
+
+    # DIRECTOR: one narrative plan for the whole video, read-only input of the designer (pipeline/director_plan.py)
+    from . import director_plan
+    plans = director_plan.plan_video(spec, CACHE_DIR, llm=director_llm, cache_only=cache_only, log=log)
+    for sid, ctx in ctxs.items():
+        ctx["director_plan"] = plans.get(sid) or {}
+    (Path(job_dir) / "director_plan.json").write_text(json.dumps(plans, ensure_ascii=False, indent=1), encoding="utf-8")
 
     for sid, ctx in ctxs.items():  # cache first
         name = names[sid]
         hit = CACHE_DIR / f"{name}.tsx"
+        side = CACHE_DIR / f"{name}.json"
         rep = report["scenes"].setdefault(sid, {"name": name, "attempts": 0, "errors": [], "status": "pending"})
-        if hit.exists():
+        cached = json.loads(side.read_text(encoding="utf-8")) if hit.exists() and side.exists() else None
+        if cached and not design_errors(cached.get("storyboard"), cached.get("svg"), hit.read_text(encoding="utf-8"), ctx):
             shutil.copyfile(hit, scenes_dir / f"{name}.tsx")
             accepted[sid] = name
+            designs[sid] = cached
             rep["status"] = "cache"
         elif not cache_only:
             pending[sid] = {"ctx": ctx, "errors": None, "code": None}
@@ -333,18 +535,25 @@ def author_spec(spec: Dict[str, Any], job_dir: str, llm: Optional[Callable[[str,
         with ThreadPoolExecutor(max_workers=3) as ex:
             written = list(ex.map(write, list(pending)))
         ready: Dict[str, Dict[str, Any]] = {}
-        for sid, code in written:
+        for sid, reply in written:
             rep = report["scenes"][sid]
             rep["attempts"] += 1
-            if not code:
+            if not reply:
                 rep["errors"].append(f"attempt {attempt + 1}: the model returned nothing")
-                pending[sid]["errors"], pending[sid]["code"] = ["the model returned no code"], pending[sid]["code"] or ""
+                pending[sid]["errors"], pending[sid]["code"] = ["the model returned nothing"], pending[sid]["code"] or ""
+                continue
+            ctx = pending[sid]["ctx"]
+            sb, svg, code = parse_reply(reply)
+            pending[sid]["code"] = reply
+            errs = design_errors(sb, svg, code, ctx)  # storyboard contract + SVG gate + the scene draws the SVG
+            if errs:
+                rep["errors"].append(f"attempt {attempt + 1} design: {errs[:4]}")
+                pending[sid]["errors"] = errs
                 continue
             path = scenes_dir / f"{names[sid]}.tsx"
             path.write_text(code, encoding="utf-8")
-            pending[sid]["code"] = code
             errs = static_check(path)
-            if not errs and pending[sid]["ctx"].get("map_overlay") and "MapLayer" not in code:
+            if not errs and ctx.get("map_overlay") and "MapLayer" not in code:
                 errs = ["the sentence names places / lines / ranges and data.map_overlay is ready: the scene must show it with <MapLayer overlay={data.map_overlay} /> "
                         "(it draws the country, drawn mountain ranges and dividing lines, and a country cut in two halves with labels); build your composition around it"]
             if errs:
@@ -352,7 +561,9 @@ def author_spec(spec: Dict[str, Any], job_dir: str, llm: Optional[Callable[[str,
                 rep["errors"].append(f"attempt {attempt + 1} static: {errs[:4]}")
                 pending[sid]["errors"] = errs
                 continue
-            ready[sid] = {"ctx": pending[sid]["ctx"]}
+            sb["scene_id"] = sid  # system-owned
+            designs[sid] = {"storyboard": sb, "svg": svg}
+            ready[sid] = {"ctx": {**ctx, **_design_data(designs[sid], ctx)}}
         if ready:
             with sync_to_remotion(str(scenes_dir), only={names[s] for s in ready}):
                 probs = sandbox_render({names[s]: v for s, v in ready.items()}, spec["style"], Path(job_dir) / "scenes_check")
@@ -366,6 +577,7 @@ def author_spec(spec: Dict[str, Any], job_dir: str, llm: Optional[Callable[[str,
                     accepted[sid] = names[sid]
                     report["scenes"][sid]["status"] = "accepted"
                     shutil.copyfile(scenes_dir / f"{names[sid]}.tsx", CACHE_DIR / f"{names[sid]}.tsx")
+                    (CACHE_DIR / f"{names[sid]}.json").write_text(json.dumps(designs[sid], ensure_ascii=False), encoding="utf-8")
                     pending.pop(sid)
 
     for sid, p in pending.items():  # exhausted: keep the built-in beats, loudly
@@ -378,9 +590,12 @@ def author_spec(spec: Dict[str, Any], job_dir: str, llm: Optional[Callable[[str,
         if not name:
             continue
         ctx = ctxs[s["id"]]
+        data = {k: v for k, v in ctx.items() if k != "id"}
+        data.update(_design_data(designs[s["id"]], ctx))
+        (scenes_dir / f"{name}.json").write_text(json.dumps(designs[s["id"]], ensure_ascii=False, indent=1), encoding="utf-8")
         s["authored"] = {"scene_id": name, "attempts": report["scenes"][s["id"]]["attempts"], "status": report["scenes"][s["id"]]["status"]}
         s["authored_replaced"] = [b.get("kind") for b in s.get("beats", [])]
-        s["beats"] = [{"kind": "authored", "scene_id": name, "from": 0, "dur": s["dur"], "data": {k: v for k, v in ctx.items() if k != "id"},
+        s["beats"] = [{"kind": "authored", "scene_id": name, "from": 0, "dur": s["dur"], "data": data,
                        "settled": s.get("role") == "hook"}]
         s["map_overlay"] = None  # the scene draws the map itself through MapLayer(data.map_overlay)
     spec["authored_dir"] = str(scenes_dir)
