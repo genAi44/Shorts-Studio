@@ -10,25 +10,23 @@ import uuid
 import io
 from pathlib import Path
 
-from flask import Flask, jsonify, request, send_file, send_from_directory
+from flask import Flask, jsonify, send_file, send_from_directory
 
-from pipeline import direct, llm, llm_providers, llm_router, media, rem, scriptspec as sp, style as stl, tts, visual_tools
+from pipeline import direct, llm, llm_router, media, rem, scriptspec as sp, style as stl, tts, visual_tools
 from pipeline.config import OUT, ROOT, SAMPLE, cfg, get_last_warnings
 from pipeline.geo import get_geo
 from pipeline.render import preview_frame
 from pipeline.run import pick_engine, plan_scenes, produce
 
+from app_helpers import body, err  # noqa: F401 (also used as app.body / app.err)
+from app_llm import bp as llm_bp
+
 logger = logging.getLogger(__name__)
 app = Flask(__name__, static_folder=str(ROOT / "static"), static_url_path="/static")
+app.register_blueprint(llm_bp)  # /api/llm/* routes live in app_llm.py
 JOBS, LOCK = {}, threading.Lock()
 
 
-def err(msg, code=400):
-    return jsonify({"error": msg}), code
-
-
-def body():
-    return request.get_json(silent=True) or {}
 
 
 @app.get("/")
@@ -144,104 +142,6 @@ def status():
             "elevenlabs": cfg("ELEVENLABS_MODEL", "eleven_multilingual_v2")
         },
     })
-
-
-@app.get("/api/llm/providers")
-def get_llm_providers():
-    """قائمة المزوّدين المسجلين وحالتهم والنماذج المتاحة من كل مزوّد."""
-    provs = llm_providers.get_all_providers()
-    out = {}
-    for pid, p in provs.items():
-        out[pid] = {
-            "id": p.id,
-            "name": p.name,
-            "configured": p.is_configured(),
-            "supports_auto_mode": p.supports_auto_mode,
-            "auto_mode_info": p.auto_mode_info(),
-            "models": p.list_models(),
-        }
-    return jsonify(out)
-
-
-@app.get("/api/llm/health")
-def get_llm_health():
-    """فحص صحة اتصال واستجابة المزوّدين (Health Check)."""
-    provs = llm_providers.get_all_providers()
-    res = {}
-    for pid, p in provs.items():
-        res[pid] = p.health_check()
-    return jsonify(res)
-
-
-@app.get("/api/llm/config")
-def get_llm_config():
-    """استرجاع إعدادات النماذج والأدوار الحالية."""
-    router = llm_router.get_router()
-    return jsonify({
-        "roles": router.get_all_role_configs(),
-        "available_roles": llm_router.ROLES,
-    })
-
-
-@app.post("/api/llm/config")
-def update_llm_config():
-    """تحديث مزوّد ونموذج كل دور من واجهة المستخدم."""
-    b = body()
-    router = llm_router.get_router()
-    if "roles" in b and isinstance(b["roles"], dict):
-        for role, c in b["roles"].items():
-            if isinstance(c, dict):
-                router.update_role_config(
-                    role=role,
-                    provider=c.get("provider", "freellmapi"),
-                    model=c.get("model"),
-                    fallback_chain=c.get("fallback_chain"),
-                )
-    elif "role" in b:
-        router.update_role_config(
-            role=b["role"],
-            provider=b.get("provider", "freellmapi"),
-            model=b.get("model"),
-            fallback_chain=b.get("fallback_chain"),
-        )
-    else:
-        return err("بيانات الإعدادات غير صالحة.")
-    return jsonify({"status": "updated", "roles": router.get_all_role_configs()})
-
-
-@app.get("/api/llm/logs")
-def get_llm_logs():
-    """سجل استدعاءات النماذج والتحويل الاحتياطي والتوكنز."""
-    limit = int(request.args.get("limit", 50))
-    router = llm_router.get_router()
-    return jsonify({"logs": router.get_logs(limit)})
-
-
-@app.post("/api/llm/test-call")
-def test_llm_call():
-    """اختبار تجريبي فوري لمزوّد ونموذج محدد."""
-    b = body()
-    provider_id = b.get("provider", "freellmapi")
-    model = b.get("model")
-    prompt = b.get("prompt", "أجب كـ JSON فقط بمفتاح reply: {\"reply\": \"مرحباً، الاتصال ناجح!\"}")
-    try:
-        p = llm_providers.get_provider(provider_id)
-        resp = p.complete(
-            messages=[{"role": "user", "content": prompt}],
-            model=model,
-            temperature=0.2,
-            json_mode=True,
-            timeout=30,
-        )
-        return jsonify({
-            "status": "success",
-            "content": resp.content,
-            "provider": resp.provider,
-            "model": resp.model,
-            "usage": resp.usage.to_dict(),
-        })
-    except Exception as e:
-        return jsonify({"status": "error", "error": str(e)}), 502
 
 
 @app.get("/api/voices")

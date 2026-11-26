@@ -20,7 +20,8 @@ def _script():
     return {"hook": {"narration": "القاهرة هي عاصمة مصر", "on_screen": "x", "visual": {"type": "text", "text": "x"}}}
 
 
-def test_concurrent_previews_get_their_own_frame_and_clean_up(tmp_path):
+def test_concurrent_previews_get_their_own_frame_and_clean_up(tmp_path, monkeypatch):
+    monkeypatch.setenv("AUTHORED_SCENES", "0")  # a local .env with AUTHORED_SCENES=1 would send the fake spec into the authoring path
     seen_dirs, results = [], {}
 
     def fake_render_still(spec, out, fr, work):
