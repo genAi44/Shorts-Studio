@@ -276,21 +276,19 @@ def generate_dynamic_tsx_file(
     geo_contexts: List[Dict[str, Any]] = [_resolve_beat_geo_context(b) for b in scenes_beats]
     beat_sigs: List[str] = [_compute_beat_tsx_sig(b, geo_contexts[idx]) for idx, b in enumerate(scenes_beats)]
 
-    geo_const_lines: List[str] = []
-    registry_entries: List[str] = []
-    for idx, beat in enumerate(scenes_beats):
-        tsx_id = beat["tsx_id"]
-        registry_entries.append(f"  '{tsx_id}': {tsx_id},")
+    tsx_ids: List[str] = [b["tsx_id"] for b in scenes_beats]
+    geo_consts: Dict[str, str] = {}  # each scene file holds its own _GEO_<id> constant
+    for idx, tsx_id in enumerate(tsx_ids):
         if geo_contexts[idx].get("is_geo"):
             geo_payload = json.dumps(geo_contexts[idx], ensure_ascii=False)
-            geo_const_lines.append(f"const _GEO_{tsx_id} = {geo_payload};")
+            geo_consts[tsx_id] = f"const _GEO_{tsx_id} = {geo_payload};"
 
-    header = (
-        "/* AUTO-GENERATED ORIGINAL TSX SCENES BY AI VIDEO ARCHITECT */\n"
-        "import React from 'react';\n"
-        "import {AbsoluteFill, interpolate, interpolateColors, spring, useCurrentFrame, useVideoConfig, Easing} from 'remotion';\n\n"
-        + ("\n".join(geo_const_lines) + "\n\n" if geo_const_lines else "")
-    )
+    def _write(blocks: List[str]) -> None:
+        _write_dynamic_files(blocks, tsx_ids, geo_consts)
+
+    def _is_bad(idx: int, err_ids: List[str]) -> bool:
+        # same rule as before the split: no scene named in the errors => every LLM scene is suspect
+        return tsx_ids[idx] in err_ids or not err_ids
 
     fallback_cache: Dict[int, str] = {}
 
@@ -358,23 +356,14 @@ def generate_dynamic_tsx_file(
         return out_b
 
     marked = _marked_blocks()
-    DYNAMIC_TSX_PATH.write_text(_assemble_dynamic_file(header, marked, registry_entries), encoding="utf-8")
+    _write(marked)
 
     # Verify TypeScript compilation when LLM blocks were inserted; try LLM self-repair before any fallback
     if use_llm and scenes_beats and any(is_llm_block):
         ok, err_lines, tsc_out = _run_tsc_check()
         if not ok:
-            logger.warning("DynamicScenes.tsx failed tsc check on lines %s:\n%s\nAttempting LLM repair.", err_lines, tsc_out[:700])
-            header_line_count = header.count("\n")
-            cur_line = header_line_count + 1
-            bad_indices: List[int] = []
-            for idx, blk in enumerate(marked):
-                blk_lines = blk.count("\n") + 1
-                start_l = cur_line
-                end_l = cur_line + blk_lines - 1
-                cur_line = end_l + 2
-                if (any(start_l <= el <= end_l for el in err_lines) or not err_lines) and is_llm_block[idx]:
-                    bad_indices.append(idx)
+            logger.warning("DynamicScenes.tsx failed tsc check in scenes %s:\n%s\nAttempting LLM repair.", err_lines, tsc_out[:700])
+            bad_indices: List[int] = [i for i in range(total) if is_llm_block[i] and _is_bad(i, err_lines)]
 
             repaired_any = False
             for idx in bad_indices:
@@ -395,25 +384,20 @@ def generate_dynamic_tsx_file(
 
             if repaired_any:
                 marked = _marked_blocks()
-                DYNAMIC_TSX_PATH.write_text(_assemble_dynamic_file(header, marked, registry_entries), encoding="utf-8")
+                _write(marked)
                 ok2, err2, tsc_out2 = _run_tsc_check()
                 if not ok2:
-                    logger.warning("Post-repair tsc check still failed on lines %s; isolating failing beats.", err2)
-                    cur_line = header.count("\n") + 1
-                    for idx, blk in enumerate(marked):
-                        blk_lines = blk.count("\n") + 1
-                        start_l, end_l = cur_line, cur_line + blk_lines - 1
-                        cur_line = end_l + 2
-                        if any(start_l <= el <= end_l for el in err2) or not err2:
-                            if is_llm_block[idx]:
-                                raw_blocks[idx] = _get_fallback(idx)
-                                is_llm_block[idx] = False
+                    logger.warning("Post-repair tsc check still failed in scenes %s; isolating failing beats.", err2)
+                    for idx in range(total):
+                        if is_llm_block[idx] and _is_bad(idx, err2):
+                            raw_blocks[idx] = _get_fallback(idx)
+                            is_llm_block[idx] = False
                     marked = _marked_blocks()
-                    DYNAMIC_TSX_PATH.write_text(_assemble_dynamic_file(header, marked, registry_entries), encoding="utf-8")
+                    _write(marked)
                     ok3, err3, _ = _run_tsc_check()
                     if not ok3:
                         logger.warning("Final tsc fallback triggered (%s).", err3)
-                        DYNAMIC_TSX_PATH.write_text(_assemble_dynamic_file(header, [_get_fallback(i) for i in range(total)], registry_entries), encoding="utf-8")
+                        _write([_get_fallback(i) for i in range(total)])
             else:
                 logger.warning("tsc error outside scene blocks:\n%s", tsc_out[:600])
 
@@ -475,6 +459,12 @@ from .storyteller_tsx_tools import (  # noqa: E402,F401
     _run_tsc_check,
     _save_tsx_cache,
     _top_level_args,
+    _write_dynamic_files,
+    _verified_blocks_on_disk,
+    SCENES_DIR,
+    read_scene_block,
+    restore_dynamic_scenes,
+    snapshot_dynamic_scenes,
 )
 
 # Re-exported so `pipeline.storyteller.<name>` keeps working.
