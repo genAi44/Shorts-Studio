@@ -42,3 +42,13 @@ def test_designer_gets_english_names_first_and_the_arabic_words_untouched():
     assert list(ent).index("name_en") < list(ent).index("name_ar") and ent["country_en"] == "Syria"
     user = sa.build_prompts(ctx)[1]
     assert json.loads(user[user.index("{"):user.index("\n\nScene length")])["map_places"] == [{"name_en": "Damascus", "name_ar": "دمشق"}]
+
+
+def test_beat_director_prompt_is_english_and_keeps_arabic_on_screen_rules():
+    from pipeline import direct
+    for photos in (True, False):
+        text = direct.director_system(photos)
+        assert not AR.search(text) and "LANGUAGE CONTRACT" in text
+    full = direct.director_system(True)
+    assert "ARABIC headline" in full and "short ARABIC phrase" in full      # on-screen text stays Arabic
+    assert 'English only' in full                                            # photo queries stay English
