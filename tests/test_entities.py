@@ -141,3 +141,28 @@ def test_arabic_proclitics_do_not_hide_a_named_place():
     assert find_span("بين أوروبا وآسيا", "بين أوروبا") == (0, 1)       # multi-word: the proclitic is only allowed on the first word
     # still whole words: no cutting inside a word
     assert find_span("عاصمة جديدة", "جدة") is None and find_span("الكويتي", "كويت") is None and find_span("هذا مثال", "ثال") is None
+
+
+def test_scene_cache_asks_the_model_only_for_changed_scenes(tmp_path, monkeypatch):
+    monkeypatch.setattr(E, "CACHE_PATH", tmp_path / "c.json")
+    calls = []
+
+    def fake(payload):
+        calls.append([s["id"] for s in payload["scenes"]])
+        return {"scenes": [{"id": s["id"], "sentences": []} for s in payload["scenes"]]}
+
+    monkeypatch.setattr(E, "llm_extract", fake)
+    monkeypatch.setattr(E, "_payload", lambda script: {"scenes": [{"id": k, "sentences": [v]} for k, v in script.items()]})
+    script = {"a": "جملة أولى.", "b": "جملة ثانية."}
+    E.extract_script(script)
+    script["b"] = "جملة ثالثة."
+    E.extract_script(script)
+    E.extract_script(script)
+    assert calls == [["a", "b"], ["b"]]
+
+
+def test_unverified_landmark_is_dropped_not_invented():
+    clear_warnings()
+    e = {"type": "place", "scale": "landmark", "text": "قلعة", "name_ar": "قلعة", "name_en": "Nowhere Castle", "iso2": "EG", "lat": 30.0, "lon": 31.0}
+    assert E.validate_entity(e, "قلعة قديمة") is None      # offline: no dictionary hit and no Nominatim -> model coordinates are NOT trusted
+    assert "district" in E.ENTITY_REGISTRY["place"].scales and "landmark" in E.ENTITY_REGISTRY["place"].scales
