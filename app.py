@@ -10,25 +10,23 @@ import uuid
 import io
 from pathlib import Path
 
-from flask import Flask, jsonify, request, send_file, send_from_directory
+from flask import Flask, jsonify, send_file, send_from_directory
 
-from pipeline import direct, llm, llm_providers, llm_router, media, rem, scriptspec as sp, style as stl, tts, visual_tools
+from pipeline import direct, llm, llm_router, media, rem, scriptspec as sp, style as stl, tts, visual_tools
 from pipeline.config import OUT, ROOT, SAMPLE, cfg, get_last_warnings
 from pipeline.geo import get_geo
 from pipeline.render import preview_frame
 from pipeline.run import pick_engine, plan_scenes, produce
 
+from app_helpers import body, err  # noqa: F401 (also used as app.body / app.err)
+from app_llm import bp as llm_bp
+
 logger = logging.getLogger(__name__)
 app = Flask(__name__, static_folder=str(ROOT / "static"), static_url_path="/static")
+app.register_blueprint(llm_bp)  # /api/llm/* routes live in app_llm.py
 JOBS, LOCK = {}, threading.Lock()
 
 
-def err(msg, code=400):
-    return jsonify({"error": msg}), code
-
-
-def body():
-    return request.get_json(silent=True) or {}
 
 
 @app.get("/")
@@ -146,104 +144,6 @@ def status():
     })
 
 
-@app.get("/api/llm/providers")
-def get_llm_providers():
-    """قائمة المزوّدين المسجلين وحالتهم والنماذج المتاحة من كل مزوّد."""
-    provs = llm_providers.get_all_providers()
-    out = {}
-    for pid, p in provs.items():
-        out[pid] = {
-            "id": p.id,
-            "name": p.name,
-            "configured": p.is_configured(),
-            "supports_auto_mode": p.supports_auto_mode,
-            "auto_mode_info": p.auto_mode_info(),
-            "models": p.list_models(),
-        }
-    return jsonify(out)
-
-
-@app.get("/api/llm/health")
-def get_llm_health():
-    """فحص صحة اتصال واستجابة المزوّدين (Health Check)."""
-    provs = llm_providers.get_all_providers()
-    res = {}
-    for pid, p in provs.items():
-        res[pid] = p.health_check()
-    return jsonify(res)
-
-
-@app.get("/api/llm/config")
-def get_llm_config():
-    """استرجاع إعدادات النماذج والأدوار الحالية."""
-    router = llm_router.get_router()
-    return jsonify({
-        "roles": router.get_all_role_configs(),
-        "available_roles": llm_router.ROLES,
-    })
-
-
-@app.post("/api/llm/config")
-def update_llm_config():
-    """تحديث مزوّد ونموذج كل دور من واجهة المستخدم."""
-    b = body()
-    router = llm_router.get_router()
-    if "roles" in b and isinstance(b["roles"], dict):
-        for role, c in b["roles"].items():
-            if isinstance(c, dict):
-                router.update_role_config(
-                    role=role,
-                    provider=c.get("provider", "freellmapi"),
-                    model=c.get("model"),
-                    fallback_chain=c.get("fallback_chain"),
-                )
-    elif "role" in b:
-        router.update_role_config(
-            role=b["role"],
-            provider=b.get("provider", "freellmapi"),
-            model=b.get("model"),
-            fallback_chain=b.get("fallback_chain"),
-        )
-    else:
-        return err("بيانات الإعدادات غير صالحة.")
-    return jsonify({"status": "updated", "roles": router.get_all_role_configs()})
-
-
-@app.get("/api/llm/logs")
-def get_llm_logs():
-    """سجل استدعاءات النماذج والتحويل الاحتياطي والتوكنز."""
-    limit = int(request.args.get("limit", 50))
-    router = llm_router.get_router()
-    return jsonify({"logs": router.get_logs(limit)})
-
-
-@app.post("/api/llm/test-call")
-def test_llm_call():
-    """اختبار تجريبي فوري لمزوّد ونموذج محدد."""
-    b = body()
-    provider_id = b.get("provider", "freellmapi")
-    model = b.get("model")
-    prompt = b.get("prompt", "أجب كـ JSON فقط بمفتاح reply: {\"reply\": \"مرحباً، الاتصال ناجح!\"}")
-    try:
-        p = llm_providers.get_provider(provider_id)
-        resp = p.complete(
-            messages=[{"role": "user", "content": prompt}],
-            model=model,
-            temperature=0.2,
-            json_mode=True,
-            timeout=30,
-        )
-        return jsonify({
-            "status": "success",
-            "content": resp.content,
-            "provider": resp.provider,
-            "model": resp.model,
-            "usage": resp.usage.to_dict(),
-        })
-    except Exception as e:
-        return jsonify({"status": "error", "error": str(e)}), 502
-
-
 @app.get("/api/voices")
 def voices():
     return jsonify({"voices": tts.voices(), "default": cfg("ELEVENLABS_VOICE_ID")})
@@ -307,21 +207,21 @@ def make_script():
     # If validation fails, send the errors back to the model once and ask it to fix them
     if errors:
         fix_prompt = (
-            "السكربت المُولّد يحتوي على مخالفات للشروط والمواصفات الإلزامية لهيكل الأجزاء الثمانية (8 parts):\n"
+            "The generated script violates the mandatory rules of the eight-part structure (8 parts). The problem texts below are Arabic:\n"
             + "\n".join(f"- {e}" for e in errors)
-            + f"\n\nالسكربت الحالي:\n{sp.dumps(script)}"
-            + "\n\nالمطلوب: أعد كتابة وتصحيح وتوسيع السكربت كاملاً بالترتيب الدقيق للأجزاء الثمانية دون أي مخالفة:\n"
-            + "1. hook: 10–18 كلمة (سؤال أو تناقض أو رقم صادم، بلا تحية ولا يكشف الجواب).\n"
-            + "2. lead: 14–24 كلمة (وعد مشوق وسياق كافٍ للبقاء).\n"
-            + "3. body1: 18–30 كلمة (حقيقة ملموسة أولى بتفاصيل كافية ومحكية).\n"
-            + "4. open_loop1: 8–16 كلمة (سطر تشويقي يطرح لغزاً جديداً بلا إجابة الآن).\n"
-            + "5. body2: 18–30 كلمة (يجيب على open_loop1 بحقيقة أقوى ومفاجئة).\n"
-            + "6. open_loop2: 8–16 كلمة (سطر تشويقي للذروة والمفاجأة الكبرى).\n"
-            + "7. body3: 18–30 كلمة (أقوى حقيقة تكشف اللغز وتفي بوعد الـ hook بالكامل).\n"
-            + "8. cta: 8–18 كلمة (إجراء واحد طبيعي، بلا شكر، وتتصل كلماته الأخيرة ببداية الـ hook).\n"
-            + "- مجموع كلمات السرد الإجمالي: بين 100 و150 كلمة (إياك أن يقل عن 95 كلمة).\n"
-            + "- facts: قائمة claims و sources موثقة لكل معلومة.\n"
-            + "أعد JSON فقط بالمفاتيح الثمانية."
+            + f"\n\nCurrent script:\n{sp.dumps(script)}"
+            + "\n\nRequired: rewrite, correct and expand the whole script, in Arabic, in the exact order of the eight parts, with no violation:\n"
+            + "1. hook: 10-18 words (a question, contradiction or shocking number; no greeting; does not reveal the answer).\n"
+            + "2. lead: 14-24 words (an exciting promise and enough context to keep watching).\n"
+            + "3. body1: 18-30 words (a first tangible fact with enough detail, in spoken language).\n"
+            + "4. open_loop1: 8-16 words (a gripping line that poses a new mystery without answering it now).\n"
+            + "5. body2: 18-30 words (answers open_loop1 with a stronger, surprising fact).\n"
+            + "6. open_loop2: 8-16 words (a gripping line for the climax and the big surprise).\n"
+            + "7. body3: 18-30 words (the strongest fact, settling the mystery and fully paying off the hook).\n"
+            + "8. cta: 8-18 words (one natural action, no thanks, and its last words connect to the start of the hook).\n"
+            + "- Total narration length: between 100 and 150 words (never below 95 words).\n"
+            + "- facts: a list of claims and sources, documented for every piece of information.\n"
+            + "Return JSON only with the eight keys."
         )
         try:
             fixed_raw = llm.call_llm_json("script", sp.SYSTEM, fix_prompt, temperature=0.2, session_id=session_id)
@@ -390,7 +290,7 @@ def make_beats():
             from pipeline import presets as _presets
             _guide = _presets.guide((b.get("style") or {}).get("preset"))
             if _guide:
-                usr_p += "\n\nدليل الإخراج الفني لهذا الفيديو (التزم بجوهره وبقائمة «ليس» وبتعليمات المخرج البصري):\n" + _guide
+                usr_p += "\n\nART DIRECTION OF THIS VIDEO (follow its essence, its 'not' list and its visual-director instructions):\n" + _guide
             raw = llm.call_llm_json("director", sys_p, usr_p, temperature=0.8, session_id=session_id)
             retry_fn = lambda reasons: llm.call_llm_json(
                 "director",

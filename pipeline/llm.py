@@ -66,12 +66,12 @@ def _post(url: str, headers: dict, payload: dict, timeout: int = 120) -> dict:
 
 
 
-def gemini_vision_json(system: str, user: str, images: List[bytes]) -> Any:
+def gemini_vision_json(system: str, user: str, images: List[bytes], model: Optional[str] = None) -> Any:
     """استدعاء الرؤية الحاسوبية لاختيار الصور (Gemini Vision)."""
     key = cfg("GEMINI_API_KEY")
     if not key:
         raise LLMError("مفتاح GEMINI_API_KEY غير مضبوط في ملف .env لاختيار الصور بالرؤية الحاسوبية", provider="gemini")
-    model = cfg("GEMINI_MODEL", "gemini-2.5-flash")
+    model = model or cfg("GEMINI_MODEL", "gemini-2.5-flash")
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     parts: List[Dict[str, Any]] = [{"text": user}]
     for i, im in enumerate(images):
@@ -101,7 +101,7 @@ def gemini_vision_json(system: str, user: str, images: List[bytes]) -> Any:
                 "contents": [
                     {"role": "user", "parts": parts},
                     {"role": "model", "parts": [{"text": bad}]},
-                    {"role": "user", "parts": [{"text": "الرد ليس JSON صالحاً. أعده كـ JSON فقط."}]},
+                    {"role": "user", "parts": [{"text": "The reply is not valid JSON. Return it again as JSON only."}]},
                 ],
                 "generationConfig": {"temperature": 0.0, "responseMimeType": "application/json"},
             },
@@ -128,7 +128,7 @@ def _shrink_jpeg(data: bytes, max_side: int = 448, quality: int = 70) -> bytes:
         return data
 
 
-def freellmapi_vision_json(system: str, user: str, images: List[bytes]) -> Any:
+def freellmapi_vision_json(system: str, user: str, images: List[bytes], max_images: int = 4, max_side: int = 448) -> Any:
     """Vision through FreeLLMAPI (model "auto" routes to a vision-capable free model): the free alternative to Gemini Vision."""
     from .llm_providers import FreeLLMAPIProvider
     prov = FreeLLMAPIProvider()
@@ -136,9 +136,9 @@ def freellmapi_vision_json(system: str, user: str, images: List[bytes]) -> Any:
         raise LLMError("FreeLLMAPI غير مضبوط (FREELLMAPI_API_KEY / FREELLMAPI_BASE_URL)", provider="freellmapi")
     parts: List[Dict[str, Any]] = [{"type": "text", "text": user}]
     # free routed models reject / time out on big multi-image payloads: 4 images, <= 448 px, JPEG q70 is enough to recognise a place
-    for i, im in enumerate(images[:4]):
+    for i, im in enumerate(images[:max_images]):
         parts.append({"type": "text", "text": f"Image {i}:"})
-        parts.append({"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + base64.b64encode(_shrink_jpeg(im)).decode()}})
+        parts.append({"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + base64.b64encode(_shrink_jpeg(im, max_side)).decode()}})
     messages = [{"role": "system", "content": system}, {"role": "user", "content": parts}]
 
     def call(msgs):
@@ -151,7 +151,7 @@ def freellmapi_vision_json(system: str, user: str, images: List[bytes]) -> Any:
 
     raw = call(messages)
     return _parse_with_repair(raw, lambda bad: call(messages + [{"role": "assistant", "content": bad},
-                                                                {"role": "user", "content": "الرد ليس JSON صالحاً. أعده كـ JSON فقط."}]))
+                                                                {"role": "user", "content": "The reply is not valid JSON. Return it again as JSON only."}]))
 
 
 def vision_providers() -> List[str]:
@@ -201,11 +201,11 @@ def write_script_with_facts(topic: str, facts_text: str, style: Optional[Any] = 
         + sp.SYSTEM
     )
 
-    user_message = f"الحقائق الموثقة من الويب (Facts):\n{facts_text}\n\nفكرة وموضوع الفيديو (Topic):\n{topic}"
+    user_message = f"Verified facts from the web (Arabic sources):\n{facts_text}\n\nVideo idea and topic (write the script in Arabic):\n{topic}"
     if style:
         style_name = style.get("name", "") if isinstance(style, dict) else str(style)
         if style_name:
-            user_message += f"\nالأسلوب والنمط المعتمد: {style_name}"
+            user_message += f"\nChosen style: {style_name}"
 
     raw = call_llm_json("script", system, user_message, temperature=0.7)
     script = sp.normalize(raw)
@@ -217,11 +217,11 @@ def write_script_with_facts(topic: str, facts_text: str, style: Optional[Any] = 
         errors = sp.script_errors(script, geo)
         if errors:
             repair_prompt = (
-                f"الحقائق الموثقة (Facts):\n{facts_text}\n\n"
-                "السكربت يحتوي على بعض الملاحظات الهيكلية:\n"
+                f"Verified facts:\n{facts_text}\n\n"
+                "The script has some structural problems (the problem texts are Arabic):\n"
                 + "\n".join(f"- {e}" for e in errors)
-                + f"\n\nالسكربت الحالي:\n{sp.dumps(script)}\n"
-                "أعد JSON فقط بالمفاتيح الثمانية الصالحة مع الالتزام التام بالحقائق المرفقة."
+                + f"\n\nCurrent script:\n{sp.dumps(script)}\n"
+                "Return JSON only, with the eight valid keys, written in Arabic and strictly respecting the attached facts."
             )
             fixed_raw = call_llm_json("script", system, repair_prompt, temperature=0.2)
             script = sp.normalize(fixed_raw)

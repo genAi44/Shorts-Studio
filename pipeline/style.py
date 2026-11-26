@@ -219,13 +219,13 @@ def normalize(style, seed=None):
     return out
 
 
-ART_SYSTEM = """أنت مدير فني لفيديوهات Shorts عربية. الطابع البصري المفضل: خلفية سادة نظيفة غير باهتة وبلا توهج أو جزيئات: ورق عاجي (paper)، كرافت (kraft)، لون واحد مشبع (solid)، حبر داكن (ink)، أو شبكة/نقاط/خطوط خفيفة جداً فوق لون سادة، مع نصوص عريضة عالية التباين. نوّع الخلفية من فيديو لآخر (لا تكرر نفس الخلفية)؛ وc1 هو لون الخلفية نفسه. مهمتك تصميم ستايل بصري فريد لهذا الفيديو بالذات يناسب موضوعه ومزاجه، ولا يشبه الفيديوهات السابقة. لا تستخدم ستايلاً محايداً مكرراً؛ اتخذ قراراً جريئاً ومتماسكاً (لوحة ألوان واحدة منسجمة، ونص مقروء بتباين عالٍ فوق الخلفية).
+ART_SYSTEM = """You are the art director of ARABIC Shorts videos. The preferred visual character: a clean, plain, non-faded background with no glow and no particles: ivory paper (paper), kraft (kraft), one saturated colour (solid), dark ink (ink), or a very light grid/dots/lines over a plain colour, with bold, high-contrast text. Vary the background from one video to the next (never repeat the same background); c1 is the background colour itself. Your task is to design a unique visual style for THIS video that suits its topic and mood and does not look like the previous videos. Do not use a repeated neutral style; make a bold, coherent decision (one harmonious colour palette, and text that reads with high contrast over the background). All text shown in the video is Arabic, so choose fonts from the list below only (they carry Arabic glyphs).
 
-مبادئ الحركة: الخروج أسرع من الدخول. pace يتحكم في سرعة النوابض (0.75=هادئ، 1.3=حيوي). edit.ken يحدد حركة الكاميرا الافتراضية على الصور (in=push-in, out=zoom-out, pan=انزلاق). edit.shapes وedit.glow يضيفان بُعداً بصرياً.
+Motion principles: exits are faster than entrances. pace controls the speed of the springs (0.75 = calm, 1.3 = lively). edit.ken sets the default camera move on photos (in = push-in, out = zoom-out, pan = glide). edit.shapes and edit.glow add visual depth.
 
-أعد JSON فقط بهذا الشكل (كل الألوان [r,g,b] من 0 إلى 255):
+Reply with JSON only in this shape (all colours are [r,g,b] from 0 to 255):
 {
- "name": "اسم قصير للستايل",
+ "name": "a short name for the style (Arabic)",
  "font": "kufi|cairo|changa|messiri|reem|markazi|amiri|lalezar|tajawal",
  "weight": 500-900,
  "palette": {"c1":[..],"c2":[..],"accent":[..],"accent2":[..],"text":[..],"ctx":[..],"ctx_edge":[..],"hl":[[..],[..],[..]]},
@@ -237,19 +237,19 @@ ART_SYSTEM = """أنت مدير فني لفيديوهات Shorts عربية. ا�
  "text": {"layout":"center|stack|diag|left","size":80-140},
  "deco": {"frame":"none|corners|border|ticks","progress":"none|top|bottom|side"},
  "pace": 0.6-1.5,
- "font2": "خط ثانٍ مختلف عن الأول يُمزج معه داخل الجملة الواحدة (خفيف/كتابي)، من نفس قائمة الخطوط", "weight2": 400-700,
+ "font2": "a second font, different from the first, mixed with it inside one sentence (light / handwritten feel), from the same font list", "weight2": 400-700,
  "edit": {"photo":"bleed|polaroid|arch|tilt|circle|free","cutout":"ring|glow|blob|plain","mixpat":"alt|tail|head|none","shapes":"stars|diamonds|dots|crosses|none","ken":"in|out|pan","glow":true,"blur":true,"duo":false}
 }
-edit هو «أسلوب المونتاج» لهذا الفيديو: photo شكل الصور المستطيلة، cutout إطار الصور المقصوصة، mixpat كيف تتبدل الخطوط بين كلمات الجملة، shapes الأشكال الزخرفية الصغيرة المتحركة، ken حركة الكاميرا على الصور، glow توهج الأرقام، blur ظهور الكلمات بتمويه، duo صبغة لونين على الصور. اختر تركيباً متماسكاً يناسب المزاج ويختلف عن الفيديوهات السابقة.
-c1 وc2 لون الخلفية (تدرّج). ctx لون الدول المحيطة وctx_edge حدودها (قريبان من الخلفية). hl ألوان الدول المُبرزة وتكون لافتة. text لون النص ويجب أن يتباين بقوة مع c1."""
+edit is the "editing style" of this video: photo is the shape of rectangular photos, cutout the frame of cut-out photos, mixpat how fonts alternate between the words of a sentence, shapes the small animated decorative shapes, ken the camera move on photos, glow the glow on numbers, blur the blurred appearance of words, duo a two-colour tint on photos. Choose a coherent combination that suits the mood and differs from the previous videos.
+c1 and c2 are the background colour (a gradient). ctx is the colour of the surrounding countries and ctx_edge their borders (both close to the background). hl are the colours of the highlighted countries and should be eye-catching. text is the text colour and must contrast strongly with c1."""
 
 
 def art_prompt(script, avoid=()):
     s = {"title": script.get("title"), "hook": script.get("hook", {}).get("narration"),
          "scene_types": [b.get("visual", {}).get("type") for b in script.get("body", [])]}
-    t = "السكربت:\n" + json.dumps(s, ensure_ascii=False)
+    t = "Script (Arabic):\n" + json.dumps(s, ensure_ascii=False)
     if avoid:
-        t += "\n\nستايلات استُخدمت مؤخراً، ابتعد عنها: " + "، ".join(map(str, avoid))
+        t += "\n\nStyles used recently, stay away from them: " + ", ".join(map(str, avoid))
     return t
 
 

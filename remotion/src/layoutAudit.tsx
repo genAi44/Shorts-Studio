@@ -145,6 +145,23 @@ const heroOf = () => {
   return {box: [q.left, q.top, q.right, q.bottom].map(Math.round), cover: Math.round(cover * 1000) / 1000, painted, opacity: Math.round(ancestorOpacity(host) * 100) / 100};
 };
 
+/** widest visible [data-hero] element (the scene's main drawing), or null when the scene marks none */
+const heroBox = (): number[] | null => {
+  let best: DOMRect | null = null;
+  const ink = document.querySelector('[data-hero-ink]');  // an illustration: the bounds of what is drawn, not of its box
+  if (ink && ancestorOpacity(ink) >= 0.35) {
+    const q = ink.getBoundingClientRect();
+    return [q.left, q.top, q.right, q.bottom].map(Math.round);
+  }
+  document.querySelectorAll('[data-hero]').forEach((el) => {
+    if (ancestorOpacity(el) < 0.35) return;
+    const q = el.getBoundingClientRect();
+    if (!best || q.width > best.width) best = q;
+  });
+  const b = best as DOMRect | null;
+  return b ? [b.left, b.top, b.right, b.bottom].map(Math.round) : null;
+};
+
 export const LayoutAudit: React.FC = () => {
   const frame = useCurrentFrame();
   const [handle] = useState(() => delayRender('layout-audit'));
@@ -152,7 +169,7 @@ export const LayoutAudit: React.FC = () => {
     const id = setTimeout(() => {
       try {
         const items = collect();
-        console.log('[AUDIT]' + JSON.stringify({frame, texts: items.filter((i) => !i.caption).length, bbox: bboxOf(items), issues: auditItems(items), hero: heroOf()}));
+        console.log('[AUDIT]' + JSON.stringify({frame, texts: items.filter((i) => !i.caption).length, bbox: bboxOf(items), issues: auditItems(items), hero: heroOf(), heroInk: heroBox(), strings: items.filter((i) => !i.caption && !i.icon).map((i) => i.text).slice(0, 60)}));
       } finally {
         continueRender(handle);
       }
