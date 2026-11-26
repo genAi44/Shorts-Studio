@@ -50,6 +50,10 @@ overflows), kept inside our guarantees:
 - Gates: tsc + allowlist, the real render with the layout audit, `[data-hero-ink]` (the drawn bounds) longest side
   >= 600 px, ink (strong-gradient share) >= 0.012 in the stage at mid and late scene, and the truth rule on every number
   actually rendered (`strings` in the audit). Max 2 repairs with the problems and the previous code.
+- Story context: the designer and the illustrator both get `story_so_far` (earlier sentences), the video message and the
+  scene intent, and must state the direction of every change. Without it, body3 of the Dead Sea video («33 متراً
+  بألفين وخمسين») was drawn as the water RISING and titled «البحر يصعد»; with it, the level drops down a measuring
+  pole and the title reads «البحر الميت يواصل الانحدار».
 - The first showing of a map keeps the map device (geography from data, not imagined); a drawing that still fails
   falls back to the compiled device of the shot. `STUDIO_ILLUSTRATE=0` turns it off.
 Psychology video with it: 8/8 drawn (3 repaired: an unspoken 0, a type error, overlapping text): a jam shelf that

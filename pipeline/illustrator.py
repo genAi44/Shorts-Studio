@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 
 from .config import FPS
 
-ILLUSTRATOR_VERSION = 2
+ILLUSTRATOR_VERSION = 3
 STAGE = {"x": 80, "y": 570, "w": 920, "h": 800}  # the drawing's box on the 1080x1920 canvas (under the key line)
 HERO_MIN_INK = 0.012  # strong-gradient share inside the box at mid / late scene (an empty or washed-out drawing fails)
 HERO_MIN_SIDE = 600  # px: the longest side of what is drawn ([data-hero-ink] bounds) at mid-scene
@@ -33,6 +33,10 @@ THINK FIRST (write it as the PLAN comment, 4-8 lines):
    filtered. With all text removed, the motion alone must tell what happens.
 3. The beats: which element appears or changes on which spoken word (their times are given in seconds).
 4. Continuity: the video's core metaphor and recurring objects (given) come back when the sentence is about them.
+5. Direction: read story_so_far and the video message. A bare number does not say which way things go ("33 metres by
+   2050" in a story about a sea that is drying up means the level DROPS 33 m, it does not rise). Write the direction of
+   every change in the PLAN as "Direction: <what> <rises|drops|grows|shrinks|...> because <the story says ...>", and
+   draw exactly that.
 
 DRAWING RULES
 - You return ONE component: `const Hero: React.FC<{dur: number}> = ({dur}) => { ... }` that returns SVG children
@@ -99,9 +103,14 @@ def allowed_numbers(ctx: Dict[str, Any]) -> List[str]:
     return out
 
 
-def brief(ctx: Dict[str, Any], shot: Optional[Dict[str, Any]], ds: Dict[str, Any], sfx: str) -> str:
+def brief(ctx: Dict[str, Any], shot: Optional[Dict[str, Any]], ds: Dict[str, Any], sfx: str,
+          story: Optional[Dict[str, Any]] = None) -> str:
     words = [{"word": w["t"], "start_s": round(float(w["s"]), 2)} for w in ctx["words"]]
+    story = story or {}
     return json.dumps({
+        "video_message": story.get("message"),
+        "story_so_far": story.get("before", []),
+        "scene_intent": story.get("intent"),
         "sentence": ctx["sentence"],
         "scene_seconds": round(ctx["dur"] / FPS, 2),
         "words_with_times": words,
@@ -169,9 +178,10 @@ def name_for(ctx: Dict[str, Any], shot: Optional[Dict[str, Any]], ds: Dict[str, 
 
 
 def draw(ctx: Dict[str, Any], shot: Optional[Dict[str, Any]], ds: Dict[str, Any], sfx: str,
-         problems: Optional[List[str]] = None, previous: Optional[str] = None, write=None) -> Optional[str]:
-    """One illustrator call -> the Hero code (no imports), or None."""
-    user = brief(ctx, shot, ds, sfx)
+         problems: Optional[List[str]] = None, previous: Optional[str] = None, write=None,
+         story: Optional[Dict[str, Any]] = None) -> Optional[str]:
+    """One illustrator call -> the Hero code (no imports), or None. `story`: {message, before (earlier sentences), intent}."""
+    user = brief(ctx, shot, ds, sfx, story)
     if problems:
         user += ("\n\nYour previous drawing was REJECTED by the render check. Fix every problem, keep what worked, return "
                  "the complete corrected code.\nProblems:\n- " + "\n- ".join(problems[:10]) + "\n\nPrevious code:\n" + (previous or ""))

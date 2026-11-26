@@ -188,8 +188,10 @@ class TestOrchestration(unittest.TestCase):
                 return {"world": "أطلس يرسم", "scenes": [{"id": "hook", "function": "question", "link": "continue"},
                                                          {"id": "body1", "function": "quantity", "link": "contrast"}]}
             brief = json.loads(user.split("\n\n")[0])
+            seen.append(brief["story_so_far"])
             return good if brief["scene"]["id"] == "hook" else {"device": "nope"}
 
+        seen = []
         with tempfile.TemporaryDirectory() as tmp:
             out = studio.direct_spec(spec, {"title": "t"}, tmp, log=lambda *_: None, ask=ask, gates=False)
             bible = json.loads((Path(tmp) / "production.json").read_text(encoding="utf-8"))
@@ -198,6 +200,8 @@ class TestOrchestration(unittest.TestCase):
         self.assertEqual(bible["fallback"], ["body1"])
         self.assertEqual(bible["shots"]["body1"]["tries"], studio.MAX_DESIGN_TRIES)
         self.assertEqual(out["scenes"][1]["transition"]["type"], "flip")  # contrast link
+        self.assertEqual(seen[0], [])            # the designer sees the story so far (direction comes from it)
+        self.assertEqual(seen[-1], [TEXT])
 
 
 if __name__ == "__main__":

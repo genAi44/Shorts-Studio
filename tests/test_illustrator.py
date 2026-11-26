@@ -22,6 +22,15 @@ class TestIllustrator(unittest.TestCase):
         self.assertTrue(b["palette"]["accent2"].startswith("#"))
         self.assertEqual(b["video"]["core_metaphor"], "خزان ماء")
 
+    def test_story_gives_the_direction_context(self):
+        ctxs = [dict(CTX, id="a", sentence="البحر يجف وينخفض منسوبه"), dict(CTX, id="b", sentence="ثلاثة وثلاثين متراً بألفين وخمسين")]
+        st = studio.story_for(ctxs, {"message": "البحر الميت يختفي", "scenes": [{"id": "b", "intent": "the drop goes on"}]})
+        self.assertEqual(st["a"]["before"], [])
+        self.assertEqual(st["b"]["before"], ["البحر يجف وينخفض منسوبه"])
+        b = json.loads(il.brief(ctxs[1], None, DS, "_b", st["b"]))
+        self.assertEqual((b["video_message"], b["scene_intent"]), ("البحر الميت يختفي", "the drop goes on"))
+        self.assertIn("Direction:", il.SYSTEM)
+
     def test_reply_is_reduced_to_the_hero_inside_the_stage(self):
         reply = "Sure!\n```tsx\nimport React from 'react';\n/* PLAN: a river cut by a dam */\nexport const Hero: React.FC<{dur: number}> = () => <g />;\n```"
         hero = il.strip_code(reply)

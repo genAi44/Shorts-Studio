@@ -184,6 +184,8 @@ DEVICES (generic fallback):
   number. The map is the hero: no hero icon.
 
 TEXT: keyword = the KEY idea in 1-4 words (big, accent colour); lead / tail = optional small lines (<= 7 words each).
+DIRECTION: a bare number does not say which way things go; read story_so_far and video_message ("33 metres by 2050"
+in a story about a drying sea is a DROP). Never write a direction (rises / falls / grows / shrinks) the story contradicts.
 On-screen text is the punchline, NOT a copy of the narration (the narration is already captioned). Arabic.
 TIMING: every slot that appears has "at": a word copied EXACTLY from the scene's spoken words; it appears on that word.
 ICONS: ONLY names from "available_icons" in the brief (any other name renders as a star).
@@ -204,8 +206,11 @@ Return JSON only:
 Omit slots the device does not use."""
 
 
-def shot_brief(ctx: Dict[str, Any], tscene: Dict[str, Any], ds: Dict[str, Any], prev: Optional[Dict[str, Any]], used: Dict[str, int]) -> str:
+def shot_brief(ctx: Dict[str, Any], tscene: Dict[str, Any], ds: Dict[str, Any], prev: Optional[Dict[str, Any]], used: Dict[str, int],
+               story: Optional[Dict[str, Any]] = None) -> str:
     brief = {
+        "video_message": (story or {}).get("message"),
+        "story_so_far": (story or {}).get("before", []),
         "scene": {"id": ctx["id"], "role": ctx.get("role"), "seconds": round(ctx["dur"] / FPS, 1), "sentence": ctx["sentence"],
                   "spoken_words": [w["t"] for w in ctx["words"]], "entities": ctx.get("entities", []),
                   "has_map": bool(ctx.get("map_overlay")), "map_already_shown": bool(ctx.get("map_seen"))},
@@ -221,8 +226,9 @@ def shot_brief(ctx: Dict[str, Any], tscene: Dict[str, Any], ds: Dict[str, Any], 
     return json.dumps(brief, ensure_ascii=False)
 
 
-def design_shot(ctx, tscene, ds, prev, used, ask=_ask, errors: Optional[List[str]] = None, previous_spec=None) -> Optional[Dict[str, Any]]:
-    user = shot_brief(ctx, tscene, ds, prev, used)
+def design_shot(ctx, tscene, ds, prev, used, ask=_ask, errors: Optional[List[str]] = None, previous_spec=None,
+                story: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+    user = shot_brief(ctx, tscene, ds, prev, used, story)
     if errors:
         user += ("\n\nYour previous spec was REJECTED. Fix every problem and return the complete corrected spec.\nProblems:\n- "
                  + "\n- ".join(errors[:12]) + "\nPrevious spec:\n" + json.dumps(previous_spec, ensure_ascii=False))
@@ -847,11 +853,11 @@ def _name(shot: Dict[str, Any], ctx: Dict[str, Any], ds: Dict[str, Any]) -> str:
     return "s_st" + hashlib.sha1(payload.encode("utf-8")).hexdigest()[:11]
 
 
-def _design_valid(ctx, tscene, ds, prev, used, ask, extra_errors=None, last=None) -> Tuple[Optional[Dict[str, Any]], List[str], int]:
+def _design_valid(ctx, tscene, ds, prev, used, ask, extra_errors=None, last=None, story=None) -> Tuple[Optional[Dict[str, Any]], List[str], int]:
     errs, shot, tries = list(extra_errors or []), last, 0
     for _ in range(MAX_DESIGN_TRIES):
         tries += 1
-        shot = design_shot(ctx, tscene, ds, prev, used, ask, errs or None, shot)
+        shot = design_shot(ctx, tscene, ds, prev, used, ask, errs or None, shot, story)
         errs = validate_shot(shot, ctx, prev, used) if shot is not None else ["the designer returned nothing"]
         if not errs:
             return shot, [], tries
@@ -865,13 +871,27 @@ def map_places(ov: Any) -> frozenset:
     return frozenset(str(w.get("name_ar") or w.get("name_en") or "") for w in ov.get("waypoints") or [] if isinstance(w, dict)) - {""}
 
 
-def illustrate_all(ctxs, shots, ds, style, job: Path, scenes_dir: Path, bible: Dict[str, Any], log, write=None) -> Dict[str, str]:
+def story_for(ctxs: List[Dict[str, Any]], t: Optional[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    """What each scene's illustrator must know beyond its own sentence: the earlier sentences (a bare number gets its
+    direction from the story: '33 m by 2050' in a drying sea is a drop), the video message, the scene's intent."""
+    t = t or {}
+    intents = {s.get("id"): s.get("intent") for s in t.get("scenes") or [] if isinstance(s, dict)}
+    out, before = {}, []
+    for c in ctxs:
+        out[c["id"]] = {"message": t.get("message"), "before": list(before[-6:]), "intent": intents.get(c["id"])}
+        before.append(c["sentence"])
+    return out
+
+
+def illustrate_all(ctxs, shots, ds, style, job: Path, scenes_dir: Path, bible: Dict[str, Any], log, write=None,
+                   treatment_: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
     """Bespoke SVG hero per scene by the illustrator model, through the real render gates, max 2 repairs each.
     The first showing of a map keeps the map device (geography is drawn from data, not imagined). Returns sid -> name."""
     from concurrent.futures import ThreadPoolExecutor
     from . import illustrator as il
     from . import scene_author as sa
     todo = {c["id"]: c for c in ctxs if (shots.get(c["id"]) or {}).get("device") != "map"}
+    story = story_for(ctxs, treatment_)
     names = {sid: il.name_for(c, shots.get(sid), ds) for sid, c in todo.items()}
     accepted: Dict[str, str] = {}
     for sid in list(todo):
@@ -887,7 +907,7 @@ def illustrate_all(ctxs, shots, ds, style, job: Path, scenes_dir: Path, bible: D
         if not todo:
             break
         with ThreadPoolExecutor(max_workers=4) as ex:
-            futs = {sid: ex.submit(il.draw, c, shots.get(sid), ds, "_" + re.sub(r"\W", "", sid), problems.get(sid), codes.get(sid), write)
+            futs = {sid: ex.submit(il.draw, c, shots.get(sid), ds, "_" + re.sub(r"\W", "", sid), problems.get(sid), codes.get(sid), write, story[sid])
                     for sid, c in todo.items()}
             res = {sid: f.result() for sid, f in futs.items()}
         now: Dict[str, List[str]] = {}
@@ -963,8 +983,9 @@ def direct_spec(spec: Dict[str, Any], script: Dict[str, Any], job_dir: str, log:
     shots: Dict[str, Dict[str, Any]] = {}
     used: Dict[str, int] = {}
     prev = None
+    stories = story_for(ctxs, t)
     for ctx, tscene in zip(ctxs, t["scenes"]):  # sequential: each scene sees the previous shot (continuity)
-        shot, errs, tries = _design_valid(ctx, tscene, ds, prev, used, ask)
+        shot, errs, tries = _design_valid(ctx, tscene, ds, prev, used, ask, story=stories[ctx["id"]])
         rec = {"tries": tries, "errors": errs, "status": "designed" if shot else "invalid", "shot": shot}
         bible["shots"][ctx["id"]] = rec
         if shot:
@@ -977,7 +998,7 @@ def direct_spec(spec: Dict[str, Any], script: Dict[str, Any], job_dir: str, log:
     accepted: Dict[str, str] = {}
     illustrated: Dict[str, str] = {}
     if gates and cfg("STUDIO_ILLUSTRATE", "1") == "1":  # bespoke drawings first; the compiled devices are the fallback
-        illustrated = illustrate_all(ctxs, shots, ds, spec["style"], job, scenes_dir, bible, log, write=illustrate_write)
+        illustrated = illustrate_all(ctxs, shots, ds, spec["style"], job, scenes_dir, bible, log, write=illustrate_write, treatment_=t)
         accepted.update(illustrated)
     pending = {sid: s for sid, s in shots.items() if sid not in illustrated}
     for rnd in range(MAX_REPAIRS + 1):
@@ -1027,7 +1048,7 @@ def direct_spec(spec: Dict[str, Any], script: Dict[str, Any], job_dir: str, log:
             count_use(used_wo, shots[sid], -1)
             log(f"studio: repairing {sid} ({probs[0][:80]})")
             new, errs, tries = _design_valid(by_id[sid], t["scenes"][i], ds, prev_shot, used_wo, ask,
-                                             ["the rendered frames failed: " + p for p in probs[:6]], shots[sid])
+                                             ["the rendered frames failed: " + p for p in probs[:6]], shots[sid], stories[sid])
             bible["shots"][sid]["tries"] += tries
             if new:
                 used = dict(used_wo)
