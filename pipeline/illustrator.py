@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 
 from .config import FPS
 
-ILLUSTRATOR_VERSION = 3
+ILLUSTRATOR_VERSION = 4
 STAGE = {"x": 80, "y": 570, "w": 920, "h": 800}  # the drawing's box on the 1080x1920 canvas (under the key line)
 HERO_MIN_INK = 0.012  # strong-gradient share inside the box at mid / late scene (an empty or washed-out drawing fails)
 HERO_MIN_SIDE = 600  # px: the longest side of what is drawn ([data-hero-ink] bounds) at mid-scene
@@ -51,6 +51,8 @@ DRAWING RULES
   count that visibly empties, a colour that turns. A viewer must see it on a phone at a glance.
 - Colours mean something: use the palette hexes given in "palette" (pick the one whose hue fits: water bluish,
   danger the warm accent, neutral objects in ink / ground tones). Never paint water red or fire blue.
+- Numbers and labels stay readable to the last frame: draw them LAST (after every shape) and put them where nothing
+  moves, grows or sinks later in the scene (never on the path of a falling object, an opening pit, a rising fill).
 - At most 3 primary focal elements; earlier elements recede (opacity ~0.4) when a new idea takes the stage.
 - Colours ONLY from the theme: k.c('ground' | 'ground2' | 'text' | 'accent' | 'accent2' | 'hl0' | 'hl1' | 'hl2', alpha).
   ground = background colour, text = ink, accent = the strong colour, accent2 = the second colour.
