@@ -13,7 +13,7 @@ from pipeline import presets, scene_author as sa  # noqa: E402
 from pipeline import style as stl  # noqa: E402
 
 SLUGS = ["atlas", "chalkboard", "dossier"]
-SECTIONS = ["الجوهر، وما ليس هو", "المواد والرسم", "الإيقاع والإخراج", "تعليمات للمخرج البصري"]
+SECTIONS = ["The essence, and what it is not", "Materials and drawing", "Rhythm and direction", "Instructions for the visual director"]
 
 
 def test_the_presets_are_listed():
@@ -58,7 +58,7 @@ def test_the_guide_reaches_the_scene_author_system_prompt_not_the_data():
     assert "art_guide" in th
     ctx = {"id": "a", "role": "body", "dur": 90, "sentence": "x", "sentences": ["x"], "entities": [], "words": [], "map_overlay": None, "theme": th}
     system, user = sa.build_prompts(ctx)
-    assert "ART DIRECTION OF THIS VIDEO" in system and "سبورة" in system
+    assert "ART DIRECTION OF THIS VIDEO" in system and "Chalkboard" in system
     assert "art_guide" not in user
     # a different preset changes the cache key of the authored scene
     other = dict(ctx, theme=stl.theme_from_style(presets.load_style("atlas")))

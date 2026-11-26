@@ -499,7 +499,7 @@ def extract_timed_geo_mentions(
     return mentions[:4]
 
 
-MAP_FILL = 0.70  # share of the view the main subject fills. 0.86 was tried: it zoomed Russia to 1.27 and the camera, centred on the pin, cut its east off
+MAP_FILL = 0.80 # share of the view the main subject fills. 0.86 was tried: it zoomed Russia to 1.27 and the camera, centred on the pin, cut its east off
 
 
 def _fills_width(geo: Any, iso: Any, S: float, K: float) -> bool:
@@ -522,7 +522,7 @@ def _fit_zoom(geo: Any, iso: Any, S: float, K: float) -> Optional[float]:
 
 
 _SCALE_LABEL = {"village": "قرية", "town": "بلدة", "city": "مدينة", "capital": "عاصمة", "region": "منطقة", "country": "دولة",
-                "continent": "قارة", "ocean": "محيط", "globe": "الكرة الأرضية"}
+                "continent": "قارة", "ocean": "محيط", "globe": "الكرة الأرضية", "district": "حي", "landmark": "معلم"}
 _TERRAIN_LABEL = {"river": "نهر", "mountain": "جبل", "desert": "صحراء", "lake": "بحيرة", "strait": "مضيق", "island": "جزيرة"}
 
 
@@ -568,7 +568,7 @@ def mention_from_entity(e: Dict[str, Any], words: List[Dict[str, Any]]) -> List[
         sc = e.get("scale") or "city"
         label = _SCALE_LABEL.get(sc, "مدينة")
         common = dict(country_ar=e.get("country_ar"), iso3=e.get("iso3"), iso2=e.get("iso2"), scale=sc)
-        if sc in ("village", "town", "city"):
+        if sc in ("village", "town", "city", "district", "landmark"):
             return [mk("city", label, e["name_ar"], e["name_en"], e["lat"], e["lon"], token, **common)]
         if sc == "capital":
             return [mk("capital", label, e["name_ar"], e["name_en"], e["lat"], e["lon"], token, **common)]

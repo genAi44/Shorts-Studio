@@ -65,24 +65,26 @@ _VISUAL_MODES = (
     "topographic_contour",     # تلخيصات تضاريسية مع خطوط ارتفاع
 )
 
-_VI_SYSTEM = """You are an elite Documentary Film Director, Historical & Geographical Researcher, and Motion Graphics Architect.
+_VI_SYSTEM = """{contract}
+
+You are an elite Documentary Film Director, Historical & Geographical Researcher, and Motion Graphics Architect.
 Your job is to perform DEEP SEMANTIC ANALYSIS on an entire Arabic documentary script before any visuals or editing begin.
 Do NOT match isolated keywords. Understand the FULL story, historical era, geographical continuity, entities, and cause-effect relationships across all scenes.
 
 For the entire script, output strict JSON with this exact schema:
 {
-  "main_topic": "concise Arabic summary of the core topic",
+  "main_topic": "concise English summary of the core topic",
   "domain": "history | geography | politics | science | economics | biography | culture",
   "global_era": {
-    "label": "e.g. الحرب الباردة 1945-1989 / العصر الحديث",
+    "label": "e.g. Cold War 1945-1989 / modern era",
     "year_start": 1945,
     "year_end": 1989,
     "is_historical": true
   },
   "entities": [
     {
-      "name": "entity name in Arabic",
-      "name_en": "English name",
+      "name": "entity name exactly as written in the Arabic script (display only)",
+      "name_en": "standard English geographic / historical name",
       "category": "geographic | historical | human | material | numeric",
       "subtype": "city | country | river | landmark | war | treaty | partition | leader | army | building | vehicle | stat | date",
       "era": "associated time period or null",
@@ -90,14 +92,14 @@ For the entire script, output strict JSON with this exact schema:
     }
   ],
   "relationships": [
-    {"source": "A", "relation": "action/link in Arabic", "target": "B", "era": "optional year/era"}
+    {"source": "A", "relation": "action/link in English", "target": "B", "era": "optional year/era"}
   ],
   "scenes": [
     {
       "id": "exact scene id from input",
       "semantic_goal": "what the viewer must understand visually in this scene",
       "explicit_and_inherited_locations": [
-        {"name_ar": "city or country in Arabic", "name_en": "English", "kind": "city | capital | country | region | landmark", "inherited_from_context": false}
+        {"name_ar": "city or country as written in the Arabic script", "name_en": "standard English name", "kind": "city | capital | country | region | landmark", "inherited_from_context": false}
       ],
       "historical_era": "specific era for this scene (e.g. '1945 Post-WWII' or 'modern')",
       "is_historical": true,
@@ -119,6 +121,11 @@ CRITICAL RULES:
 2. Historical Accuracy: NEVER suggest modern skyline photos for a 1945/ancient historical scene. Set `is_historical: true`, add `archival` / the year to `media_query_en`, and list modern elements in `avoid`.
 3. Purposeful Visuals: NEVER choose abstract clocks, random icons, or decorative charts. Every visual element must explain the exact narration.
 4. Variety: Balance real archival/landmark photography (`historical_photo` / `modern_photo`, which pair with interactive maps) with `split_diagram`, `timeline`, `comparison_chart`, `stat_infographic`, and `custom_motion`."""
+
+
+def _vi_system() -> str:
+    from .director_plan import LANGUAGE_CONTRACT
+    return _VI_SYSTEM.replace("{contract}", LANGUAGE_CONTRACT)
 
 
 def _detect_era_from_text(text: str) -> Tuple[Optional[int], Optional[int], bool, str]:
@@ -483,7 +490,7 @@ def analyze_script_visual_intelligence(
         }
         raw = llm.call_llm_json(
             "director",
-            _VI_SYSTEM,
+            _vi_system(),
             json.dumps(payload, ensure_ascii=False),
             temperature=0.35,
             session_id=session_id,

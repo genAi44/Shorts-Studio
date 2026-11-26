@@ -29,7 +29,7 @@ log = logging.getLogger("pipeline.entities")
 
 CACHE_PATH = ROOT / "data" / "entity_cache.json"
 NOMINATIM_CACHE = ROOT / "data" / "nominatim_cache.json"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 PUNCT = "،؛؟?!.,:;()[]{}\"'«»-–—…"
 
@@ -149,8 +149,8 @@ def _years(e: Dict[str, Any]) -> str:
 
 
 ENTITY_REGISTRY: Dict[str, EntityType] = {r.id: r for r in [
-    EntityType("place", "مكان جغرافي", "any place: village, town, city, capital, region, country, continent, ocean/sea, or the whole Earth (scale)",
-               channel="overlay", scales=("village", "town", "city", "capital", "region", "country", "continent", "ocean", "globe")),
+    EntityType("place", "مكان جغرافي", "any place: village, town, city, capital, district/neighbourhood, landmark/historic site, region (state, province, governorate), country, continent, ocean/sea, or the whole Earth (scale)",
+               channel="overlay", scales=("village", "town", "city", "capital", "district", "landmark", "region", "country", "continent", "ocean", "globe")),
     EntityType("terrain", "تضاريس", "river, mountain range, desert, lake, strait, island, or a named geographic line such as the equator or the Europe-Asia boundary (subtype)", channel="overlay",
                scales=("river", "mountain", "desert", "lake", "strait", "island", "boundary")),
     EntityType("conflict", "حدود/حرب/معركة", "war, battle, border or treaty (sides a and b, year)", channel="overlay"),
@@ -178,7 +178,11 @@ def register(entity_type: EntityType) -> None:
 EXTRACT_SYSTEM = """You extract visual entities from Arabic narration for a video system. Return JSON only:
 {"scenes":[{"id":"<scene id>","sentences":[{"i":0,"entities":[ ... ]}]}]}  (same scenes and sentence order as the input, empty list if none).
 Entity shapes (text = the exact words as written in the sentence, whole words only, copy them verbatim):
- {"type":"place","scale":"village|town|city|capital|region|country|continent|ocean|globe","text":"..","name_ar":"..","name_en":"..","iso2":"..","lat":0,"lon":0}
+ {"type":"place","scale":"village|town|city|capital|district|landmark|region|country|continent|ocean|globe","text":"..","name_ar":"..","name_en":"..","iso2":"..","country_en":"..","lat":0,"lon":0}
+   (name_en = the standard English / officially used geographic name, transliterating only when no English name exists; district = a neighbourhood
+   inside a city; landmark = a named historic or geographic site such as a castle, pyramid, mosque, bridge or ruins; region = state / province / governorate;
+   country_en = the country the place belongs to. A person, tribe, company, university, army or dynasty is NOT a place even when it carries a place name:
+   «عمر المختار», «جامعة القاهرة», «الجيش المصري» -> not places)
  {"type":"terrain","scale":"river|mountain|desert|lake|strait|island|boundary","text":"..","name_ar":"..","name_en":"..","lat":0,"lon":0,"iso2":".."}  (a named mountain range is scale "mountain"; the equator / tropics / prime meridian / the Europe-Asia boundary are scale "boundary")
  {"type":"conflict","text":"..","name_ar":"..","a":{"name_ar":"..","lat":0,"lon":0},"b":{"name_ar":"..","lat":0,"lon":0},"year":0}
  {"type":"route","text":"..","name_ar":"..","stops":[{"name_ar":"..","lat":0,"lon":0}]}
@@ -232,21 +236,35 @@ def extract_script(script: Dict[str, Any], extractor: Optional[Callable[[Dict[st
     """{scene_id: [entities_of_sentence_0, entities_of_sentence_1, ...]} - validated, cached, never raises.
     `extractor(payload) -> {"scenes":[{"id","sentences":[{"i","entities":[..]}]}]}` lets tests inject a fixed plan."""
     payload = _payload(script)
-    key = hashlib.sha1((json.dumps(payload, ensure_ascii=False, sort_keys=True) + str(SCHEMA_VERSION)).encode("utf-8")).hexdigest()
-    cache = _cache_load()
-    raw = cache.get(key) if extractor is None else None
-    if raw is None:
-        raw = (extractor or llm_extract)(payload_for_llm(payload))
+    cache = _cache_load() if extractor is None else {}       # cached per scene: editing one scene re-asks only that scene
+
+    def skey(sc: Dict[str, Any]) -> str:
+        return hashlib.sha1((json.dumps(sc["sentences"], ensure_ascii=False) + str(SCHEMA_VERSION)).encode("utf-8")).hexdigest()
+
+    by_scene: Dict[Any, Dict[str, Any]] = {sc["id"]: cache[skey(sc)] for sc in payload["scenes"] if isinstance(cache.get(skey(sc)), dict)}
+    todo = [sc for sc in payload["scenes"] if sc["id"] not in by_scene]
+    failed: List[Dict[str, Any]] = []
+    if todo:
+        raw = (extractor or llm_extract)(payload_for_llm({"scenes": todo}))
         if raw is None:
             record_fallback("entity extraction unavailable: no entity visuals can be enforced (legacy geo detection only)",
                             beat_id="entities")
-            return {}
-        if extractor is None:
-            cache[key] = raw
-            _cache_save(cache)
+            if not by_scene:
+                return {}
+            failed = todo
+        else:
+            fresh = {s.get("id"): s for s in (raw.get("scenes") or []) if isinstance(s, dict)}  # the model sometimes returns strings in the list
+            for sc in todo:
+                if sc["id"] in fresh:
+                    by_scene[sc["id"]] = fresh[sc["id"]]
+                    if extractor is None:
+                        cache[skey(sc)] = fresh[sc["id"]]
+            if extractor is None:
+                _cache_save(cache)
     out: Dict[str, List[List[Dict[str, Any]]]] = {}
-    by_scene = {s.get("id"): s for s in (raw.get("scenes") or []) if isinstance(s, dict)}  # the model sometimes returns strings in the list
     for sc in payload["scenes"]:
+        if sc in failed:                                     # the call failed: no plan for this scene (legacy detection)
+            continue
         sents = sc["sentences"]
         got = by_scene.get(sc["id"], {}).get("sentences") or []
         got = got if isinstance(got, list) else []
@@ -305,7 +323,7 @@ def geocode_online(query: str, iso2: str = "") -> Optional[Dict[str, Any]]:
             time.sleep(wait)
         _LAST_NOMINATIM[0] = time.time()
         try:
-            params: Dict[str, Any] = {"q": query, "format": "json", "limit": 1}
+            params: Dict[str, Any] = {"q": query, "format": "json", "limit": 1, "addressdetails": 1, "accept-language": "en"}
             if iso2:
                 params["countrycodes"] = iso2.lower()
             r = requests.get("https://nominatim.openstreetmap.org/search", params=params, timeout=6,
@@ -313,7 +331,9 @@ def geocode_online(query: str, iso2: str = "") -> Optional[Dict[str, Any]]:
             data = r.json() if r.status_code == 200 else []
         except Exception:  # noqa: BLE001
             data = []
-    res = {"lat": float(data[0]["lat"]), "lon": float(data[0]["lon"]), "name_en": data[0].get("display_name", "")[:60]} if data else None
+    addr = (data[0].get("address") or {}) if data else {}
+    res = {"lat": float(data[0]["lat"]), "lon": float(data[0]["lon"]), "name_en": data[0].get("display_name", "")[:60],
+           "iso2": str(addr.get("country_code") or ""), "country_en": str(addr.get("country") or "")} if data else None
     cache[key] = res or {}
     try:
         NOMINATIM_CACHE.parent.mkdir(parents=True, exist_ok=True)
@@ -357,6 +377,12 @@ def _continent_members(name_en: str) -> List[str]:
         return []
 
 
+_SCALE_CODES = {
+    "district": ["PPLX", "PPLL", "PPLQ"],
+    "landmark": ["CSTL", "PYR", "PYRS", "MSQE", "TMPL", "RUIN", "HSTS", "MNMT", "BDG", "FT", "BRG", "ANS", "CH", "CAVE", "PAL", "OBS", "SHRN", "TOWR", "WALL", "ARCH", "MUS", "THTR"],
+}
+
+
 def _resolve_place(e: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     from .geo import get_engine
     scale = str(e.get("scale") or "")
@@ -395,11 +421,12 @@ def _resolve_place(e: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         out.update(iso2=c.iso2.lower(), iso3=c.iso3, name_ar=name_ar or c.name_ar or "", name_en=c.name_en,
                    lat=c.centroid_lat or 0.0, lon=c.centroid_lon or 0.0, verified="natural-earth")
         return out
-    # village / town / city / capital / region
+    # village / town / city / capital / district / landmark / region
+    codes = _SCALE_CODES.get(scale)                          # district / landmark: only GeoNames features of that kind
     p = None
     for q in (name_ar, name_en):
         if q:
-            p = engine.resolve(q, country_iso2=iso2 or None)
+            p = engine.resolve(q, country_iso2=iso2 or None, feature_codes=codes)
             if p:
                 break
     lat, lon = _num(e.get("lat")), _num(e.get("lon"))
@@ -409,12 +436,18 @@ def _resolve_place(e: Dict[str, Any]) -> Optional[Dict[str, Any]]:
             record_fallback(f"place '{name_ar or name_en}': model coordinates {_km(lat, lon, p.lat, p.lon):.0f} km from the dictionary entry; dictionary used", beat_id="geo")
         out.update(lat=p.lat, lon=p.lon, iso2=(p.country_iso2 or "").lower(), iso3=p.country_iso3 or "", name_en=p.name_en,
                    country_ar=p.country_ar or "", scale="capital" if p.is_capital else scale, verified="geonames")
+        c = engine.get_country(p.country_iso2) if p.country_iso2 else None
+        out["country_en"] = c.name_en if c else ""
         return out
     q = name_en or name_ar
     res = geocode_online(q, iso2.lower()) if q else None
+    if res and iso2 and res.get("iso2") and res["iso2"].upper() != iso2:
+        res = None                                           # found in another country than the one the sentence is about
     if res:
         record_fallback(f"place '{name_ar or name_en}' not in the local dictionary: geocoded online (Nominatim), verify it", beat_id="geo")
         out.update(lat=res["lat"], lon=res["lon"], verified="nominatim")
+        if res.get("iso2"):
+            out.update(iso2=res["iso2"].lower(), country_en=res.get("country_en") or "")
         return out
     if scale == "region" and lat is not None and lon is not None:
         # a named region without a polygon in the data (e.g. a peninsula): marked area from the model's coordinates, said out loud

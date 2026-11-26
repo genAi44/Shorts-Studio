@@ -389,12 +389,16 @@ class Media:
         if vi_q and vi_q != q and vi_q not in alt_queries:
             alt_queries.insert(0, vi_q)
         iso_key = str(beat.get("entity_iso3") or "").strip().upper()
-        for key in (("q", q.lower()), ("iso", iso_key) if iso_key else None):
-            if key and key in self.done and not beat.get("cutout"):
-                self.log(f"  نفس المكان ذُكر سابقاً ← إعادة استخدام صورته: «{q}»")
-                self.reports.append({"sentence": sentence, "query": q, "queries_tried": [q], "candidates_count": 0, "score": 8,
-                                     "status": "accepted", "reason": "إعادة استخدام صورة المكان نفسه", "image": self.done[key], "credit": "", "fallback": None})
-                return {**beat, "img": self.done[key], "cut": False}
+        # a photo already shown is reused only as the LAST resort (below): a place named again gets a different photo first
+        reuse_key = next((k for k in (("q", q.lower()), ("iso", iso_key) if iso_key else None)
+                          if k and k in self.done and not beat.get("cutout")), None)
+
+        def _reuse():
+            self.log(f"  لا صورة جديدة للمكان ← إعادة استخدام صورته السابقة: «{q}»")
+            self.reports.append({"sentence": sentence, "query": q, "queries_tried": [q], "candidates_count": 0, "score": 8,
+                                 "status": "accepted", "reason": "إعادة استخدام صورة المكان نفسه (لا بديل)", "image": self.done[reuse_key], "credit": "", "fallback": None})
+            return {**beat, "img": self.done[reuse_key], "cut": False}
+
         queries_tried = [q]
         self.log(f"صورة للجملة: «{sentence[:50]}…» | استعلام: «{q}»{f' | must_show: {must_show}' if must_show else ''}")
 
@@ -493,6 +497,9 @@ class Media:
                     "fallback": None,
                 })
                 return {**beat, "img": f"media/{name}", "cut": False, "entity_iso3": entity_iso3}
+
+        if not c and reuse_key:
+            return _reuse()
 
         if not c:
             reason_txt = reason or "لا توجد صور مرخصة مطابقة"

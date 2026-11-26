@@ -21,7 +21,15 @@ from typing import Any, Callable, Dict, List, Optional
 
 from .config import record_fallback
 
-PLAN_VERSION = 1
+PLAN_VERSION = 2   # 2: the plan is written in English (cached v1 plans were free-language)
+
+# Shared by every LLM stage that plans or designs scenes (director, visual intelligence, designer): the models think and write in
+# English, the video stays Arabic. The narration, its word timings and every on-screen string are never translated.
+LANGUAGE_CONTRACT = """LANGUAGE CONTRACT: the narration is Arabic and the final video is entirely Arabic (voice-over, captions, on-screen text).
+You think and write EVERYTHING you produce in English: plans, descriptions, reasons, element names, ids, comments and code identifiers.
+Never translate, paraphrase or rewrite the Arabic narration. Arabic appears in your output only (a) where a field must be COPIED verbatim
+from the narration (a trigger word / phrase), and (b) as the exact strings that will be shown on screen, copied from the narration or from
+an entity's name_ar. Place names: use the entity's standard English name (name_en) in your reasoning and keep name_ar for display."""
 
 # Contract: one entry per scene, in the scenes' order. `narration` is attached by the system from the timed words (the
 # director does not rewrite it).
@@ -38,7 +46,10 @@ PLAN_FIELDS = (
     "continuity",             # narrative + visual continuity requirements (recurring motif, colour, element carried over)
 )
 
-DIRECTOR_SYSTEM = """You are the DIRECTOR of an Arabic educational Shorts studio. You plan the story, you do not draw.
+DIRECTOR_SYSTEM = ("""You are the DIRECTOR of an Arabic-language educational Shorts studio. You plan the story, you do not draw.
+
+"""
+                   + LANGUAGE_CONTRACT + """
 
 You receive the video title and its scenes (id, role, narration). For EACH scene, in the same order, decide:
 - objective: what the scene must achieve in the story (hook the viewer, set context, prove a claim, contrast, pay off, call to action...).
@@ -49,7 +60,7 @@ You receive the video title and its scenes (id, role, narration). For EACH scene
   example, answer to an open question...). The first scene has no previous ("" allowed); the last one loops back to the hook.
 - visual_storytelling: the visual storytelling approach that fits this idea (map journey, side-by-side comparison, process steps,
   scale metaphor, timeline, cause-and-effect chain, close-up on one object...). Vary it between neighbouring scenes.
-- transition_trigger: the exact word or short phrase, copied from THIS scene's narration, on which the scene hands over to the next one
+- transition_trigger: the exact word or short phrase, copied VERBATIM (Arabic) from THIS scene's narration, on which the scene hands over to the next one
   (usually its last strong word). "" only for the last scene.
 - continuity: what must stay consistent across the cut (a recurring motif, a colour role, an element that carries over, the same place).
 
@@ -60,7 +71,7 @@ no seconds, frames, durations, start/end times, word timings or captions. Refer 
 
 Reply with JSON only:
 {"scenes":[{"scene_id":"...","objective":"...","main_concept":"...","narrative_description":"...","key_information":["..."],
-"relation_to_previous":"...","relation_to_next":"...","visual_storytelling":"...","transition_trigger":"...","continuity":"..."}]}"""
+"relation_to_previous":"...","relation_to_next":"...","visual_storytelling":"...","transition_trigger":"...","continuity":"..."}]}""")
 from .skills import DIRECTOR_SKILLS, skills_block  # noqa: E402
 DIRECTOR_SYSTEM += skills_block(DIRECTOR_SKILLS)
 

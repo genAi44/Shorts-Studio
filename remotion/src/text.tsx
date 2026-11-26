@@ -41,12 +41,20 @@ export const Headline: React.FC<{text: string}> = ({text}) => {
 };
 
 type Chunk = Word[];
+const DANGLING = new Set(['و', 'في', 'من', 'إلى', 'الى', 'على', 'عن', 'عند', 'مع', 'ثم', 'أو', 'أن', 'إن', 'لكن', 'حتى', 'بين', 'كل', 'التي', 'الذي', 'ما', 'لا', 'قد', 'هذا', 'هذه']);
 const chunkWords = (words: Word[], maxChars: number, maxN: number): Chunk[] => {
   const out: Chunk[] = [];
   let cur: Word[] = [];
   let n = 0;
   for (const w of words) {
-    if (cur.length && (n + w.t.length > maxChars || cur.length >= maxN)) { out.push(cur); cur = []; n = 0; }
+    if (cur.length && (n + w.t.length > maxChars || cur.length >= maxN)) {
+      // never leave a dangling particle (من، في، إلى، و...) at the end of a caption: it starts the next one, so the phrase reads whole
+      const tail: Word[] = [];
+      while (cur.length > 1 && DANGLING.has(cur[cur.length - 1].t.replace(/[،؛؟?!.,:;]/g, ''))) tail.unshift(cur.pop() as Word);
+      out.push(cur);
+      cur = tail;
+      n = tail.reduce((a, x) => a + x.t.length + 1, 0);
+    }
     cur.push(w);
     n += w.t.length + 1;
   }

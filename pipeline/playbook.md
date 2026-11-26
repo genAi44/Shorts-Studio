@@ -1,65 +1,65 @@
-# دليل الحركة وإخراج المشاهد — Remotion Official Motion Playbook
-# مستند إلى توجيهات ومهارات Remotion الرسمية الـ 13 (remotion-dev/skills v4.0.541)
+# Motion and scene direction playbook - Remotion Official Motion Playbook
+# Based on the 13 official Remotion guidelines and skills (remotion-dev/skills v4.0.541)
 
-## 1. قواعد التحريك والتوقيت (remotion-best-practices & remotion-create)
-- التحريك دالة نقية ومحددة زمنياً في الإطارات (Deterministic `useCurrentFrame()`).
-- أبعاد الفيديو الرأسي: 1080×1920، بمعدل 30 إطاراً في الثانية (fps=30).
-- ممنوع الإطارات الثابتة الميتة؛ الحركة مستمرة طوال المقطع (لا سكون يتجاوز 1.0 ثانية).
-- التوقيت الإيقاعي:
-  - مقاطع خاطفة (Hook / Punch): 0.8–1.5 ثانية.
-  - مقاطع السرد والشرح: 1.5–3.0 ثانية.
-  - نقاط التركيز والتأمل: 3.0–4.0 ثانية.
-- خروج العناصر أسرع دائماً من دخولها (0.22 ثانية خروج / 0.38 ثانية دخول).
-- تأخير التتابع (Stagger): إزاحة 3–6 إطارات بين عناصر المشهد الواحد لإعطاء عمق وتدفق بصري طبيعي.
+## 1. Animation and timing rules (remotion-best-practices & remotion-create)
+- Animation is a pure function of the frame (deterministic `useCurrentFrame()`).
+- Vertical video size: 1080x1920 at 30 frames per second (fps=30).
+- No dead static frames; motion continues throughout the beat (no stillness longer than 1.0 second).
+- Rhythmic timing:
+  - Fast beats (Hook / Punch): 0.8-1.5 seconds.
+  - Narration and explanation beats: 1.5-3.0 seconds.
+  - Focus and reflection points: 3.0-4.0 seconds.
+- Elements always exit faster than they enter (0.22 s exit / 0.38 s entrance).
+- Stagger: offset 3-6 frames between the elements of one scene for natural depth and visual flow.
 
-## 2. فيزياء الحركة وتيسير الانتقالات (remotion-markup)
-- الظهور المفاجئ والبطاقات والشارات (Badges): استخدام `spring({damping: 200, mass: 0.8})` لمنع الاهتزاز الزائد.
-- الحركات الحية المنسابة (Scale & Pop): `spring({damping: 22, mass: 0.5})`.
-- الدخول السلس: `Easing.bezier(0.16, 1, 0.3, 1)`.
-- الخروج السريع: `Easing.bezier(0.7, 0, 0.84, 0)`.
-- استخدام خواص التحويل الحديثة `scale`, `translate`, `rotate` مباشرة داخل الـ style بدلاً من سلاسل CSS transform المعقدة.
-- احترام مناطق الأمان (Keep-out Zones): الحفاظ على وضوح منطقة العنوان العلوي ومنطقة الترجمة السفلية.
+## 2. Motion physics and easing (remotion-markup)
+- Sudden appearances, cards and badges: use `spring({damping: 200, mass: 0.8})` to prevent overshoot.
+- Lively flowing motion (Scale & Pop): `spring({damping: 22, mass: 0.5})`.
+- Smooth entrance: `Easing.bezier(0.16, 1, 0.3, 1)`.
+- Fast exit: `Easing.bezier(0.7, 0, 0.84, 0)`.
+- Use the modern transform properties `scale`, `translate`, `rotate` directly inside style instead of complex CSS transform strings.
+- Respect the keep-out zones: keep the top title zone and the bottom caption zone clear.
 
-## 3. الوسائط والمؤثرات الصوتية (remotion-multimedia & remotion-render)
-- الصور الحقيقية: معالجة كاميرا سينمائية (Ken Burns Pan/Zoom) بألوان طبيعية مشبعة وتباين عالي (ممنوع الفلاتر الرمادية الباهتة).
-- المؤثرات الصوتية (SFX): تُستخدم بحذر وعند اللحظات الحاسمة أو الصدمات فقط؛ ممنوع تكرار نفس المؤثر الصوتي (مثل whoosh) في كل مشهد.
-- التوافق مع الرندر الأوفلاين: جميع الأصول والخطوط تُحمّل محلياً لضمان الثبات التام.
+## 3. Media and sound effects (remotion-multimedia & remotion-render)
+- Real photos: cinematic camera treatment (Ken Burns pan/zoom) with saturated natural colours and high contrast (no dull grey filters).
+- Sound effects (SFX): used sparingly and only at decisive moments or impacts; never repeat the same effect (such as a whoosh) in every scene.
+- Offline-render compatibility: all assets and fonts are loaded locally for complete stability.
 
-## 4. الخرائط والمسارات الجغرافية (remotion-maps)
-- استخدام دبابيس الخرائط المتحركة (`map_pin`) والمسارات التفاعلية (`animated_route`).
-- مسارات متصلة بانحناءات ناعمة وحركات انتقال سلسة بين المدن والمواقع.
-- تجنب وضع خرائط متتالية بدون فاصل مشهدي غني.
+## 4. Maps and geographic routes (remotion-maps)
+- Use animated map pins (`map_pin`) and interactive routes (`animated_route`).
+- Connected routes with soft curves and smooth transitions between cities and locations.
+- Avoid consecutive maps without a rich scene break between them.
 
-## 5. النصوص والترجمة التفاعلية (remotion-captions)
-- تزامن الكلمات كلمة بكلمة بدقة عالية.
-- توهج ولون مميز للكلمة النشطة لشد انتباه المشاهد.
-- تجنب وضع أي عناصر بصرية عشوائية تغطي الترجمة أو تتداخل معها.
+## 5. Text and interactive captions (remotion-captions)
+- Word-by-word synchronisation with high precision.
+- A glow and a distinct colour on the active word to hold the viewer's attention.
+- Avoid placing any random visual elements that cover the captions or overlap them.
 
-## 6. توجيه حركة الكاميرا السينمائية (Camera Motion)
-- `zoom-in` / `push-in`: تقريب عدسة سينمائي متدرج (100%→112%) — أساسي في الـ hook، الصور الواقعية، والحقائق البارزة.
-- `zoom-out`: كشف بانورامي واسع (114%→100%) — ممتاز للخرائط والمخططات الهرمية والشبكات.
-- `pan-left` / `pan-right`: انزلاق أفقي سينمائي — للمقارنات المتوازية (versus)، خطوط السير، والخطوط الزمنية.
-- `tilt-up` / `tilt-down`: مسح رأسي — للمباني التاريخية الشاهقة، القمم، والهرميات.
-- `parallax`: طبقات حركة متعددة السرعات ثلاثية الأبعاد للصور والخرائط.
-- تنويع حركة الكاميرا إلزامي بين كل مقطع والمقطع الذي يليه (ممنوع تكرار نفس حركة الكاميرا).
+## 6. Cinematic camera motion
+- `zoom-in` / `push-in`: gradual cinematic lens approach (100%->112%) - the default for the hook, realistic photos and prominent facts.
+- `zoom-out`: wide panoramic reveal (114%->100%) - excellent for maps, hierarchy charts and networks.
+- `pan-left` / `pan-right`: cinematic horizontal glide - for side-by-side comparisons (versus), routes and timelines.
+- `tilt-up` / `tilt-down`: vertical sweep - for towering historical buildings, peaks and pyramids.
+- `parallax`: multi-speed 3D motion layers for photos and maps.
+- Varying the camera move between each beat and the next is mandatory (never repeat the same camera move).
 
-## 7. بنية المشاهد التفاعلية وقوالب السرد (remotion-interactivity & remotion-saas)
-- `generative_canvas`: أولوية قصوى عند تمثيل المفاهيم، العمليات التفاعلية، الشبكات، والتدفقات الحركية باستخدام الأشكال والشارات والروابط المتحركة والعدادات.
-- `versus_battle`: مقارنة ملحمية بين طرفين أو قوتين متصارعتين مع شارة VS مركزية.
-- `stack_pyramid`: هرم طبقي أو ترتيب هرمي تصاعدي من القمة للقاعدة.
-- `balance_meter`: ميزان فيزيائي يتأرجح بين قيمتين أو وزنين.
-- `animated_route`: مسار انتقال أو رحلة بين محطات متعددة بخط تقدم متحرك.
-- `deep_time_slider`: خط زمني للمحطات التاريخية والعصور المتعاقبة.
-- `elevation_profile`: قطاع رأسي متحرك لارتفاع قمة أو جبل بالمتر فوق سطح البحر.
-- `stat_ring_v2`: حلقة إحصائية ثلاثية الأبعاد برقم ذهبي وأيقونة بطلة في المركز.
-- `bars`: أعمدة بيانية لمقارنة كميات أو نسب مئوية.
-- `photo`: صور حقيقية عالية الدقة بدون أي فلتر رمادي باهت وبإطار عصري زجاجي أنيق.
-- `map_pin` / `map`: خرائط إقليمية ودبابيس دقيقة للمواقع والمدن.
+## 7. Interactive scene structures and narrative templates (remotion-interactivity & remotion-saas)
+- `generative_canvas`: top priority when representing concepts, interactive processes, networks and motion flows using shapes, badges, animated links and counters.
+- `versus_battle`: an epic comparison between two sides or two clashing forces with a central VS badge.
+- `stack_pyramid`: a layered pyramid or an ascending hierarchy from the top to the base.
+- `balance_meter`: a physical scale that swings between two values or two weights.
+- `animated_route`: a transfer path or journey between several stops with an animated progress line.
+- `deep_time_slider`: a timeline for historical milestones and successive eras.
+- `elevation_profile`: an animated vertical section of the height of a peak or mountain in metres above sea level.
+- `stat_ring_v2`: a 3D statistics ring with a golden number and a hero icon in the centre.
+- `bars`: bar charts for comparing quantities or percentages.
+- `photo`: high-resolution real photos with no dull grey filter and an elegant modern glass frame.
+- `map_pin` / `map`: regional maps and precise pins for locations and cities.
 
-## 8. ضوابط الجودة الصارمة
-- ممنوع استخدام نوع `icons` نهائياً (الدوائر التي تحتوي على نجوم مكررة محظورة).
-- ممنوع تكرار `bigtext` أو الاعتماد عليه كبديل سهل؛ يُسمح به مرة واحدة فقط كحد أقصى في الافتتاحية (Hook) إن لزم.
-- تنويع صارم: لا مقطعان متتاليان من نفس النوع أبداً في الفيديو.
-- عدم إدخال أو اختراع أي أرقام أو وقائع لم ترد صراحة في facts والسكربت.
+## 8. Strict quality rules
+- The `icons` kind is forbidden entirely (circles containing repeated stars are banned).
+- Never repeat `bigtext` or rely on it as an easy substitute; it is allowed at most once, in the opening (Hook), if needed.
+- Strict variety: never two consecutive beats of the same kind anywhere in the video.
+- Never introduce or invent numbers or facts that are not explicitly in facts and the script.
 
-<!-- تم البناء والتحقق من مهارات Remotion الرسمية: remotion-best-practices (C:\Users\mhama\Desktop\shorts-studio\.agents\skills\remotion-best-practices), remotion-markup (C:\Users\mhama\Desktop\shorts-studio\.agents\skills\remotion-markup), remotion-maps (C:\Users\mhama\Desktop\shorts-studio\.agents\skills\remotion-maps), remotion-captions (C:\Users\mhama\Desktop\shorts-studio\.agents\skills\remotion-captions), remotion-interactivity (C:\Users\mhama\Desktop\shorts-studio\.agents\skills\remotion-interactivity), remotion-multimedia (C:\Users\mhama\Desktop\shorts-studio\.agents\skills\remotion-multimedia), remotion-create (C:\Users\mhama\Desktop\shorts-studio\.agents\skills\remotion-create), remotion-render (C:\Users\mhama\Desktop\shorts-studio\.agents\skills\remotion-render), remotion-studio (C:\Users\mhama\Desktop\shorts-studio\.agents\skills\remotion-studio), remotion-saas (C:\Users\mhama\Desktop\shorts-studio\.agents\skills\remotion-saas), remotion-docs (C:\Users\mhama\Desktop\shorts-studio\.agents\skills\remotion-docs), remotion-upgrade (C:\Users\mhama\Desktop\shorts-studio\.agents\skills\remotion-upgrade), remotion-license (C:\Users\mhama\Desktop\shorts-studio\.agents\skills\remotion-license) -->
+<!-- built and checked against the official Remotion skills: remotion-best-practices, remotion-markup, remotion-maps, remotion-captions, remotion-interactivity, remotion-multimedia, remotion-create, remotion-render, remotion-studio, remotion-saas, remotion-docs, remotion-upgrade, remotion-license -->

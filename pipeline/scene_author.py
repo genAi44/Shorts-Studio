@@ -31,7 +31,7 @@ MIN_CONTENT_H = 420  # px of vertical extent of everything a scene draws (beat z
 AUTHORED_SRC = REMOTION / "src" / "authored"
 KIT_DOC = ROOT / "docs" / "SCENE_KIT.md"
 CACHE_DIR = ROOT / "data" / "authored_cache"
-KIT_VERSION = 2  # 2: designer reply = storyboard + hero SVG + TSX (scenes cached by v1 have no SVG)
+KIT_VERSION = 3  # 3: designer thinks and writes in English (2: storyboard + hero SVG + TSX)
 MAX_RETRIES = 4
 TEST_FRAME_FRACTIONS = (0.15, 0.5, 0.9)
 FLAT_STD = 6.0
@@ -56,7 +56,14 @@ STORYBOARD_FIELDS = (
     "layout_changes",     # 13 C: how the layout changes from state to state
 )
 
-SYSTEM = """You are the DESIGNER of an Arabic educational Shorts studio (1080x1920): the art director AND the motion-graphics engineer.
+SYSTEM = """You are the DESIGNER of an Arabic-language educational Shorts studio (1080x1920): the art director AND the motion-graphics engineer.
+
+{contract}
+
+In this scene file: every identifier, function name, variable name and comment is English; the only Arabic in the TSX are the strings drawn on
+screen through ArText, copied from data.sentence / data.sentences or an entity's name_ar (never translated, never invented). The storyboard, element ids,
+"draw" / "role" / "appearance" descriptions and SVG ids are English; only "trigger_word" is copied verbatim (Arabic) from the narration.
+
 The DIRECTOR has already planned the story: data.director_plan gives this scene's objective, main concept, the facts to get across,
 its links to the previous/next scene, the visual storytelling approach, the transition trigger and the continuity requirements.
 Your job is to turn that plan into a picture. Follow the kit documentation below exactly.
@@ -151,7 +158,8 @@ def build_prompts(ctx: Dict[str, Any], errors: Optional[List[str]] = None, previ
     slim["has_map_overlay"] = bool(ctx.get("map_overlay"))
     if ctx.get("map_overlay"):
         ov = ctx["map_overlay"]
-        slim["map_places"] = [w.get("name_ar") for w in ov.get("waypoints", [])] + [f.get("label") for f in ov.get("features", [])]
+        slim["map_places"] = ([{"name_en": w.get("name_en") or "", "name_ar": w.get("name_ar")} for w in ov.get("waypoints", [])]
+                              + [{"name_en": f.get("name_en") or "", "name_ar": f.get("label")} for f in ov.get("features", [])])
     user = ("Scene data (this is exactly `data` in your component, except map_overlay which is injected; director_plan is the director's "
             "read-only plan for this scene, words are read-only timings):\n"
             + json.dumps(slim, ensure_ascii=False)
@@ -161,8 +169,9 @@ def build_prompts(ctx: Dict[str, Any], errors: Optional[List[str]] = None, previ
         user += ("\n\nYour previous attempt was REJECTED. Fix every problem and return the complete corrected reply (all three blocks).\n"
                  "Problems:\n- " + "\n- ".join(errors[:14])
                  + ("\n\nHow to fix:\n- " + "\n- ".join(hints) if hints else "") + "\n\nPrevious reply:\n" + previous)
+    from .director_plan import LANGUAGE_CONTRACT
     from .skills import DESIGNER_SKILLS, skills_block
-    system = SYSTEM.replace("{kit}", _kit_text()) + skills_block(DESIGNER_SKILLS)
+    system = SYSTEM.replace("{contract}", LANGUAGE_CONTRACT).replace("{kit}", _kit_text()) + skills_block(DESIGNER_SKILLS)
     if guide:
         system += "\n\nART DIRECTION OF THIS VIDEO (a style guide: follow its essence, its 'not' list and its director rules; it overrides generic taste):\n" + guide
     return system, user
@@ -305,7 +314,7 @@ def scene_context(scene: Dict[str, Any], theme: Dict[str, Any]) -> Dict[str, Any
     words = scene.get("words") or []
     narration = " ".join(str(w.get("t", "")) for w in words)
     ents = [e for per in scene.get("entity_plan") or [] for e in per]
-    keep = ("type", "scale", "text", "name_ar", "name_en", "value", "unit", "label_ar", "compare", "born", "died", "role_ar", "to", "from", "year", "lat", "lon", "stops", "a", "b")
+    keep = ("type", "scale", "text", "name_en", "country_en", "name_ar", "value", "unit", "label_ar", "compare", "born", "died", "role_ar", "to", "from", "year", "lat", "lon", "stops", "a", "b")
     return {
         "id": scene.get("id"), "role": scene.get("role"), "dur": int(scene.get("dur", 150)),
         "sentence": narration, "sentences": sentences(narration),
