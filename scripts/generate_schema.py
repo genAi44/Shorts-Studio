@@ -12,6 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SPEC_SCHEMA_PATH = ROOT / "spec_schema.json"
 TS_OUT_PATH = ROOT / "remotion" / "src" / "schema.ts"
+TS_BEATS_OUT_PATH = ROOT / "remotion" / "src" / "schemaBeats.ts"  # section 10, kept apart so no file passes 500 lines
 
 ZOD_MAP = {
     "string": "z.string()",
@@ -23,7 +24,7 @@ ZOD_MAP = {
 }
 
 
-def generate_schema_ts() -> str:
+def _generate_parts() -> tuple[str, str]:
     schema = json.loads(SPEC_SCHEMA_PATH.read_text(encoding="utf-8"))
     common_fields: dict[str, str] = schema.get("common_fields", {})
     beats: dict[str, dict] = schema.get("beats", {})
@@ -254,6 +255,14 @@ def generate_schema_ts() -> str:
         "});",
         "export type SceneTransitionSpec = z.infer<typeof SceneTransitionSpecSchema>;",
         "",
+        "// 10. Unified Beat Schemas Generated from spec_schema.json (in schemaBeats.ts)",
+        "export * from './schemaBeats';",
+        "",
+    ]
+    core, lines = lines, [
+        "// AUTO-GENERATED FROM spec_schema.json BY scripts/generate_schema.py — DO NOT EDIT MANUALLY",
+        "import {z} from 'zod';",
+        "",
         "// 10. Unified Beat Schemas Generated from spec_schema.json",
     ]
 
@@ -293,10 +302,21 @@ def generate_schema_ts() -> str:
     lines.append("]);")
     lines.append("export type GeneratedBeatSpec = z.infer<typeof StrictBeatSchema>;")
     lines.append("")
-    return "\n".join(lines)
+    return "\n".join(core), "\n".join(lines)
+
+
+def generate_schema_ts() -> str:
+    """Content of `remotion/src/schema.ts` (sections 1-9; re-exports schemaBeats.ts)."""
+    return _generate_parts()[0]
+
+
+def generate_schema_beats_ts() -> str:
+    """Content of `remotion/src/schemaBeats.ts` (section 10: one zod schema per beat kind)."""
+    return _generate_parts()[1]
 
 
 if __name__ == "__main__":
     ts_code = generate_schema_ts()
     TS_OUT_PATH.write_text(ts_code, encoding="utf-8")
+    TS_BEATS_OUT_PATH.write_text(generate_schema_beats_ts(), encoding="utf-8")
     print(f"Generated {TS_OUT_PATH.relative_to(ROOT)} from {SPEC_SCHEMA_PATH.name} successfully.")

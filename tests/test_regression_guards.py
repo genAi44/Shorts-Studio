@@ -160,7 +160,7 @@ class TestRegressionGuards(unittest.TestCase):
         self.assertIn("add('impact', start, 0.24)", sfx_tsx)
 
     def test_11_storyteller_phase_crossfade_and_no_empty_dashed_box(self):
-        st = Path("pipeline/storyteller.py").read_text(encoding="utf-8")
+        st = "".join(f.read_text(encoding="utf-8") for f in Path("pipeline").glob("storyteller*.py"))
         self.assertIn("NEVER draw empty dashed placeholder boxes", st)
         self.assertIn("NEVER leave two cards overlapping in the same slot", st)
 
@@ -236,7 +236,7 @@ class TestRegressionGuards(unittest.TestCase):
         self.assertTrue(errs)
 
     def test_17_photo_tsx_respects_split_bottom_for_arch_tilt_circle(self):
-        photo_tsx = (ROOT / "remotion" / "src" / "photo.tsx").read_text(encoding="utf-8")
+        photo_tsx = "".join(f.read_text(encoding="utf-8") for f in (ROOT / "remotion" / "src").glob("photo*.tsx"))
         short_tsx = (ROOT / "remotion" / "src" / "Short.tsx").read_text(encoding="utf-8")
         map_tsx = (ROOT / "remotion" / "src" / "mapOverlay.tsx").read_text(encoding="utf-8")
         self.assertIn("splitBottom ? 920 : (hasNum ? 820 : 920)", photo_tsx)
