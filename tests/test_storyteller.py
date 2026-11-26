@@ -1,4 +1,5 @@
 """Tests for AI-Driven Visual Storytelling & Original Scene Generation (pipeline/storyteller.py)."""
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -104,7 +105,8 @@ class TestVisualStoryteller(unittest.TestCase):
             "cta": {"narration": "شاركنا في التعليقات اسم مدينتك المفضلة واشترك لمتابعة المزيد.", "on_screen": "شاركنا رأيك"},
         }
         tsx_path = ROOT / "remotion" / "src" / "generated" / "DynamicScenes.tsx"
-        prev_tsx = tsx_path.read_text(encoding="utf-8") if tsx_path.exists() else None
+        from pipeline.storyteller import restore_dynamic_scenes, snapshot_dynamic_scenes
+        prev_tsx = snapshot_dynamic_scenes()  # index + one file per scene
         try:
             directed = apply_beats(script, {})
             scene_ids = ["hook", "lead", "body1", "open_loop1", "body2", "open_loop2", "body3", "cta"]
@@ -129,9 +131,10 @@ class TestVisualStoryteller(unittest.TestCase):
             self.assertTrue(tsx_path.exists())
             tsx_content = tsx_path.read_text(encoding="utf-8")
             self.assertIn("DYNAMIC_SCENE_REGISTRY", tsx_content)
+            for tid in re.findall(r"from './scenes/(\w+)'", tsx_content):  # every registered scene has its file
+                self.assertTrue((tsx_path.parent / "scenes" / f"{tid}.tsx").exists(), tid)
         finally:
-            if prev_tsx is not None:
-                tsx_path.write_text(prev_tsx, encoding="utf-8")
+            restore_dynamic_scenes(prev_tsx)
 
 
 if __name__ == "__main__":

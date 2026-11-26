@@ -311,10 +311,10 @@ def _shown_strings(obj: Any) -> List[str]:
 def _tsx_shown_numbers(tsx_id: str) -> set:
     """Numbers inside Arabic text literals of a generated TSX scene (ignores colors/pixel values)."""
     try:
-        src = (Path(__file__).resolve().parent.parent / "remotion" / "src" / "generated" / "DynamicScenes.tsx").read_text(encoding="utf-8")
+        from .storyteller import read_scene_block  # one generated file per scene
+        src = read_scene_block(tsx_id)
         i = src.index(f"export const {tsx_id}:")
-        j = src.find("/* @llm_verified:", i)
-        body = src[i: j if j > 0 else len(src)]
+        body = src[i:]
     except (OSError, ValueError):
         return set()
     nums = set()

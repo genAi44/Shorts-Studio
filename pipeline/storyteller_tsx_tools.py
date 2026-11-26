@@ -2,6 +2,7 @@
 from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple
 from .config import ROOT
+from pathlib import Path
 import hashlib
 import json
 import os
@@ -10,7 +11,7 @@ import subprocess
 from .storyteller import DYNAMIC_TSX_PATH, _LLM_TSX_SYSTEM, _clean_text, _sanitize_llm_tsx, _theme_sig, logger  # noqa: E402
 
 
-def _run_tsc_check() -> Tuple[bool, List[int], str]:
+def _run_tsc_check() -> Tuple[bool, List[str], str]:
     tsc_bin = ROOT / "remotion" / "node_modules" / ".bin" / ("tsc.cmd" if os.name == "nt" else "tsc")
     tsconfig = ROOT / "remotion" / "tsconfig.json"
     if not tsc_bin.exists() or not tsconfig.exists():
@@ -28,10 +29,11 @@ def _run_tsc_check() -> Tuple[bool, List[int], str]:
         if proc.returncode == 0:
             return True, [], ""
         out = (proc.stdout or "") + "\n" + (proc.stderr or "")
-        err_lines: List[int] = []
-        for m in re.finditer(r"DynamicScenes\.tsx\((\d+),", out):
-            err_lines.append(int(m.group(1)))
-        return False, sorted(set(err_lines)), out
+        # one file per scene: report failing scene ids ("DynamicScenes" = an error in the index file)
+        err_ids = set(re.findall(r"generated[\\/]scenes[\\/]([A-Za-z0-9_]+)\.tsx\(\d+,", out))
+        if re.search(r"DynamicScenes\.tsx\(\d+,", out):
+            err_ids.add("DynamicScenes")
+        return False, sorted(err_ids), out
     except Exception as e:
         logger.warning("tsc check invocation error: %s", e)
         return True, [], ""
@@ -79,6 +81,78 @@ def _fix_color_interpolate(code: str) -> str:
         out.append(("interpolateColors(" if is_color else "interpolate(") + args + ")")
         i = j
     return "".join(out)
+
+
+SCENES_DIR = DYNAMIC_TSX_PATH.parent / "scenes"
+_SCENE_HEADER = (
+    "/* AUTO-GENERATED ORIGINAL TSX SCENE BY AI VIDEO ARCHITECT */\n"
+    "import React from 'react';\n"
+    "import {AbsoluteFill, interpolate, interpolateColors, spring, useCurrentFrame, useVideoConfig, Easing} from 'remotion';\n\n"
+)
+_SCENE_MARK = "// ---- scene ----\n"
+_FC = "React.FC<{frame?: number; fps?: number; dur?: number}>"
+
+
+def _write_dynamic_files(blocks: List[str], tsx_ids: List[str], geo_consts: Dict[str, str]) -> None:
+    """One file per scene in generated/scenes/ (each stays small) + DynamicScenes.tsx as the registry index."""
+    SCENES_DIR.mkdir(parents=True, exist_ok=True)
+    for old in SCENES_DIR.glob("*.tsx"):
+        if old.stem not in tsx_ids:
+            old.unlink()
+    for tid, blk in zip(tsx_ids, blocks):
+        geo = geo_consts.get(tid, "")
+        (SCENES_DIR / f"{tid}.tsx").write_text(
+            _SCENE_HEADER + (geo + "\n\n" if geo else "") + _SCENE_MARK + _fix_color_interpolate(blk) + "\n",
+            encoding="utf-8",
+        )
+    DYNAMIC_TSX_PATH.write_text(
+        "/* AUTO-GENERATED INDEX OF THE TSX SCENES IN ./scenes/ */\n"
+        "import React from 'react';\n"
+        + "".join(f"import {{{tid}}} from './scenes/{tid}';\n" for tid in tsx_ids)
+        + f"\nexport const DYNAMIC_SCENE_REGISTRY: Record<string, {_FC}> = {{\n"
+        + "".join(f"  '{tid}': {tid},\n" for tid in tsx_ids)
+        + "};\n",
+        encoding="utf-8",
+    )
+
+
+def _scene_ids_in_index() -> List[str]:
+    if not DYNAMIC_TSX_PATH.exists():
+        return []
+    return re.findall(r"^import \{(\w+)\} from './scenes/", DYNAMIC_TSX_PATH.read_text(encoding="utf-8"), re.M)
+
+
+def read_scene_block(tsx_id: str) -> str:
+    """Code of one generated scene (verification marker + component), '' if the file is missing."""
+    f = SCENES_DIR / f"{tsx_id}.tsx"
+    if not f.exists():
+        return ""
+    return f.read_text(encoding="utf-8").split(_SCENE_MARK, 1)[-1].rstrip("\n")
+
+
+def _verified_blocks_on_disk() -> Dict[Tuple[str, str], str]:
+    """LLM-verified scenes of the generated files, parsed one scene file at a time (so a verified
+    block can no longer swallow the fallback scene written after it, as in the single-file layout)."""
+    out: Dict[Tuple[str, str], str] = {}
+    for tid in _scene_ids_in_index():
+        out.update(_extract_verified_llm_blocks(read_scene_block(tid) + "\nexport const DYNAMIC_SCENE_REGISTRY"))
+    return out
+
+
+def snapshot_dynamic_scenes() -> Dict[str, str]:
+    """Copy of the generated index + scene files, for callers that must leave them untouched."""
+    files = [DYNAMIC_TSX_PATH] + (sorted(SCENES_DIR.glob("*.tsx")) if SCENES_DIR.exists() else [])
+    return {str(f): f.read_text(encoding="utf-8") for f in files if f.exists()}
+
+
+def restore_dynamic_scenes(snap: Dict[str, str]) -> None:
+    if SCENES_DIR.exists():
+        for f in SCENES_DIR.glob("*.tsx"):
+            if str(f) not in snap:
+                f.unlink()
+    for path, text in snap.items():
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        Path(path).write_text(text, encoding="utf-8")
 
 
 def _assemble_dynamic_file(header: str, blocks: List[str], registry_entries: List[str]) -> str:
@@ -174,7 +248,7 @@ def _load_tsx_cache() -> Dict[Tuple[str, str], str]:
             pass
     if DYNAMIC_TSX_PATH.exists():
         try:
-            out.update(_extract_verified_llm_blocks(DYNAMIC_TSX_PATH.read_text(encoding="utf-8")))
+            out.update(_verified_blocks_on_disk())
         except Exception:
             pass
     return out

@@ -65,13 +65,12 @@ def main() -> int:
     style = norm_style({"name": "ذهبي سينمائي", "seed": 806})
     script = {"_entities": script_ents}
     total = int(round(len(plan) * DUR * FPS))
-    gen = ROOT / "remotion" / "src" / "generated" / "DynamicScenes.tsx"
-    backup = gen.read_text(encoding="utf-8") if gen.exists() else None
+    from pipeline.storyteller import restore_dynamic_scenes, snapshot_dynamic_scenes
+    backup = snapshot_dynamic_scenes()
     try:
         spec = rem.build_spec(script, style, plan, total, geo, audio_name="", photo=None, degrade=True)
     finally:
-        if backup is not None:  # build_spec regenerates this tracked file; the fixture must not depend on it
-            gen.write_text(backup, encoding="utf-8")
+        restore_dynamic_scenes(backup)  # build_spec regenerates this tracked file; the fixture must not depend on it
     spec["audio"] = ""
     for sc in spec["scenes"]:  # generated TSX scenes are not part of the fixture: plain text beats stand in
         for i, b in enumerate(sc["beats"]):

@@ -6,8 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 MAX_LINES = 500
-# Written by the pipeline on every run (storyteller.generate_dynamic_tsx_file); its size follows the scene count.
-GENERATED = {"remotion/src/generated/DynamicScenes.tsx"}
+GENERATED: set = set()  # DynamicScenes.tsx is now an index + one file per scene (generated/scenes/), all checked
 
 
 def test_every_pre_split_name_is_still_importable_from_its_module():
