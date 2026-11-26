@@ -18,6 +18,7 @@ import json
 import os
 import re
 import shutil
+import re
 import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -327,7 +328,7 @@ def scene_context(scene: Dict[str, Any], theme: Dict[str, Any]) -> Dict[str, Any
 def _gate_sig() -> str:
     """Hash of the code a scene is checked and rendered against: a changed map/audit/layout invalidates cached scenes."""
     h = hashlib.sha1()
-    for f in ("mapOverlay.tsx", "layoutAudit.tsx", "layout.ts"):
+    for f in ("mapOverlay.tsx", "layoutAudit.tsx", "layout.ts", "mechanisms.tsx"):
         p = REMOTION / "src" / f
         h.update(p.read_bytes() if p.exists() else b"")
     return h.hexdigest()[:10]
@@ -358,6 +359,21 @@ def static_check(path: Path) -> List[str]:
         return list(d.get("violations", [])) + list(d.get("diagnostics", []))
     except Exception as e:  # noqa: BLE001
         return [f"static check could not run: {e}"]
+
+
+_AR_DIG = str.maketrans("٠١٢٣٤٥٦٧٨٩٫٬", "0123456789.,")
+
+
+def _ink(path: Path, box: List[int]) -> float:
+    """Share of strong-gradient pixels inside the hero box: an empty or washed-out drawing scores ~0, a real one >= ~0.02."""
+    import numpy as np
+    from PIL import Image
+    g = np.asarray(Image.open(path).convert("L"), dtype="int16")
+    l, t, r, b = [max(0, int(v)) for v in box]
+    g = g[t:b, l:r]
+    if g.shape[0] < 4 or g.shape[1] < 4:
+        return 0.0
+    return float(((np.abs(np.diff(g, axis=1))[:-1] + np.abs(np.diff(g, axis=0))[:, :-1]) > 24).mean())
 
 
 def _flat(path: Path) -> bool:
@@ -408,6 +424,7 @@ def sandbox_render(items: Dict[str, Dict[str, Any]], style: Dict[str, Any], work
         for n in problems:
             problems[n].append("sandbox render timed out")
         return problems
+    ctx_of = lambda n: items[n]["ctx"]
     for name, fs, dur in frames:
         for idx, f in enumerate(fs):
             img = workdir / f"chk_{f}.jpg"
@@ -432,11 +449,28 @@ def sandbox_render(items: Dict[str, Dict[str, Any]], style: Dict[str, Any], work
                     if hero.get("cover", 0) < HERO_MIN_COVER or hero.get("painted", 0) < 3:
                         problems[name].append(f"the rendered hero SVG draws almost nothing (covers {hero.get('cover', 0):.0%} of its viewBox, "
                                               f"{hero.get('painted', 0)} visible shapes): draw a real illustration that fills its viewBox")
+            if idx >= 1 and ctx_of(name).get("hero_min_ink") and aud.get("heroInk"):
+                ink = _ink(img, aud["heroInk"])
+                if ink < ctx_of(name)["hero_min_ink"]:
+                    problems[name].append(f"the drawing is nearly empty at {int(TEST_FRAME_FRACTIONS[idx] * 100)} % of the scene "
+                                          f"(detail {ink:.3f} < {ctx_of(name)['hero_min_ink']}): draw the subject big and detailed from the start")
+            if idx >= 1 and ctx_of(name).get("allowed_numbers") is not None:
+                for txt in aud.get("strings", []):
+                    for m in re.findall(r"\d[\d,.]*", txt.translate(_AR_DIG)):
+                        n = m.rstrip(".,").replace(",", "")
+                        if n and n not in ctx_of(name)["allowed_numbers"]:
+                            problems[name].append(f"the number {m} in '{txt}' is not spoken in the sentence: show only spoken numbers")
+            ink_box = aud.get("heroInk")  # widest [data-hero] box: the main drawing must be big (it carries the explanation)
+            if idx == 1 and ink_box and ctx_of(name).get("hero_min_w") and max(ink_box[2] - ink_box[0], ink_box[3] - ink_box[1]) < ctx_of(name)["hero_min_w"]:
+                problems[name].append(f"the hero drawing is too small: {ink_box[2] - ink_box[0]}x{ink_box[3] - ink_box[1]} px "
+                                      f"(its longest side needs >= {ctx_of(name)['hero_min_w']}); make the main subject much bigger")
             bb = aud.get("bbox")
             hero = aud.get("hero") or {}
             if bb and hero.get("box") and hero.get("opacity", 1) >= 0.3:  # the hero SVG is content too, not only text/icons
                 hb = hero["box"]
                 bb = [min(bb[0], hb[0]), min(bb[1], hb[1]), max(bb[2], hb[2]), max(bb[3], hb[3])]
+            if bb and ink_box:  # the [data-hero] drawing is content too
+                bb = [min(bb[0], ink_box[0]), min(bb[1], ink_box[1]), max(bb[2], ink_box[2]), max(bb[3], ink_box[3])]
             if idx == 1 and bb and (bb[3] - bb[1]) < MIN_CONTENT_H and not any(i.get("type") == "map" for i in aud.get("issues", [])):
                 problems[name].append(f"the scene is too sparse: all its content spans only {bb[3] - bb[1]} px of height (need >= {MIN_CONTENT_H}); build a real composition - lead line, hero element, supporting elements, spread over y 280..1380")
             for it in aud.get("issues", []):

@@ -101,7 +101,7 @@ export const Ring: React.FC<{value: number; size?: number; stroke?: number; dela
   const r = (size - stroke) / 2;
   const C = 2 * Math.PI * r;
   return (
-    <div style={{position: 'relative', width: size, height: size}}>
+    <div data-hero="ring" style={{position: 'relative', width: size, height: size}}>
       <svg width={size} height={size}>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={rgba(th.p.text, 0.16)} strokeWidth={stroke} />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color ?? rgba(th.p.accent)} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - clamp01(value) * p)} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
@@ -238,11 +238,14 @@ export const Steps: React.FC<{items: string[]; w?: number; bottom?: number; maxH
   );
 };
 
-const StackRow: React.FC<{y: number; delay: number; text: string; icon?: string; w: number}> = ({y, delay, text, icon, w}) => {
+const StackRow: React.FC<{y: number; delay: number; text: string; icon?: string; w: number; dimAt?: number}> = ({y, delay, text, icon, w, dimAt}) => {
   const k = useKit();
   const p = useSpring(delay, 'snappy');
+  // focus: once the next row enters, this one recedes (only the idea being said is prominent)
+  const dim = dimAt == null ? 1 : interpolate(k.frame, [dimAt * k.fps, dimAt * k.fps + 8], [1, 0.45], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+  const st = enterStyle(p, 'right', 70);
   return (
-    <Abs x={(LAYOUT.W - w) / 2} y={y} w={w} style={enterStyle(p, 'right', 70)}>
+    <Abs x={(LAYOUT.W - w) / 2} y={y} w={w} style={{...st, opacity: (st.opacity as number ?? 1) * dim}}>
       <Card style={{padding: '22px 30px', display: 'flex', alignItems: 'center', flexDirection: 'row-reverse', gap: 24}}>
         {icon ? <Icon name={icon} size={52} color={k.c('accent')} /> : null}
         <div style={{flex: 1}}><ArText size={42} weight={800} align="right" maxWidth={680} reveal="none" lineHeight={1.2}>{text}</ArText></div>
@@ -252,9 +255,10 @@ const StackRow: React.FC<{y: number; delay: number; text: string; icon?: string;
 };
 
 /** Recipe: a list that builds up row by row (rows stay). 2..6 rows. */
-export const Stack: React.FC<{items: {text: string; icon?: string}[]; top?: number; step?: number; delay?: number; w?: number}> = ({items, top = LAYOUT.beat.top + 60, step = 0.5, delay = 0.1, w = 860}) => (
+export const Stack: React.FC<{items: {text: string; icon?: string}[]; top?: number; step?: number; delay?: number; w?: number; focus?: boolean}> = ({items, top = LAYOUT.beat.top + 60, step = 0.5, delay = 0.1, w = 860, focus = false}) => (
   <>
-    {items.slice(0, 6).map((it, i) => <StackRow key={i} y={top + i * 150} delay={delay + i * step} text={it.text} icon={it.icon} w={w} />)}
+    {items.slice(0, 6).map((it, i, all) => <StackRow key={i} y={top + i * 150} delay={delay + i * step} text={it.text} icon={it.icon} w={w}
+      dimAt={focus && i < Math.min(6, all.length) - 1 ? delay + (i + 1) * step : undefined} />)}
   </>
 );
 
@@ -266,7 +270,7 @@ export const Pinned: React.FC<{x?: number; y?: number; w?: number; h?: number; r
   return (
     <Abs x={x} y={y} w={w} h={h} style={{...enterStyle(p, 'drop', 120), transform: `translateY(${(1 - p) * -120}px) rotate(${rotate + sway}deg)`, transformOrigin: '50% 0%', ...style}}>
       <div style={{position: 'absolute', left: w / 2 - 14, top: -26, width: 28, height: 56, borderRadius: 14, border: `5px solid ${k.c('text', 0.7)}`, background: 'transparent'}} />
-      <div style={{width: w, height: h, background: k.dark ? 'rgba(245,240,230,0.96)' : '#ffffff', borderRadius: 10, boxShadow: '0 22px 40px rgba(0,0,0,0.32)', padding: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#141210'}}>{children}</div>
+      <div data-hero="pinned" style={{width: w, height: h, background: k.dark ? 'rgba(245,240,230,0.96)' : '#ffffff', borderRadius: 10, boxShadow: '0 22px 40px rgba(0,0,0,0.32)', padding: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#141210'}}>{children}</div>
     </Abs>
   );
 };
@@ -289,3 +293,4 @@ export const Ribbon: React.FC<{variant?: 0 | 1 | 2; width?: number}> = ({variant
 };
 
 export {Pop, interpolate};
+export {Level, Flow, Filter, Tally, Shrink, Timeline} from './mechanisms';

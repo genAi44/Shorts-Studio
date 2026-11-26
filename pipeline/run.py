@@ -137,10 +137,19 @@ def produce(script, style, voice_id, job_dir, log=print, progress=lambda f: None
             record_fallback(f"entity plan failed ({_ee}): legacy detection only", beat_id="entities")
         spec = rem.build_spec(script, style, plan, int(round(total * FPS)), geo,
                               photo=m.resolve if m else None, degrade=True)
-        if cfg("AUTHORED_SCENES", "0") == "1":
+        studio_left = None  # scene ids the studio could not pass (None = studio off: author every scene)
+        if cfg("STUDIO_MODE", "0") == "1":  # direction before code: treatment -> design system -> shot specs -> compiled scenes
+            try:
+                from . import studio
+                spec = studio.direct_spec(spec, script, job_dir, log=log)
+                studio_left = {s["id"] for s in spec["scenes"] if not s.get("authored")}
+            except Exception as _se:  # noqa: BLE001
+                from .config import record_fallback
+                record_fallback(f"studio failed ({_se}): legacy path", beat_id="studio")
+        if cfg("AUTHORED_SCENES", "0") == "1" and studio_left != set():
             try:
                 from . import scene_author
-                spec = scene_author.author_spec(spec, job_dir, log=log)
+                spec = scene_author.author_spec(spec, job_dir, log=log, only_ids=studio_left)
             except Exception as _ae:  # noqa: BLE001
                 from .config import record_fallback
                 record_fallback(f"scene authoring failed ({_ae}): built-in beats", beat_id="authoring")
@@ -210,6 +219,13 @@ def produce(script, style, voice_id, job_dir, log=print, progress=lambda f: None
                 os.remove(os.path.join(job_dir, f))
             except OSError:
                 pass
+    if cfg("CRITIC", "0") == "1":  # Phase 0: grades the finished video, report only (critic/report.html)
+        try:
+            from . import critic
+            r = critic.critique_job(job_dir, log=log)
+            log(f"الناقد: {r['passed_scenes']}/{r['total_scenes']} مشاهد ناجحة، تقرير: critic/report.html")
+        except Exception as e:  # noqa: BLE001 - the critic must never break a render
+            log(f"⚠️ تعذر تشغيل الناقد: {e}")
     progress(1.0)
     log("اكتمل.")
     return {"video": "short.mp4", **meta}

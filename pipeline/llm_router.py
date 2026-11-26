@@ -20,7 +20,7 @@ from .llm_providers import (
 
 logger = logging.getLogger("llm_router")
 
-ROLES = ["script", "director", "style", "factcheck", "chat_edit"]
+ROLES = ["script", "director", "style", "factcheck", "chat_edit", "illustrator"]
 CONFIG_FILE = ROOT / "pipeline" / "llm_config.json"
 
 
@@ -48,6 +48,13 @@ DEFAULT_ROLES_CONFIG: Dict[str, Dict[str, Any]] = {
         "model": cfg("FACTCHECK_MODEL", "gemini-2.5-flash"),
         "fallback_chain": ["gemini", "freellmapi", "deepseek"],
         "temperature": 0.2,
+    },
+    # studio illustrator: writes the bespoke SVG drawing of each scene (code quality matters: a fixed, strong model)
+    "illustrator": {
+        "provider": cfg("ILLUSTRATOR_PROVIDER", "deepseek"),
+        "model": cfg("ILLUSTRATOR_MODEL", "deepseek-chat"),
+        "fallback_chain": ["deepseek", "gemini", "freellmapi"],
+        "temperature": 0.6,
     },
     "chat_edit": {
         "provider": cfg("CHAT_EDIT_PROVIDER", "freellmapi"),
