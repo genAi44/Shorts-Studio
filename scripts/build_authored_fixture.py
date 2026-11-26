@@ -47,13 +47,12 @@ def main() -> int:
         sc = {"id": sid, "role": "body", "narration": narr, "on_screen": toks[0], "beats": [{"kind": "bigtext", "text": " ".join(toks[:3])}]}
         plan.append({"sc": sc, "audio": {"words": words}, "dur": DUR, "t0": i * DUR})
     style = norm_style({"name": "ذهبي سينمائي", "seed": 806})
-    gen = ROOT / "remotion" / "src" / "generated" / "DynamicScenes.tsx"
-    backup = gen.read_text(encoding="utf-8") if gen.exists() else None
+    from pipeline.storyteller import restore_dynamic_scenes, snapshot_dynamic_scenes
+    backup = snapshot_dynamic_scenes()
     try:
         spec = rem.build_spec({"_entities": ents}, style, plan, int(round(len(plan) * DUR * FPS)), geo, audio_name="", photo=None, degrade=True)
     finally:
-        if backup is not None:
-            gen.write_text(backup, encoding="utf-8")
+        restore_dynamic_scenes(backup)
     spec["audio"] = ""
     job = ROOT / "outputs" / "authored_fixture"
     shutil.rmtree(job, ignore_errors=True)
