@@ -122,6 +122,29 @@ const bboxOf = (items: Item[]): number[] | null => {
   return [Math.min(...v.map((i) => i.l)), Math.min(...v.map((i) => i.t)), Math.max(...v.map((i) => i.r)), Math.max(...v.map((i) => i.b))].map(Math.round);
 };
 
+/** the designer's hero SVG as actually rendered: on-canvas box, how much of its viewBox the drawn content covers, visible shapes */
+const heroOf = () => {
+  const host = document.querySelector('[data-hero-svg]');
+  const svg = host?.querySelector('svg');
+  if (!host || !svg) return null;
+  const q = svg.getBoundingClientRect();
+  let cover = 0;
+  try {
+    const bb = svg.getBBox();
+    const vb = svg.viewBox.baseVal;
+    cover = vb && vb.width > 0 && vb.height > 0 ? Math.min(1, (bb.width * bb.height) / (vb.width * vb.height)) : 0;
+  } catch { cover = 0; }
+  let painted = 0;
+  svg.querySelectorAll('path, rect, circle, ellipse, line, polyline, polygon').forEach((el) => {
+    if (el.closest('defs, clipPath, mask, pattern, symbol, marker')) return;
+    const cs = getComputedStyle(el);
+    const r = el.getBoundingClientRect();
+    const paint = (cs.fill !== 'none' && parseFloat(cs.fillOpacity || '1') > 0.02) || (cs.stroke !== 'none' && parseFloat(cs.strokeWidth || '0') > 0);
+    if (paint && cs.display !== 'none' && cs.visibility !== 'hidden' && ancestorOpacity(el) > 0.05 && (r.width > 0.5 || r.height > 0.5)) painted++;
+  });
+  return {box: [q.left, q.top, q.right, q.bottom].map(Math.round), cover: Math.round(cover * 1000) / 1000, painted, opacity: Math.round(ancestorOpacity(host) * 100) / 100};
+};
+
 export const LayoutAudit: React.FC = () => {
   const frame = useCurrentFrame();
   const [handle] = useState(() => delayRender('layout-audit'));
@@ -129,7 +152,7 @@ export const LayoutAudit: React.FC = () => {
     const id = setTimeout(() => {
       try {
         const items = collect();
-        console.log('[AUDIT]' + JSON.stringify({frame, texts: items.filter((i) => !i.caption).length, bbox: bboxOf(items), issues: auditItems(items)}));
+        console.log('[AUDIT]' + JSON.stringify({frame, texts: items.filter((i) => !i.caption).length, bbox: bboxOf(items), issues: auditItems(items), hero: heroOf()}));
       } finally {
         continueRender(handle);
       }
