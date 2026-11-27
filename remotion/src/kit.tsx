@@ -140,10 +140,16 @@ export const HeroSvg: React.FC<{data: any; x?: number; y?: number; w?: number; h
     return `#${scope} [data-state="${s.state}"]{opacity:${v.toFixed(3)}}`;
   }).join('');
   if (!svg) return null;
+  // built-in idle motion: the hero drawing breathes, sways and floats so it is never a frozen picture between its states
+  // (measured: drawn scenes were frozen 20-67 % of the time; the references move all the time)
+  const t = frame / 30;
+  const breathe = 1 + 0.025 * Math.sin(t * ((2 * Math.PI) / 4.6));
+  const sway = 1.2 * Math.sin(t * ((2 * Math.PI) / 6.2) + 0.7);
+  const float = 8 * Math.sin(t * ((2 * Math.PI) / 3.8) + 1.9);
   return (
     <div id={scope} data-hero-svg="" style={{position: 'absolute', left: x, top: y, width: w, height: h, ...style}}>
       <style>{`#${scope} svg{width:100%;height:100%;display:block;overflow:visible}${css}`}</style>
-      <div style={{width: '100%', height: '100%'}} dangerouslySetInnerHTML={{__html: svg}} />
+      <div style={{width: '100%', height: '100%', transform: `translateY(${float.toFixed(2)}px) rotate(${sway.toFixed(3)}deg) scale(${breathe.toFixed(4)})`, transformOrigin: '50% 55%'}} dangerouslySetInnerHTML={{__html: svg}} />
     </div>
   );
 };

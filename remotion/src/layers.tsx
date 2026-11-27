@@ -86,18 +86,23 @@ const CinematicBackground: React.FC<{spec?: Spec}> = ({spec}) => {
 // guaranteed by the palette; each type only adds a very light texture. No glow, sparks, vignette or colour wash.
 const PlainBackground: React.FC<{type: string}> = ({type}) => {
   const th = useTheme();
+  const frame = useCurrentFrame();
   const {palette: p} = th.st;
+  // the ground is never frozen (the references always move): patterns drift slowly, a soft light patch travels across
+  const drift = `${(frame * 0.45).toFixed(1)}px ${(frame * 0.3).toFixed(1)}px`;
+  const lx = 50 + 22 * Math.sin(frame / 95);
+  const ly = 40 + 14 * Math.cos(frame / 120);
   const base = rgba(p.c1);
   const ink = th.dark ? p.text : p.text;
   const line = (a: number) => rgba(ink, a);
   const common: React.CSSProperties = {backgroundColor: base};
   let layers: React.ReactNode = null;
   if (type === 'grid') {
-    layers = <AbsoluteFill style={{backgroundImage: `linear-gradient(${line(0.07)} 1.5px, transparent 1.5px), linear-gradient(90deg, ${line(0.07)} 1.5px, transparent 1.5px), linear-gradient(${line(0.13)} 2px, transparent 2px), linear-gradient(90deg, ${line(0.13)} 2px, transparent 2px)`, backgroundSize: '60px 60px, 60px 60px, 240px 240px, 240px 240px'}} />;
+    layers = <AbsoluteFill style={{backgroundImage: `linear-gradient(${line(0.07)} 1.5px, transparent 1.5px), linear-gradient(90deg, ${line(0.07)} 1.5px, transparent 1.5px), linear-gradient(${line(0.13)} 2px, transparent 2px), linear-gradient(90deg, ${line(0.13)} 2px, transparent 2px)`, backgroundSize: '60px 60px, 60px 60px, 240px 240px, 240px 240px', backgroundPosition: drift}} />;
   } else if (type === 'dots') {
-    layers = <AbsoluteFill style={{backgroundImage: `radial-gradient(${line(0.2)} 2.4px, transparent 3px)`, backgroundSize: '54px 54px'}} />;
+    layers = <AbsoluteFill style={{backgroundImage: `radial-gradient(${line(0.2)} 2.4px, transparent 3px)`, backgroundSize: '54px 54px', backgroundPosition: drift}} />;
   } else if (type === 'stripes') {
-    layers = <AbsoluteFill style={{backgroundImage: `repeating-linear-gradient(135deg, transparent 0px, transparent 46px, ${line(0.05)} 46px, ${line(0.05)} 92px)`}} />;
+    layers = <AbsoluteFill style={{backgroundImage: `repeating-linear-gradient(135deg, transparent 0px, transparent 46px, ${line(0.05)} 46px, ${line(0.05)} 92px)`, backgroundPosition: drift}} />;
   } else if (type === 'gradient' || type === 'radial' || type === 'map' || type === 'aurora' || type === 'rays') {
     layers = <AbsoluteFill style={{background: `linear-gradient(180deg, ${rgba(p.c1)} 0%, ${rgba(p.c2)} 100%)`}} />;
   }
@@ -105,6 +110,7 @@ const PlainBackground: React.FC<{type: string}> = ({type}) => {
   return (
     <AbsoluteFill style={common}>
       {layers}
+      <AbsoluteFill style={{background: `radial-gradient(ellipse 55% 38% at ${lx.toFixed(1)}% ${ly.toFixed(1)}%, ${th.dark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.22)'}, transparent 70%)`}} />
       {paperLike && (
         <>
           {/* paper: fibre grain (multiply) + a barely-there lighter centre, like a sheet lit from the front */}
