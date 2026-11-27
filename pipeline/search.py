@@ -177,11 +177,9 @@ def _query_wiki_endpoint(query: str, lang: str = "ar", max_results: int = 3, tim
 
 
 def _search_wikipedia(query: str, max_results: int = 3, timeout: int = 8) -> List[Dict[str, str]]:
-    """المصدر 3: Wikipedia REST API عالمياً (عربي أولاً؛ الإنجليزية فقط إذا احتوى الاستعلام على أحرف لاتينية)."""
-    items = _query_wiki_endpoint(query, lang="ar", max_results=max_results, timeout=timeout)
-    if not items and re.search(r"[a-zA-Z]{2,}", query or ""):
-        items = _query_wiki_endpoint(query, lang="en", max_results=max_results, timeout=timeout)
-    return items
+    """المصدر 3: Wikipedia - an English query searches English Wikipedia (where most facts live), an Arabic one Arabic Wikipedia."""
+    is_en = re.search(r"[a-zA-Z]{3,}", query or "") and not re.search(r"[؀-ۿ]", query or "")
+    return _query_wiki_endpoint(query, lang="en" if is_en else "ar", max_results=max_results, timeout=timeout)
 
 
 def search_query(query: str, timeout: int = 8) -> List[Dict[str, str]]:
@@ -233,12 +231,75 @@ def generate_queries(topic: str, n: int = 3) -> List[str]:
     return queries
 
 
+QUERY_SYSTEM = ("You write web search queries to research the facts of a short educational video. Reply with JSON only: "
+                '{"en": ["2 precise English search queries"], "ar": ["1 precise Arabic search query"], "keywords": ["4-8 English and '
+                'Arabic content words the facts must be about"]}. Queries name the concrete subject (places, people, the phenomenon), '
+                "never generic words like list, history or facts on their own.")
+
+
+def plan_queries(topic: str) -> Dict[str, List[str]]:
+    """Specific search queries + the keywords a relevant fact must contain (LLM; falls back to the bare topic).
+    The old fixed suffixes ("قائمة", "تاريخ وتأسيس") matched unrelated list pages (seen: 1990s films for a city-borders topic)."""
+    try:
+        from .llm import call_llm_json
+        d = call_llm_json("script", QUERY_SYSTEM, topic, temperature=0.2)
+        en = [str(q) for q in (d.get("en") or []) if str(q).strip()][:2]
+        ar = [str(q) for q in (d.get("ar") or []) if str(q).strip()][:1]
+        kw = [str(k) for k in (d.get("keywords") or []) if str(k).strip()][:8]
+        if en or ar:
+            return {"queries": en + ar, "keywords": kw}
+    except Exception as e:  # noqa: BLE001 - search still runs on the topic itself
+        logger.warning("query planning failed (%s): searching the topic as written", e)
+    return {"queries": generate_queries(topic, n=1), "keywords": []}
+
+
+_STOP = {"what", "why", "how", "the", "and", "for", "with", "from", "that", "this", "are", "was", "were", "list",
+         "لماذا", "كيف", "ماذا", "التي", "الذي", "قائمة", "تاريخ", "أهم"}
+
+
+def _content_words(text: str) -> set:
+    return {w for w in re.findall(r"[\w؀-ۿ]{4,}", (text or "").lower()) if w not in _STOP}
+
+
+def relevant(item: Dict[str, str], keywords: List[str], topic: str) -> bool:
+    """Keep a result only if it shares a content word with the topic / planned keywords, and is not an unrelated list page."""
+    title = (item.get("title") or "").lower()
+    text = f"{title} {item.get('snippet', '')}".lower()
+    if re.match(r"\s*(list of|قائمة)", title) and not re.search(r"\d|قائمة|list", topic.lower()):
+        return False
+    want = _content_words(topic) | {w for k in keywords for w in _content_words(k)}
+    return bool(want) and any(w in text for w in want)
+
+
+MIN_RELEVANT_FACTS = 3
+
+JUDGE_SYSTEM = ("You check search results for a short educational video. Reply with JSON only: {\"keep\": [indices]} - the indices "
+                "of the results that are ABOUT the video's topic and help explain it. Drop news, events and pages that only share a word "
+                "with the topic (e.g. a storm or protests in American cities for a topic about why city borders look odd).")
+
+
+def judge(topic: str, items: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    """LLM relevance check after the word filter (shared words alone let unrelated news through). Falls back to the input."""
+    if not items:
+        return items
+    try:
+        from .llm import call_llm_json
+        listing = "\n".join(f"{i}. {it.get('title', '')}: {(it.get('snippet') or '')[:220]}" for i, it in enumerate(items))
+        d = call_llm_json("script", JUDGE_SYSTEM, f"Topic: {topic}\n\nResults:\n{listing}", temperature=0.0)
+        keep = {int(i) for i in (d.get("keep") or []) if str(i).lstrip("-").isdigit()}
+        return [it for i, it in enumerate(items) if i in keep]
+    except Exception as e:  # noqa: BLE001 - the word filter result is still used
+        logger.warning("relevance check failed (%s): keeping the word-filtered results", e)
+        return items
+
+
 def search_facts(topic: str, n_queries: int = 3) -> dict:
     """يبحث في الويب عن حقائق موثوقة حول الموضوع ويعيد قائمة النقاط والمصادر."""
     if not topic or not topic.strip():
         return {"facts": "", "sources": [], "count": 0}
 
-    queries = generate_queries(topic, n=n_queries)
+    plan = plan_queries(topic)
+    queries = plan["queries"][:max(1, n_queries)]
     all_results: List[Dict[str, str]] = []
 
     with ThreadPoolExecutor(max_workers=min(4, max(1, len(queries)))) as executor:
@@ -263,6 +324,11 @@ def search_facts(topic: str, n_queries: int = 3) -> dict:
             seen_urls.add(norm_url)
             deduped.append(item)
 
+    kept = judge(topic, [it for it in deduped if relevant(it, plan["keywords"], topic)])
+    if len(kept) < len(deduped):
+        logger.warning("search: %d result(s) unrelated to the topic dropped", len(deduped) - len(kept))
+    deduped = kept
+
     bullets = []
     sources = []
     for item in deduped:
@@ -282,4 +348,6 @@ def search_facts(topic: str, n_queries: int = 3) -> dict:
         "facts": facts_text,
         "sources": sources,
         "count": len(bullets),
+        "queries": queries,
+        "weak": len(bullets) < MIN_RELEVANT_FACTS,  # too little relevant material: the script may be inaccurate
     }

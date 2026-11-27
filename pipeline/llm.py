@@ -196,12 +196,14 @@ def write_script_with_facts(topic: str, facts_text: str, style: Optional[Any] = 
         "   - In BODY 3: cover item 5 (the ultimate climax/answer).\n"
         "   Never stop at only 2 or 3 items when 5 were requested!\n"
         "2. For each capital/country, explicitly mention both the City Name and the Country Name.\n"
-        "3. Use ONLY the facts provided below and verified, authentic facts. Do not invent fake numbers or dates.\n"
+        "3. Use the facts provided below ONLY when they are about the topic; ignore any fact that is not about it and never build\n"
+        "   the story around an unrelated fact. Beyond them use only well-established knowledge of the topic. Never invent numbers or dates.\n"
         "4. Write in concise, punchy Arabic phrases optimized for vertical fast-paced video.\n\n"
         + sp.SYSTEM
     )
 
-    user_message = f"Verified facts from the web (Arabic sources):\n{facts_text}\n\nVideo idea and topic (write the script in Arabic):\n{topic}"
+    user_message = (f"Facts found on the web (use only those about the topic):\n{facts_text or '(none found)'}\n\n"
+                    f"Video idea and topic (write the script in Arabic):\n{topic}")
     if style:
         style_name = style.get("name", "") if isinstance(style, dict) else str(style)
         if style_name:

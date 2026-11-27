@@ -44,7 +44,7 @@ def produce(script, style, voice_id, job_dir, log=print, progress=lambda f: None
         log(f"🔍 البحث عن الحقائق الموثقة في الويب: {topic_str}…")
         facts_data = search_facts(topic_str)
         n_facts = facts_data.get("count", 0)
-        log(f"📚 تم العثور على {n_facts} حقيقة من الويب.")
+        log(f"📚 تم العثور على {n_facts} حقيقة من الويب." + (" ⚠️ معلومات قليلة عن الموضوع: السكربت قد يكون غير دقيق" if facts_data.get("weak") else ""))
         script = llm.write_script_with_facts(topic_str, facts_data.get("facts", ""), style)
         script["_facts_data"] = facts_data
     elif isinstance(script, dict):

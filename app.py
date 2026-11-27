@@ -233,6 +233,7 @@ def make_script():
     res = _pack(script)
     res["by"] = used_model
     res["facts_count"] = facts_count
+    res["facts_weak"] = bool(facts_data.get("weak"))
     res["sources"] = facts_data.get("sources", [])
     return jsonify(res)
 

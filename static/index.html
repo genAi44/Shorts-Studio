@@ -566,7 +566,7 @@
           $('#factsChip').style.display = 'inline-flex';
           $('#factsCount').textContent = r.facts_count;
         }
-        $('#genMsg').textContent = (r.by === 'deepseek' ? 'تمّت الكتابة بواسطة DeepSeek (احتياطي).' : 'تمّت الكتابة بواسطة الذكاء الاصطناعي.') + (r.facts_count ? ` (تم توثيق ${r.facts_count} حقيقة من الويب).` : '') + ' راجع السكربت والمشاهد وعدّلها.';
+        $('#genMsg').textContent = (r.by === 'deepseek' ? 'تمّت الكتابة بواسطة DeepSeek (احتياطي).' : 'تمّت الكتابة بواسطة الذكاء الاصطناعي.') + (r.facts_count ? ` (تم توثيق ${r.facts_count} حقيقة من الويب).` : '') + (r.facts_weak ? ' ⚠️ البحث وجد معلومات قليلة جداً عن هذا الموضوع: راجع صحة السكربت قبل الإنتاج.' : '') + ' راجع السكربت والمشاهد وعدّلها.';
       }
       catch (e) { $('#genMsg').textContent = '⛔ ' + e.message }
       $('#bGen').disabled = false;
