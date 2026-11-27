@@ -224,7 +224,7 @@ def design_errors(sb: Optional[Dict[str, Any]], svg: Optional[str], code: str, c
 def llm_write(system: str, user: str) -> Optional[str]:
     from .llm_router import get_router
     try:
-        resp = get_router().dispatch(role="director", system=system, user=user, temperature=0.7, json_mode=False, timeout=150)
+        resp = get_router().dispatch(role="scene_writer", system=system, user=user, json_mode=False, timeout=150)
         return resp.content
     except Exception as e:  # noqa: BLE001 - the caller records the failure
         import logging

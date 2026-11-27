@@ -764,7 +764,9 @@
     let llmProviders = {}, llmConfig = null;
     const ROLE_NAMES = {
       script: { title: '✍️ كتابة السكربت (Script)', desc: 'توليد سكريبت Short ثلاثي المراحل مع الحلقات المشوقة' },
-      director: { title: '🎬 المخرج البصري (Director)', desc: 'تفكيك الجمل لمشاهد بصرية ورسم الكود' },
+      director: { title: '🎬 المخرج البصري (Director)', desc: 'يقرر نوع كل مشهد وفكرته البصرية (صورة، خريطة، مشهد مرسوم)' },
+      scene_writer: { title: '🧩 كاتب المشاهد (Scene Writer)', desc: 'يكتب كل مشهد من الصفر: يستخرج ← يترجم ← ينشئ الكود (افتراضياً DeepSeek)' },
+      illustrator: { title: '🖌️ الرسام (Illustrator)', desc: 'يرسم رسمة SVG الخاصة بكل مشهد' },
       style: { title: '🎨 المدير الفني (Style)', desc: 'تصميم لوحة الألوان والخط والخلفية وتوزيع النص' },
       factcheck: { title: '🔍 فحص الحقائق (Fact Check)', desc: 'التحقق من صحة الادعاءات والمصادر الحساسة' },
       chat_edit: { title: '💬 التعديل البصري (Chat Edit)', desc: 'تعديل عناصر المشاهد تفاعلياً بالأوامر' }
@@ -1039,6 +1041,8 @@
         const defaultRoles = {
           script: { provider: defProv, model: defMod },
           director: { provider: defProv, model: defMod },
+          scene_writer: { provider: defProv, model: defMod },
+          illustrator: { provider: defProv, model: defMod },
           style: { provider: defProv, model: defMod },
           factcheck: { provider: defProv, model: defMod },
           chat_edit: { provider: defProv, model: defMod }
