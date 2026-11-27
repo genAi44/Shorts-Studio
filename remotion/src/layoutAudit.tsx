@@ -95,6 +95,34 @@ export const auditItems = (items: Item[]) => {
       }
     }
   }
+  // text covered by a solid drawn shape (seen: a target circle over a year, boxes over a phrase). A shape much
+  // bigger than the text is a card or ground meant to sit behind it, not a collision.
+  if (typeof document !== 'undefined') {
+    const shapes: DOMRect[] = [];
+    // every solid shape the scene draws (the hero SVG AND shapes drawn directly in the scene's TSX), except the map card,
+    // icons (audited as boxes above) and the captions
+    document.querySelectorAll('svg circle, svg ellipse, svg rect, svg polygon, svg path').forEach((el) => {
+      if (el.closest('defs, clipPath, mask, pattern, symbol, marker, [data-audit-kit], [data-audit-icon], [data-caption], [data-audit-ignore]')) return;
+      const cs = getComputedStyle(el);
+      if (cs.fill === 'none' || parseFloat(cs.fillOpacity || '1') * ancestorOpacity(el) < 0.6) return;
+      const r = el.getBoundingClientRect();
+      if (r.width > 8 && r.height > 8) shapes.push(r);
+    });
+    for (const it of items) {
+      if (it.icon || it.caption || it.fs < MIN_FONT) continue;
+      const tt = it.t + (it.b - it.t) * 0.12, tb = it.b - (it.b - it.t) * 0.12;
+      const tArea = (it.r - it.l) * (tb - tt);
+      for (const r of shapes) {
+        if (r.width * r.height > tArea * 3) continue;
+        const w = Math.min(it.r, r.right) - Math.max(it.l, r.left);
+        const h = Math.min(tb, r.bottom) - Math.max(tt, r.top);
+        if (w > 0 && h > 0 && (w * h) / Math.min(tArea, r.width * r.height) > 0.45) {
+          issues.push({type: 'overlap', text: it.text, other: '[a drawn shape]', box: [it.l, it.t, it.r, it.b].map(Math.round), obox: [r.left, r.top, r.right, r.bottom].map(Math.round)});
+          break;
+        }
+      }
+    }
+  }
   for (let i = 0; i < items.length; i++) {
     for (let j = i + 1; j < items.length; j++) {
       const a = items[i], b = items[j];

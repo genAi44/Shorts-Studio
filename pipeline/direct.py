@@ -198,7 +198,7 @@ def _add_camera(out, b):
     cam = b.get("camera")
     if cam in CAMERAS:
         out["camera"] = cam
-    for k in ("scene_spec", "narration_cues", "svg_layers", "environment", "secondary_accent", "tsx_id", "concept"):
+    for k in ("scene_spec", "narration_cues", "svg_layers", "environment", "secondary_accent", "tsx_id", "concept", "photo_subject"):
         if b.get(k) is not None and k not in out:
             out[k] = b[k]
     return out

@@ -266,3 +266,15 @@ def test_a_state_that_only_changes_tsx_needs_no_svg_group():
     words = [{"t": t, "s": i * 0.5, "e": i * 0.5 + 0.4} for i, t in enumerate("القاهرة عاصمة مصر عاصمة".split())]
     errs = storyboard_errors(sb, {"dur": 120, "words": words}, SVG)
     assert not any("data-state=\"3\"" in e for e in errs), errs
+
+
+def test_a_photo_hero_is_mandatory_when_the_pipeline_found_one():
+    """data.photo (a real cut-out of the director's photo_subject) must be shown with <HeroPhoto>."""
+    from pipeline.scene_author_prompts import build_prompts
+    from pipeline.scene_inputs import attach_photos
+    ctxs = {"body1": {"sentence": "لوس أنجلوس ضمت شريطا", "director_decision": [{"kind": "custom_scene", "photo_subject": "Port of Los Angeles cargo ship"}]}}
+    calls = []
+    copied = attach_photos(ctxs, lambda subj, sentence: (calls.append(subj), {"img": "media/p9.png", "cut": True})[1], "nojob", lambda m: None)
+    assert calls == ["Port of Los Angeles cargo ship"] and ctxs["body1"]["photo"]["src"] == "media/p9.png" and copied == []
+    system, _ = build_prompts({"id": "body1", "role": "body", "dur": 150, "sentence": "s", "sentences": ["s"], "entities": [], "words": [], "theme": {}})
+    assert "PHOTO HERO" in system and "HeroPhoto" in system
