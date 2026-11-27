@@ -231,6 +231,31 @@ def llm_plan(system: str, user: str) -> Any:
     return call_llm_json("director", system, user, temperature=0.6, timeout=150)
 
 
+def plan_from_decisions(spec: Dict[str, Any], items: List[Dict[str, Any]]) -> Optional[Dict[str, Dict[str, Any]]]:
+    """ONE director: when the beat director (app step 3) decided the scenes, the narrative plan is built from those decisions
+    instead of a second, independent LLM director re-planning them. None only when no scene carries a decision."""
+    by_id = {s.get("id"): s for s in spec.get("scenes") or []}
+    decs = {it["scene_id"]: [b for b in (by_id.get(it["scene_id"]) or {}).get("beats") or [] if isinstance(b, dict) and b.get("concept")]
+            for it in items}
+    if not any(decs.values()):
+        return None
+    out: Dict[str, Dict[str, Any]] = {}
+    prev = None
+    for n, it in enumerate(items):
+        b = decs[it["scene_id"]]
+        s = fallback_scene(it, n, len(items), prev)
+        if b:  # a scene without a decision (e.g. a native photo/map scene) keeps the deterministic plan
+            concept = " / ".join(dict.fromkeys(str(x["concept"]) for x in b))
+            s.update({"main_concept": str(b[0].get("title") or s["main_concept"]), "narrative_description": concept,
+                      "visual_storytelling": concept})
+        s = {f: s.get(f, "") for f in PLAN_FIELDS}
+        s["scene_id"] = str(it["scene_id"])
+        s["narration"] = it["narration"]
+        out[s["scene_id"]] = s
+        prev = s
+    return out
+
+
 def plan_video(spec: Dict[str, Any], cache_dir: Path, llm: Optional[Callable[[str, str], Any]] = None, cache_only: bool = False,
                title: str = "", log: Callable[[str], None] = print) -> Dict[str, Dict[str, Any]]:
     """scene_id -> plan (PLAN_FIELDS + system-owned `narration`). One LLM call (+ one repair call with the contract errors);
@@ -238,6 +263,10 @@ def plan_video(spec: Dict[str, Any], cache_dir: Path, llm: Optional[Callable[[st
     items = scene_items(spec)
     if not items:
         return {}
+    decided = plan_from_decisions(spec, items)
+    if decided is not None:
+        log("director: plan built from the beat director's decisions (no second director call)")
+        return decided
     title = title or str(spec.get("title") or "")
     cache_dir.mkdir(parents=True, exist_ok=True)
     cp = _cache_path(items, title, cache_dir)
