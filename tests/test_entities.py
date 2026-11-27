@@ -43,22 +43,6 @@ def test_sentence_with_entity_but_no_visual_fails():
     assert any(g.startswith("capital:") for g in gaps), gaps
 
 
-def test_ensure_visuals_inserts_logged_marked_shot_and_hides_the_beat_under_it():
-    clear_warnings()
-    ent = {"type": "time", "scale": "year", "text": "1453", "value": 1453, "label_ar": "سقوط القسطنطينية", "span": [2, 2]}
-    words = [{"t": "في", "s": 0.1, "e": 0.4}, {"t": "عام", "s": 0.5, "e": 0.8}, {"t": "1453", "s": 0.9, "e": 1.4}]
-    base = [{"kind": "bigtext", "from": 0, "dur": 150}]
-    out = E.ensure_visuals(base, [[ent]], words, 150)
-    shot = [b for b in out if b["kind"] == "year_counter"]
-    assert len(shot) == 1 and shot[0]["_fallback"] and shot[0]["year"] == 1453
-    assert out[0]["hide"], "the beat under the inserted shot must be hidden"
-    assert any("year_counter" in w for w in get_last_warnings())
-    # already covered -> nothing inserted, nothing logged
-    clear_warnings()
-    planned = [{"kind": "year_counter", "from": 0, "dur": 150, "year": 1453}]
-    assert E.ensure_visuals(planned, [[ent]], words, 150) == planned and not get_last_warnings()
-
-
 def test_plan_errors_go_to_the_director():
     ent = {"type": "person", "text": "ابن سينا", "name_ar": "ابن سينا", "span": [0, 1]}
     errs = E.plan_errors({}, {"body1": [{"kind": "bigtext"}]}, {"body1": [[ent]]})
@@ -90,8 +74,6 @@ def test_a_new_entity_type_is_one_registry_entry():
     try:
         ent = {"type": "color", "text": "أحمر", "span": [0, 0]}
         assert E.plan_errors({}, {"s": [{"kind": "bigtext"}]}, {"s": [[ent]]})
-        out = E.ensure_visuals([{"kind": "bigtext", "from": 0, "dur": 90}], [[ent]], [{"t": "أحمر", "s": 0.1, "e": 0.5}], 90)
-        assert any(b["kind"] == "stat" and b["_fallback"] for b in out)
     finally:
         del E.ENTITY_REGISTRY["color"]
 

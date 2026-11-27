@@ -157,84 +157,8 @@ def _merge_visual_plan(geo, result, s, targets):
                             b["must_show"] = sc_vi["must_show"]
                         if not b.get("avoid") and sc_vi.get("avoid"):
                             b["avoid"] = sc_vi["avoid"]
-                    if b.get("kind") == "photo" and sc_vi.get("media_query_en"):
-                        b["query"] = sc_vi["media_query_en"]
-                        if sc_vi.get("must_show"):
-                            b["must_show"] = sc_vi["must_show"]
-                        if sc_vi.get("avoid"):
-                            b["avoid"] = sc_vi["avoid"]
     except Exception:
         pass
-
-
-DRAWN = ("custom_scene", "generative_canvas", "bigtext")
-MAX_PHOTOS_ADDED = 3
-
-
-def _concept_query(concept: Any) -> str:
-    """A photo search query from the director's sentence-specific English concept (first ~7 content words)."""
-    words = re.findall(r"[A-Za-z][A-Za-z'-]+", str(concept or ""))
-    stop = {"a", "an", "the", "of", "with", "and", "in", "on", "at", "to", "into", "from", "its", "their", "as", "by", "for", "is", "are"}
-    return " ".join([w for w in words if w.lower() not in stop][:7])
-
-
-def _photo_order(targets) -> List[int]:
-    """Indices of drawn hook/body scenes, those inside the longest drawn runs first (a photo there breaks the run)."""
-    drawn = [bool(t.get("beats")) and t["beats"][0].get("kind") in DRAWN for t in targets]
-    run_len, i = [0] * len(targets), 0
-    while i < len(targets):
-        j = i
-        while j < len(targets) and drawn[j]:
-            j += 1
-        for k in range(i, j):
-            run_len[k] = j - i
-        i = max(j, i + 1)
-    cands = [k for k, t in enumerate(targets) if drawn[k] and t.get("role") in ("hook", "body")]
-    return sorted(cands, key=lambda k: (-run_len[k], k))
-
-
-def _upgrade_photos(geo, s, targets):
-    """Phase of `apply_beats`: make sure the video shows real licensed photos (at least 2), placed where they break
-    the longest runs of drawn scenes, each with its own sentence-specific query (never the same photo twice)."""
-    norm = lambda q: " ".join(str(q or "").lower().split())
-    used = {norm(b.get("query")) for t in targets for b in (t.get("beats") or []) if b.get("kind") == "photo"}
-    photo_count = len(used)
-    added = 0
-    for k in _photo_order(targets):
-        t = targets[k]
-        if photo_count >= 2 and not _has_long_drawn_run(targets):
-            break
-        if added >= MAX_PHOTOS_ADDED:
-            break
-        first_sent = (sentences(t.get("narration", "")) or [t.get("narration", "")])[0]
-        sc_vi = t.get("_vi") if isinstance(t.get("_vi"), dict) else {}
-        pb = detect_photo_beat(first_sent) or detect_photo_beat(f"{t.get('on_screen', '')} {s.get('title', '')}")
-        q = _concept_query(t["beats"][0].get("concept")) or sc_vi.get("media_query_en") or (pb or {}).get("query")
-        if not q or norm(q) in used:
-            continue
-        pb = dict(pb or {"kind": "photo", "camera": "parallax", "avoid": "watermark text collage"})
-        pb["kind"] = "photo"
-        pb["query"] = q
-        pb["alt_queries"] = [x for x in (sc_vi.get("media_query_en"), (pb.get("alt_queries") or [None])[0]) if x and norm(x) != norm(q)][:2]
-        pb["must_show"] = sc_vi.get("must_show") or pb.get("must_show") or q
-        if sc_vi.get("avoid"):
-            pb["avoid"] = sc_vi["avoid"]
-        pb["text"] = _words(first_sent, 5)
-        pb_norm = validate_beat(normalize_beat(pb, first_sent, geo))
-        if pb_norm.get("kind") == "photo":
-            t["beats"][0] = pb_norm
-            used.add(norm(q))
-            photo_count += 1
-            added += 1
-
-
-def _has_long_drawn_run(targets) -> bool:
-    run = 0
-    for t in targets:
-        run = run + 1 if t.get("beats") and t["beats"][0].get("kind") in DRAWN else 0
-        if run > MAX_CUSTOM_RUN:
-            return True
-    return False
 
 
 def _enrich_hook_map(s, scenes_of):
@@ -269,8 +193,6 @@ def apply_beats(script, result, geo=None, llm_retry_fn: Optional[Callable[[List[
     targets = _assign_scene_beats(geo, got, s, scenes_of)
 
     _merge_visual_plan(geo, result, s, targets)
-
-    _upgrade_photos(geo, s, targets)
 
     _enrich_hook_map(s, scenes_of)
     _diversify_beats(s, targets)

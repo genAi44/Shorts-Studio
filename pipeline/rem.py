@@ -220,12 +220,12 @@ def build_spec(script, style, plan, total_frames, geo, audio_name="audio.wav", p
         words = [{"t": w, "s": round(s, 3), "e": round(e, 3)} for (w, s, e) in p["audio"]["words"]]
         sc_vi = sc.get("_vi") if isinstance(sc.get("_vi"), dict) else {}
         beats = scene_beats(sc, words, dur, geo, hook_first, photo, degrade, visual_mode=sc_vi.get("visual_mode", ""))
-        # entity -> visual rule: every registered entity gets its visual (insert shot if the plan missed it); places go to the overlay
+        # entities: places go to the map overlay; a missing entity visual is the director's job (plan_errors -> retry),
+        # no shot is inserted over the director's beats (inserted 2.2 s shots stacked and cut the planned visuals)
         per_sentence = (script.get("_entities") or {}).get(sc["id"]) if isinstance(script, dict) else None
         entity_mentions = None
         if per_sentence:
             from . import entities as _ent
-            beats = _ent.ensure_visuals(beats, per_sentence, words, dur, photo=photo)
             entity_mentions = _ent.geo_mentions(per_sentence, words, [])
         if sc["role"] == "hook":
             # first frame must be thumbnail-quality; settle beat[0] so springs render at full state
@@ -294,6 +294,14 @@ def build_spec(script, style, plan, total_frames, geo, audio_name="audio.wav", p
             b for sc_item in scenes for b in (sc_item.get("beats") or [])
             if isinstance(b, dict) and (b.get("tsx_id") or b.get("kind") in ("generative_canvas", "custom_scene"))
         ]
+        from .config import cfg
+        if all_tsx_beats and cfg("AUTHORED_SCENES", "0") == "1":
+            # ONE scene writer: with the designer on (scene_author) it writes every scene; the storyteller must not
+            # spend LLM calls writing TSX the designer then replaces. A scene the designer cannot pass keeps its native beat:
+            # drop the tsx_id, or it would render the black placeholder the storyteller wrote at direction time.
+            for b in all_tsx_beats:
+                b.pop("tsx_id", None)
+            all_tsx_beats = []
         if all_tsx_beats:
             only_set = {only_scene_idx} if only_scene_idx is not None else None
             from .style import theme_from_style
