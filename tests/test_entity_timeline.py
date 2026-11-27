@@ -4,6 +4,7 @@ import unittest
 from pipeline import visual_tools
 from pipeline.config import FPS
 from pipeline.entity_timeline import apply_entity_flags, build_entity_timeline
+from geodb_marker import needs_geodb
 
 
 def _words(text, start=0.0, step=0.4):
@@ -15,6 +16,7 @@ def _words(text, start=0.0, step=0.4):
 
 
 class TestEntityTimeline(unittest.TestCase):
+    @needs_geodb
     def test_flags_follow_spoken_country_in_same_scene(self):
         narration = "كوستاريكا ألغت جيشها نهائياً منذ عقود طويلة جداً ثم تليها بنما المجاورة التي تعتمد على القناة"
         words = _words(narration)

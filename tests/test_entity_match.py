@@ -5,6 +5,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from pipeline.direct import _number_in_text
 from pipeline.visual_tools import enrich_scene_visuals  # noqa: F401  (import guard)
+from geodb_marker import needs_geodb
 
 
 def test_number_must_appear_in_narration():
@@ -21,6 +22,7 @@ def test_multi_country_scene_gets_no_flag():
     assert [v for v in enrich_scene_visuals(one) if v["kind"] == "flag"]
 
 
+@needs_geodb
 def test_geo_mentions_arabic_ambiguity_and_regions():
     from pipeline.geo_overlay import extract_timed_geo_mentions as ex
     names = lambda t: [m["name_ar"] for m in ex(t, "", [], 150)]

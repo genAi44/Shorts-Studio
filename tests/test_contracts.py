@@ -4,6 +4,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from geodb_marker import needs_geodb
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -47,6 +48,7 @@ def test_every_director_kind_has_a_precondition_rule():
     assert set(direct.KINDS) <= set(direct.BEAT_RULES), sorted(set(direct.KINDS) - set(direct.BEAT_RULES))
 
 
+@needs_geodb
 def test_map_precondition_requires_a_real_place():
     from pipeline import direct
     from pipeline.geo import get_geo

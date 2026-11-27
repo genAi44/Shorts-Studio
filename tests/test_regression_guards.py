@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from PIL import Image
+from geodb_marker import needs_geodb
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -93,6 +94,7 @@ class TestRegressionGuards(unittest.TestCase):
         self.assertIsNone(res["hook"]["beats"][0].get("tsx_id"))
         self.assertIsNone(res["body1"]["beats"][0].get("tsx_id"))
 
+    @needs_geodb
     def test_06_geo_disambiguation_and_stopwords(self):
         from pipeline.geo_overlay import extract_timed_geo_mentions
 
@@ -247,6 +249,7 @@ class TestRegressionGuards(unittest.TestCase):
         self.assertIn("effectiveMode === 'split-bottom' ? MAP_STAGE_ZONE.split_svg_height", map_tsx)
         self.assertIn("split_svg_height: 620", (ROOT / "remotion" / "src" / "layout.ts").read_text(encoding="utf-8"))
 
+    @needs_geodb
     def test_18_direct_detect_photo_beat_prefers_sentence_country_over_scene_country(self):
         from pipeline.direct import detect_photo_beat
 
