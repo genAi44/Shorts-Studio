@@ -4,6 +4,7 @@ The map engine only knew countries and city points, so a scene about a city's bo
 OSM data is ODbL: every map that draws one of these boundaries shows ATTRIBUTION.
 """
 import json
+import math
 import os
 import time
 from typing import Any, Dict, List, Optional, Tuple
@@ -38,12 +39,25 @@ def _thin(geom: Dict[str, Any]) -> Dict[str, Any]:
     return {"type": "MultiPolygon", "coordinates": [[ring(r) for r in poly] for poly in geom["coordinates"]]}
 
 
-def fetch(name_en: str, iso2: str = "") -> Optional[Dict[str, Any]]:
-    """GeoJSON Polygon/MultiPolygon of the city's administrative boundary, or None (unknown, a point only, offline)."""
+NEAR_KM = 25.0  # a boundary is the right one only if the place's own coordinates are inside it or this close to it
+
+
+def near(geom: Dict[str, Any], lat: float, lon: float, km: float = NEAR_KM) -> bool:
+    """The place's coordinates fall inside the boundary's box, widened by `km` (rejects a homonym in another state)."""
+    x0, y0, x1, y1 = extent(geom)
+    d_lat = km / 111.0
+    d_lon = km / (111.0 * max(0.2, math.cos(math.radians(lat))))
+    return x0 - d_lon <= lon <= x1 + d_lon and y0 - d_lat <= lat <= y1 + d_lat
+
+
+def fetch(name_en: str, iso2: str = "", lat: Optional[float] = None, lon: Optional[float] = None) -> Optional[Dict[str, Any]]:
+    """GeoJSON Polygon/MultiPolygon of the city's administrative boundary, or None (unknown, a point only, offline).
+    With lat/lon, only a boundary around that point is accepted: "Highland Park" near Detroit must not return the
+    Illinois one (seen: the camera framed Detroit and a homonym 400 km away, Detroit became a dot at the edge)."""
     name_en = (name_en or "").split(",")[0].strip()
     if not name_en:
         return None
-    key = f"{name_en}|{iso2.lower()}"
+    key = f"{name_en}|{iso2.lower()}" + (f"|{lat:.1f},{lon:.1f}" if lat is not None and lon is not None else "")
     cache = _cache()
     if key in cache:
         return cache[key] or None
@@ -56,7 +70,7 @@ def fetch(name_en: str, iso2: str = "") -> Optional[Dict[str, Any]]:
     _LAST[0] = time.time()
     geom = None
     try:
-        params: Dict[str, Any] = {"q": name_en, "format": "json", "limit": 3, "polygon_geojson": 1, "polygon_threshold": 0.0005,
+        params: Dict[str, Any] = {"q": name_en, "format": "json", "limit": 8, "polygon_geojson": 1, "polygon_threshold": 0.0005,
                                   "accept-language": "en"}
         if iso2:
             params["countrycodes"] = iso2.lower()
@@ -65,7 +79,10 @@ def fetch(name_en: str, iso2: str = "") -> Optional[Dict[str, Any]]:
         for hit in (r.json() if r.status_code == 200 else []):
             # a city / town administrative boundary, not a building or a street that shares the name
             if hit.get("class") in ("boundary", "place") and _usable(hit.get("geojson")):
-                geom = _thin(hit["geojson"])
+                g = _thin(hit["geojson"])
+                if lat is not None and lon is not None and not near(g, lat, lon):
+                    continue  # same name, another place
+                geom = g
                 break
     except Exception:  # noqa: BLE001 - no boundary: the map shows the city pin as before
         geom = None
@@ -96,7 +113,12 @@ def attach(mentions: List[Dict[str, Any]]) -> Dict[int, Dict[str, Any]]:
     out: Dict[int, Dict[str, Any]] = {}
     for i, m in enumerate(mentions):
         if m.get("kind") in ("city", "capital", "district") and not m.get("feature"):
-            g = fetch(str(m.get("name_en") or ""), str(m.get("iso2") or ""))
+            lat, lon = m.get("lat"), m.get("lon")
+            g = fetch(str(m.get("name_en") or ""), str(m.get("iso2") or ""),
+                      float(lat) if lat is not None else None, float(lon) if lon is not None else None)
+            if g and lat is not None and lon is not None and not near(g, float(lat), float(lon)):
+                g = None  # a cached boundary of a homonym
+
             if g:
                 out[i] = g
                 m["feature"] = {"shape": "city", "geom": g}

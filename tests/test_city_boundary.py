@@ -26,3 +26,10 @@ def test_no_boundary_keeps_the_old_map(monkeypatch):
     monkeypatch.setattr(city_boundary, "fetch", lambda name, iso2="": None)
     assert city_boundary.attach([{"kind": "city", "name_en": "Nowhere"}]) == {}
     assert city_boundary.extent(HOUSTON) == (-95.8, 29.6, -95.1, 30.1)
+
+
+def test_a_homonym_boundary_far_from_the_place_is_rejected():
+    """'Highland Park' near Detroit must not use the Illinois boundary (the camera framed both, Detroit became a dot)."""
+    illinois = {"type": "Polygon", "coordinates": [[[-87.85, 42.15], [-87.76, 42.15], [-87.76, 42.21], [-87.85, 42.21], [-87.85, 42.15]]]}
+    assert not city_boundary.near(illinois, 42.405, -83.097)        # Highland Park, Michigan
+    assert city_boundary.near(illinois, 42.18, -87.80)
