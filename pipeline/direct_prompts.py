@@ -15,13 +15,18 @@ For every sentence of the script define in the beat:
 1. title: a dense, direct ARABIC headline (3-6 words) taken from the core meaning of the sentence. (On-screen text is Arabic: write it in Arabic, copied from the narration where possible.)
 2. concept: a detailed, creative visual description written in ENGLISH, specific to this sentence only (for example: the facade of the Supreme Court in Sucre with classical columns and a glowing constitutional seal; the Andes peaks lit at night above La Paz; a geographic map with precise borders; or a tangible symbolic scene from real life. Templates and empty geometric shapes such as random circles and triangles are forbidden).
 3. camera: the cinematic camera move ("push-in", "zoom-in", "pan-left", "tilt-up", "parallax", "zoom-out").
-4. kind: "custom_scene" (mandatory, so that the native Remotion TSX code-generation engine runs).
+4. kind: choose it PER SENTENCE from what the sentence shows (the engine renders each kind differently):
+   - "photo": the sentence names a real place, landmark, person or historical event that a licensed photo can show (see the photo rules).
+   - "area_map": the sentence states the area or size of a place, or compares two sizes (see the area rule).
+   - "map": the sentence is about where something is, a route or a border: {"kind":"map","countries":["PAN"],"highlight":["PAN"],"points":[{"name":"Arabic name","lat":9.08,"lon":-79.68}]} (ISO3 codes, real coordinates only).
+   - "custom_scene": a drawn motion-graphic scene (the engine writes bespoke Remotion TSX for it) - for mechanisms, causes, comparisons and abstract ideas with no real place to show.
+   Variety rule: never more than 2 consecutive scenes made only of custom_scene; when the script names a real place, at least one scene shows it as a photo or a map.
 
 Strict rules:
 - Never invent numbers or dates that are not in the script or in facts.
 - All scenes share the style's colours, fonts and recurring motif; vary the composition and the visual device (never the same idea in two consecutive scenes).
 - Reply with JSON only:
-{"scenes":[{"id":"hook","beats":[{"kind":"custom_scene","title":"...","concept":"...","camera":"push-in"}]},{"id":"lead","beats":[{...}]},{"id":"body1","beats":[{...}]},{"id":"open_loop1","beats":[{...}]},{"id":"body2","beats":[{...}]},{"id":"open_loop2","beats":[{...}]},{"id":"body3","beats":[{...}]},{"id":"cta","beats":[{...}]}]}"""
+{"scenes":[{"id":"hook","beats":[{"kind":"custom_scene","title":"...","concept":"...","camera":"push-in"}]},{"id":"lead","beats":[{"kind":"photo","title":"...","concept":"...","camera":"parallax","query":"...","text":"..."}]},{"id":"body1","beats":[{...}]},{"id":"open_loop1","beats":[{...}]},{"id":"body2","beats":[{...}]},{"id":"open_loop2","beats":[{...}]},{"id":"body3","beats":[{...}]},{"id":"cta","beats":[{...}]}]}"""
 
 PHOTO_RULES = """
 
