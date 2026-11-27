@@ -9,7 +9,7 @@ HOUSTON = {"type": "MultiPolygon", "coordinates": [
 
 
 def test_overlay_draws_the_city_limits_and_frames_them(monkeypatch):
-    monkeypatch.setattr(city_boundary, "fetch", lambda name, iso2="": HOUSTON if name == "Houston" else None)
+    monkeypatch.setattr(city_boundary, "fetch", lambda name, iso2="", lat=None, lon=None: HOUSTON if name == "Houston" else None)
     words = [{"t": t, "s": i * 0.4, "e": i * 0.4 + 0.3} for i, t in enumerate("حدود مدينة هيوستن متعرجة".split())]
     mention = {"matched_token": "هيوستن", "kind": "city", "kind_label": "مدينة", "name_ar": "هيوستن", "name_en": "Houston",
                "country_ar": "الولايات المتحدة", "iso3": "USA", "iso2": "us", "lat": 29.76, "lon": -95.37, "coords": "",
@@ -23,7 +23,7 @@ def test_overlay_draws_the_city_limits_and_frames_them(monkeypatch):
 
 
 def test_no_boundary_keeps_the_old_map(monkeypatch):
-    monkeypatch.setattr(city_boundary, "fetch", lambda name, iso2="": None)
+    monkeypatch.setattr(city_boundary, "fetch", lambda name, iso2="", lat=None, lon=None: None)
     assert city_boundary.attach([{"kind": "city", "name_en": "Nowhere"}]) == {}
     assert city_boundary.extent(HOUSTON) == (-95.8, 29.6, -95.1, 30.1)
 
