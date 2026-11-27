@@ -70,6 +70,13 @@ composition and motion it describes) and its "title" is the on-screen headline i
 data.director_plan adds the story context (objective, facts to get across, links to the previous/next scene, transition trigger, continuity).
 Your job is to turn the director's decision into a picture. Follow the kit documentation below exactly.
 
+HOOK (data.role == "hook"): this scene is the thumbnail and the first 2 seconds - the viewer decides here whether to stay.
+  - Frame 0 is already the full composition: the hero and the title are visible from the very first frame (a settle or scale-in
+    of at most 6 frames, never a fade-in from an empty screen).
+  - ONE big hero element (the concrete subject of the sentence, at least 600 px wide), ONE punch title of 2-4 words copied from
+    the sentence, and at most one short label: max 3 elements. No cards, no lists, no paragraphs.
+  - Something moves from frame 0 (a push-in, a pulse, a counter starting) and the reveal lands on the strongest word.
+
 WORK IN THREE STEPS, ALL IN ONE REPLY, IN THIS ORDER:
 STEP 1 - EXTRACT what this scene must show, from data.sentence only (Arabic): the concrete subject, the one idea the viewer keeps,
   the entities and the numbers that are SPOKEN (copy them as written; never add one that is not in the sentence).
@@ -153,15 +160,6 @@ def scene_context(scene: Dict[str, Any], theme: Dict[str, Any]) -> Dict[str, Any
     }
 
 
-def director_decision(scene: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """The beat director's decision for this scene (step 3 of the app), handed to the designer as binding input."""
-    out = []
-    for b in scene.get("beats") or []:
-        if isinstance(b, dict) and (b.get("concept") or b.get("title")):
-            out.append({k: b[k] for k in ("kind", "title", "concept", "camera") if b.get(k)})
-    return out
-
-
 def _gate_sig() -> str:
     """Hash of the code a scene is checked and rendered against: a changed map/audit/layout invalidates cached scenes."""
     h = hashlib.sha1()
@@ -203,6 +201,10 @@ def _flat(path: Path) -> bool:
     from PIL import Image
     arr = np.asarray(Image.open(path).convert("L"), dtype="float32")
     return float(arr[280:1380, :].std()) < FLAT_STD
+
+
+from .scene_inputs import NATIVE_KINDS, director_decision, has_native_visual  # noqa: E402,F401
+from .scene_hook import HOOK_MAX_TEXTS, HOOK_MAX_WORDS, hook_problems  # noqa: E402,F401
 
 
 def sandbox_render(items: Dict[str, Dict[str, Any]], style: Dict[str, Any], workdir: Path, _retry: bool = False) -> Dict[str, List[str]]:
@@ -254,7 +256,10 @@ def sandbox_render(items: Dict[str, Dict[str, Any]], style: Dict[str, Any], work
                 problems[name].append(f"frame {idx + 1}/3 was not rendered")
                 continue
             aud = json.loads(aud_f.read_text(encoding="utf-8"))
-            late = idx >= 1  # entrance (first test frame) may cross edges / overlap; later frames may not
+            is_hook = items[name]["ctx"].get("role") == "hook"
+            if is_hook:
+                problems[name] += hook_problems(aud, idx, _flat(img))
+            late = idx >= 1 or is_hook  # entrance (first test frame) may cross edges / overlap - never in the hook
             if idx == 1 and (_flat(img) or aud.get("texts", 0) == 0):
                 problems[name].append("the scene is blank or has no visible text at mid-scene")
             if idx == 1 and items[name]["ctx"].get("hero_svg") is not None:  # SVG gate, render half: measured in the real render
@@ -327,16 +332,6 @@ def _design_data(design: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
     system from the existing word timings)."""
     sb = design["storyboard"]
     return {"storyboard": sb, "hero_svg": design["svg"], "hero_states": state_frames(sb, ctx.get("words") or [], int(ctx.get("dur", 150)))}
-
-
-NATIVE_KINDS = ("map", "map_pin", "area_map")
-
-
-def has_native_visual(scene: Dict[str, Any]) -> bool:
-    """A scene whose director beats show a real map or a found licensed photo: those render with the native
-    components, an authored TSX scene would replace them with a drawing (seen: 0 photos on screen from 9 found)."""
-    return any(isinstance(b, dict) and (b.get("kind") in NATIVE_KINDS or (b.get("kind") == "photo" and b.get("img")))
-               for b in scene.get("beats") or [])
 
 
 def author_spec(spec: Dict[str, Any], job_dir: str, llm: Optional[Callable[[str, str], Optional[str]]] = None, cache_only: bool = False,
