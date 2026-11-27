@@ -222,7 +222,13 @@ def build_scene_map_overlay(
             prev_wp = last_prev
             pts_for_view.insert(0, {"lat": float(last_prev["lat"]), "lon": float(last_prev["lon"])})
 
-    view = geo.view_for(isos, pts_for_view, bw=688, bh=412, smax=440, pad=0.24)
+    # a city with a real boundary (OSM city limits): the camera frames the boundary itself, not the whole country
+    from . import city_boundary
+    city_geoms = city_boundary.attach(mentions)
+    if city_geoms:
+        view = geo.view_for([], city_boundary.corners(city_geoms), bw=688, bh=412, smax=40000, pad=0.30, min_span=0.02)
+    else:
+        view = geo.view_for(isos, pts_for_view, bw=688, bh=412, smax=440, pad=0.24)
     S, K, lonc, latc = view["S"], view["K"], view["lonc"], view["latc"]
 
     def proj_xy(lon_val: float, lat_val: float) -> Tuple[float, float]:
@@ -318,6 +324,9 @@ def build_scene_map_overlay(
                 item["d"] = "".join(p for p in parts if p)
             except Exception:
                 item["d"] = ""
+        if ft.get("shape") == "city" and ft.get("geom"):
+            item["d"] = "".join(p for p in (_d_svg(proj_arr(np.asarray(r, np.float64)[:, :2]), min_d=0.8, close=True)
+                                            for r in city_boundary.rings(ft["geom"])) if p)
         if ft.get("shape") in ("area",) or not item["d"] and ft.get("shape") in ("river", "lake"):
             item["shape"] = "area" if item["shape"] in ("river", "lake") else item["shape"]
             item["rx"] = max(14.0, float(ft.get("half_w", 3.0)) * S * K)
@@ -389,7 +398,7 @@ def build_scene_map_overlay(
         )
         zoom_variety = 0.18 if prev_same_country else 0.0
 
-        if m.get("kind") in ("continent", "ocean", "globe", "terrain", "empire", "region", "conflict", "route") or m.get("route") or m.get("arrow"):
+        if city_geoms or m.get("kind") in ("continent", "ocean", "globe", "terrain", "empire", "region", "conflict", "route") or m.get("route") or m.get("arrow"):
             target_zoom = 1.0  # fitted view already frames the whole subject (all highlighted countries / the feature)
         elif m.get("is_microstate"):
             target_zoom = 2.15 + zoom_variety
@@ -480,4 +489,5 @@ def build_scene_map_overlay(
         "split": split_out,
         "zoom_hierarchy": zoom_hierarchy,
         "map_style": "historical" if is_hist_map else "modern",
+        "attribution": city_boundary.ATTRIBUTION if city_geoms else "",   # ODbL: shown on the map when OSM boundaries are drawn
     }

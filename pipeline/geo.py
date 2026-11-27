@@ -187,7 +187,7 @@ class Geo:
             max(b[3] for b in near),
         )
 
-    def view_for(self, isos, points, bw=1000, bh=860, smax=420, pad=0.1):
+    def view_for(self, isos, points, bw=1000, bh=860, smax=420, pad=0.1, min_span=1.5):
         boxes = [self.main_bbox(i) for i in isos if i in self.c]
         boxes += [(p["lon"], p["lat"], p["lon"], p["lat"]) for p in points]
         if not boxes:
@@ -196,7 +196,7 @@ class Geo:
         y0 = min(b[1] for b in boxes)
         x1 = max(b[2] for b in boxes)
         y1 = max(b[3] for b in boxes)
-        dx, dy = max(x1 - x0, 1.5), max(y1 - y0, 1.5)
+        dx, dy = max(x1 - x0, min_span), max(y1 - y0, min_span)
         cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
         x0, x1 = cx - dx / 2 * (1 + 2 * pad), cx + dx / 2 * (1 + 2 * pad)
         y0, y1 = cy - dy / 2 * (1 + 2 * pad), cy + dy / 2 * (1 + 2 * pad)

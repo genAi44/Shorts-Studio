@@ -228,6 +228,14 @@ const World: React.FC<{p: MapViewportProps; cam: MapCam; seed: number; isLens?: 
               </>
             )}
             {f.shape === 'lake' && f.d && <path d={f.d} fill={colors.accent2} fillOpacity={0.55} stroke={colors.accent2} strokeWidth={2 / z} filter={`url(#${uid}glow)`} />}
+            {f.shape === 'city' && f.d && (
+              <>
+                {/* real city limits (OSM): a light fill, a soft halo, then the boundary line drawing itself on the word */}
+                <path d={f.d} fill={colors.accent} fillOpacity={0.16 * draw} stroke="none" fillRule="evenodd" />
+                <path d={f.d} fill="none" stroke={colors.accent} strokeWidth={10 / z} strokeOpacity={0.22} strokeLinejoin="round" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - draw} filter={`url(#${uid}soft)`} />
+                <path d={f.d} fill="none" stroke={colors.accent} strokeWidth={3.2 / z} strokeLinejoin="round" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - draw} filter={`url(#${uid}glow)`} />
+              </>
+            )}
             {f.shape === 'area' && f.rx > 0 && (
               <>
                 <ellipse cx={f.cx} cy={f.cy} rx={f.rx * (0.6 + 0.4 * draw)} ry={f.ry * (0.6 + 0.4 * draw)} fill={colors.accent} fillOpacity={0.14} stroke={colors.accent2} strokeWidth={2.4 / z} strokeDasharray={`${9 / z} ${8 / z}`} strokeDashoffset={-(frame * 0.6) / z} />
