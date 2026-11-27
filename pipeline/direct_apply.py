@@ -11,25 +11,33 @@ from .direct import BEAT_RULES, CAMERAS, _number_in_text, _words, detect_photo_b
 MAX_CUSTOM_RUN = 2  # protocol 5.2: never more than ~3 near-equal scenes in a row; photo/map/area_map render natively
 
 
+MAX_MAPS = 2  # a map is the place's establishing shot: twice per video at most (seen: 7 of 8 scenes the same Los Angeles map)
+
+
+def _scene_kind(beats: Any) -> str:
+    kinds = [b.get("kind") for b in beats if isinstance(b, dict)] if isinstance(beats, list) else []
+    if not kinds:
+        return ""
+    return "map" if any(k in ("map", "map_pin", "area_map") for k in kinds) else ("custom_scene" if all(k == "custom_scene" for k in kinds) else kinds[0])
+
+
 def variety_reasons(got: Dict[str, Any], scene_ids: List[str]) -> List[str]:
-    """Scenes made only of custom_scene, in runs longer than MAX_CUSTOM_RUN (every one becomes an LLM drawing: no photo, no map)."""
-    run: List[str] = []
+    """Runs of more than MAX_CUSTOM_RUN consecutive scenes of the SAME kind (all drawn, all maps, all photos...), and more
+    than MAX_MAPS map scenes in the video. Both read as one template repeated."""
     out: List[str] = []
-
-    def flush():
-        if len(run) > MAX_CUSTOM_RUN:
-            out.append(f"{', '.join(run)}: {len(run)} consecutive scenes are all custom_scene (max {MAX_CUSTOM_RUN}): "
-                       "turn the ones that name a real place, landmark, person or event into kind photo or map")
-
-    for sid in scene_ids:
-        beats = got.get(sid)
-        kinds = [b.get("kind") for b in beats if isinstance(b, dict)] if isinstance(beats, list) else []
-        if kinds and all(k == "custom_scene" for k in kinds):
-            run.append(sid)
-        else:
-            flush()
-            run = []
-    flush()
+    kinds = [(sid, _scene_kind(got.get(sid))) for sid in scene_ids]
+    run: List[str] = []
+    for i, (sid, k) in enumerate(kinds):
+        run = run + [sid] if run and k and k == kinds[i - 1][1] else ([sid] if k else [])
+        nxt = kinds[i + 1][1] if i + 1 < len(kinds) else None
+        if len(run) > MAX_CUSTOM_RUN and nxt != k:
+            hint = ("turn the ones that name a real place, landmark, person or event into kind photo or map" if k == "custom_scene"
+                    else "vary them: a photo of the subject, a drawn custom_scene of the mechanism, a stat or a timeline")
+            out.append(f"{', '.join(run)}: {len(run)} consecutive scenes are all {k} (max {MAX_CUSTOM_RUN}): {hint}")
+    maps = [sid for sid, k in kinds if k == "map"]
+    if len(maps) > MAX_MAPS:
+        out.append(f"{', '.join(maps)}: {len(maps)} map scenes (max {MAX_MAPS} per video): keep the map where the place is introduced "
+                   "and where its borders matter; show the other scenes as photos or drawn custom_scenes")
     return out
 
 

@@ -30,3 +30,11 @@ def test_designer_keeps_director_photo_and_map_scenes():
     assert not has_native_visual({"beats": [{"kind": "generative_canvas", "tsx_id": "DynamicScene_x"}]})
     assert not has_native_visual({"beats": [{"kind": "photo", "img": "media/p4.jpg"}, {"kind": "generative_canvas"}]})  # mixed: authored
     assert has_native_visual({"beats": [{"kind": "map"}, {"kind": "photo", "img": "media/p1.jpg"}]})
+
+
+def test_a_run_of_maps_and_too_many_maps_are_rejected():
+    """Seen with DeepSeek V4-Pro: 7 of 8 scenes the same Los Angeles map."""
+    plan = {i: M for i in IDS}
+    plan["open_loop2"] = [{"kind": "generative_canvas"}]
+    reasons = variety_reasons(plan, IDS)
+    assert any("consecutive scenes are all map" in r for r in reasons) and any("map scenes (max 2" in r for r in reasons)
