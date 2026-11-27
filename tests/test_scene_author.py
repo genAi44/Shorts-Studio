@@ -243,3 +243,13 @@ def test_reply_without_extract_and_brief_is_rejected():
     bad = STEPS.replace('"numbers": []', '"numbers": ["35"]')    # 35 is not spoken
     ex, brief = parse_steps(reply(steps=bad))
     assert any("not spoken" in e for e in step_errors(ex, brief, ctx))
+
+
+def test_a_long_scene_needs_a_visual_change_every_few_seconds():
+    """Motion: a 10 s scene with only 2 visual states is sent back (one state per ~2.5 s)."""
+    from pipeline.scene_author import storyboard_errors
+    from pipeline.scene_author_prompts import min_states
+    words = [{"t": f"كلمة{i}", "s": i * 0.4, "e": i * 0.4 + 0.3} for i in range(24)]
+    assert min_states(300, 24) == 4 and min_states(90, 24) == 2 and min_states(300, 4) == 2
+    errs = storyboard_errors(STORYBOARD, {"dur": 300, "words": words}, SVG)
+    assert any("changes too rarely" in e for e in errs)
