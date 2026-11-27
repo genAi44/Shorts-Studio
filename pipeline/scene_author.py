@@ -77,6 +77,12 @@ HOOK (data.role == "hook"): this scene is the thumbnail and the first 2 seconds 
     the sentence, and at most one short label: max 3 elements. No cards, no lists, no paragraphs.
   - Something moves from frame 0 (a push-in, a pulse, a counter starting) and the reveal lands on the strongest word.
 
+MOTION (every scene): nothing is ever still. The system adds a slow camera push-in; on top of it YOU must
+  - give the scene a visible change every ~2.5 s (one visual state per 2.5 s of scene, each triggered by a spoken word):
+    a new element entering, an element moving or transforming, a counter running, a path drawing, a reveal;
+  - give every element an idle motion between changes (useIdle float / sway, a slow rotation, a pulsing glow, a drawing line);
+  - prefer big moves (slide in from off-screen, scale from 0.6, a path drawing across the frame) over small fades.
+
 WORK IN THREE STEPS, ALL IN ONE REPLY, IN THIS ORDER:
 STEP 1 - EXTRACT what this scene must show, from data.sentence only (Arabic): the concrete subject, the one idea the viewer keeps,
   the entities and the numbers that are SPOKEN (copy them as written; never add one that is not in the sentence).
@@ -163,7 +169,7 @@ def scene_context(scene: Dict[str, Any], theme: Dict[str, Any]) -> Dict[str, Any
 def _gate_sig() -> str:
     """Hash of the code a scene is checked and rendered against: a changed map/audit/layout invalidates cached scenes."""
     h = hashlib.sha1()
-    for f in ("mapOverlay.tsx", "layoutAudit.tsx", "layout.ts"):
+    for f in ("mapOverlay.tsx", "layoutAudit.tsx", "layout.ts", "authoredBeat.tsx"):
         p = REMOTION / "src" / f
         h.update(p.read_bytes() if p.exists() else b"")
     return h.hexdigest()[:10]

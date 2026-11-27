@@ -144,6 +144,14 @@ def parse_reply(text: str) -> Tuple[Optional[Dict[str, Any]], Optional[str], str
     return (sb if isinstance(sb, dict) else None), svg, extract_code(rest) if rest.strip() else ""
 
 
+SECONDS_PER_STATE = 2.5  # the references change their visual every ~1.5-3 s
+
+
+def min_states(dur_frames: int, n_words: int) -> int:
+    """Visual states a scene needs: one per ~2.5 s, at least 2, at most one per two spoken words (each needs its own trigger)."""
+    return max(2, min(round(dur_frames / FPS / SECONDS_PER_STATE), max(2, n_words // 2)))
+
+
 def storyboard_errors(sb: Optional[Dict[str, Any]], ctx: Dict[str, Any], svg: Optional[str]) -> List[str]:
     """Contract of the designer's 13-field visual description, and its link to the SVG (states and svg elements exist)."""
     from .director_plan import find_word, timing_keys
@@ -163,6 +171,11 @@ def storyboard_errors(sb: Optional[Dict[str, Any]], ctx: Dict[str, Any], svg: Op
             errs.append(f"element '{e['id']}' has layer 'svg' but the SVG has no element with id=\"{e['id']}\"")
     words = [str(w.get("t", "")) for w in ctx.get("words") or []]
     states = sb.get("visual_states") if isinstance(sb.get("visual_states"), list) else []
+    need = min_states(int(ctx.get("dur", 150)), len(words))
+    if len(states) < need:
+        errs.append(f"the scene changes too rarely: {len(states)} visual state(s) for {int(ctx.get('dur', 150)) / FPS:.1f} s - give it at least "
+                    f"{need} states (a visible change every ~{SECONDS_PER_STATE:g} s: a new element, a move, a transform, a counter, a reveal), "
+                    "each triggered by a later word of the narration")
     pos = 0
     for st in states:
         if not isinstance(st, dict):
