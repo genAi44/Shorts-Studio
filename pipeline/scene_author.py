@@ -65,9 +65,10 @@ In this scene file: every identifier, function name, variable name and comment i
 screen through ArText, copied from data.sentence / data.sentences or an entity's name_ar (never translated, never invented). The storyboard, element ids,
 "draw" / "role" / "appearance" descriptions and SVG ids are English; only "trigger_word" is copied verbatim (Arabic) from the narration.
 
-The DIRECTOR has already planned the story: data.director_plan gives this scene's objective, main concept, the facts to get across,
-its links to the previous/next scene, the visual storytelling approach, the transition trigger and the continuity requirements.
-Your job is to turn that plan into a picture. Follow the kit documentation below exactly.
+The DIRECTOR has already decided this scene. data.director_decision is BINDING: its "concept" is the picture to draw (the subject,
+composition and motion it describes) and its "title" is the on-screen headline idea - realise THAT idea, never replace it with another one.
+data.director_plan adds the story context (objective, facts to get across, links to the previous/next scene, transition trigger, continuity).
+Your job is to turn the director's decision into a picture. Follow the kit documentation below exactly.
 
 REPLY FORMAT (exactly three blocks, in this order, nothing else, no markdown fences):
 <storyboard>
@@ -134,7 +135,17 @@ def scene_context(scene: Dict[str, Any], theme: Dict[str, Any]) -> Dict[str, Any
         "entities": [{k: e[k] for k in keep if k in e} for e in ents],
         "words": [{"t": w["t"], "s": round(float(w.get("s", 0)), 2), "e": round(float(w.get("e", 0)), 2)} for w in words][:60],
         "map_overlay": scene.get("map_overlay"), "theme": theme,
+        "director_decision": director_decision(scene),
     }
+
+
+def director_decision(scene: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """The beat director's decision for this scene (step 3 of the app), handed to the designer as binding input."""
+    out = []
+    for b in scene.get("beats") or []:
+        if isinstance(b, dict) and (b.get("concept") or b.get("title")):
+            out.append({k: b[k] for k in ("kind", "title", "concept", "camera") if b.get(k)})
+    return out
 
 
 def _gate_sig() -> str:
@@ -149,7 +160,7 @@ def _gate_sig() -> str:
 def content_hash(ctx: Dict[str, Any]) -> str:
     ov = json.dumps(ctx.get("map_overlay"), sort_keys=True, ensure_ascii=False)
     payload = json.dumps({"v": KIT_VERSION, "doc": hashlib.sha1(_kit_text().encode("utf-8")).hexdigest(), "gate": _gate_sig(), "sentence": ctx["sentence"],
-                          "entities": ctx["entities"], "theme": ctx["theme"], "dur": ctx["dur"], "role": ctx["role"],
+                          "entities": ctx["entities"], "decision": ctx.get("director_decision") or [], "theme": ctx["theme"], "dur": ctx["dur"], "role": ctx["role"],
                           "overlay": hashlib.sha1(ov.encode("utf-8")).hexdigest()}, sort_keys=True, ensure_ascii=False)
     return hashlib.sha1(payload.encode("utf-8")).hexdigest()[:12]
 
