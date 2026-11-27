@@ -287,7 +287,9 @@ def fallback_beat(scene, i, sentence):
 
     # إذا ورد مقارنة أو صراع أو تفوق طرفين
     _VS_KW = re.compile(r"مقابل|مقارنة|ضد|تنافس|صراع|حجم.*مقابل|تفوق|versus|vs|battle", re.I)
-    if _VS_KW.search(sentence):
+    # a VS chart needs two numbers SPOKEN in the sentence: it used to invent 100 vs 60 and "الطرف الأول/الثاني"
+    # for any sentence with the word "صراع" (seen: "صراعات مالية" -> a fake 100/60 bar chart)
+    if _VS_KW.search(sentence) and len(re.findall(r"\d[\d,.]*", sentence)) >= 2:
         tokens = re.split(r"مقابل|ضد|مقارنة", sentence)
         side_a = " ".join(tokens[0].strip().split()[-4:]) if len(tokens) > 1 else "الطرف الأول"
         side_b = _words(tokens[1].strip(), 4) if len(tokens) > 1 else "الطرف الثاني"

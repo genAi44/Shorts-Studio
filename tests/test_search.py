@@ -85,9 +85,19 @@ class TestSearchFacts(unittest.TestCase):
         # Verify system prompt contained the rule
         args, kwargs = mock_call.call_args
         _, system, user = args[0], args[1], args[2]
-        self.assertIn("Use ONLY the facts provided below", system)
+        self.assertIn("ONLY when they are about the topic", system)
         self.assertIn(facts, user)
 
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_unrelated_results_are_dropped():
+    """The facts behind the bad 'US city borders' video: two unrelated Arabic Wikipedia pages were taken as verified facts."""
+    from pipeline.search import relevant
+    topic, kw = "لماذا حدود مدن أمريكا غريبة؟", ["city boundaries", "annexation", "حدود المدن"]
+    films = {"title": "قائمة أفلام عقد 1990 المبنية على أحداث حقيقية", "snippet": "هذه قائمة بالأفلام المستوحاة من أحداث حقيقية"}
+    culture = {"title": "الخط الزمني لثقافة الستينات المضادة", "snippet": "ثقافة الستينات المضادة ظاهرة ثقافية"}
+    good = {"title": "Municipal annexation in the United States", "snippet": "Annexation is how a city expands its municipal boundaries"}
+    assert not relevant(films, kw, topic) and not relevant(culture, kw, topic) and relevant(good, kw, topic)

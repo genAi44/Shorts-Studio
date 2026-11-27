@@ -32,8 +32,10 @@ class TestDirectorFixes(unittest.TestCase):
 
     def test_fallback_beat_versus(self):
         scene = {"role": "body", "on_screen": "مقارنة"}
+        # no spoken numbers: no VS chart with invented values (it used to show "الطرف الأول" 100 vs "الطرف الثاني" 60)
         beat = direct.fallback_beat(scene, 1, "حجم الاقتصاد الكلي مقابل ثراء شعب الدولة")
-        self.assertEqual(beat["kind"], "versus_battle")
+        self.assertNotEqual(beat["kind"], "versus_battle")
+        self.assertNotIn("الطرف الأول", str(beat))
 
     def test_fallback_beat_rankings_bars(self):
         scene = {"role": "body", "on_screen": "أغنى 5 دول"}
