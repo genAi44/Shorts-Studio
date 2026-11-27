@@ -17,5 +17,7 @@ NATIVE_KINDS = ("map", "map_pin", "area_map")
 def has_native_visual(scene: Dict[str, Any]) -> bool:
     """A scene whose director beats show a real map or a found licensed photo: those render with the native
     components, an authored TSX scene would replace them with a drawing (seen: 0 photos on screen from 9 found)."""
-    return any(isinstance(b, dict) and (b.get("kind") in NATIVE_KINDS or (b.get("kind") == "photo" and b.get("img")))
-               for b in scene.get("beats") or [])
+    beats = [b for b in scene.get("beats") or [] if isinstance(b, dict)]
+    # ALL beats native: a scene mixing a photo with drawn beats is authored (its drawn beats would otherwise render with the
+    # old built-in component, in a palette that clashes with the authored scenes - seen in a real run)
+    return bool(beats) and all(b.get("kind") in NATIVE_KINDS or (b.get("kind") == "photo" and b.get("img")) for b in beats)

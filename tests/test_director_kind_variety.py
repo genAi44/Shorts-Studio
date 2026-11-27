@@ -28,3 +28,5 @@ def test_designer_keeps_director_photo_and_map_scenes():
     assert has_native_visual({"beats": [{"kind": "area_map"}]}) and has_native_visual({"beats": [{"kind": "map"}]})
     assert not has_native_visual({"beats": [{"kind": "photo"}]})          # no image found: the designer may draw it
     assert not has_native_visual({"beats": [{"kind": "generative_canvas", "tsx_id": "DynamicScene_x"}]})
+    assert not has_native_visual({"beats": [{"kind": "photo", "img": "media/p4.jpg"}, {"kind": "generative_canvas"}]})  # mixed: authored
+    assert has_native_visual({"beats": [{"kind": "map"}, {"kind": "photo", "img": "media/p1.jpg"}]})
