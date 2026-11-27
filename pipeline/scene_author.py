@@ -70,7 +70,21 @@ composition and motion it describes) and its "title" is the on-screen headline i
 data.director_plan adds the story context (objective, facts to get across, links to the previous/next scene, transition trigger, continuity).
 Your job is to turn the director's decision into a picture. Follow the kit documentation below exactly.
 
-REPLY FORMAT (exactly three blocks, in this order, nothing else, no markdown fences):
+WORK IN THREE STEPS, ALL IN ONE REPLY, IN THIS ORDER:
+STEP 1 - EXTRACT what this scene must show, from data.sentence only (Arabic): the concrete subject, the one idea the viewer keeps,
+  the entities and the numbers that are SPOKEN (copy them as written; never add one that is not in the sentence).
+STEP 2 - TRANSLATE it into an English visual brief: what exactly the viewer sees, the composition and the motion - the meaning of
+  the Arabic sentence merged with data.director_decision (the director's concept is binding).
+STEP 3 - CREATE the storyboard, the hero SVG and the scene from that brief (they must realise the brief, nothing else).
+
+REPLY FORMAT (exactly five blocks, in this order, nothing else, no markdown fences):
+<extract>
+{"subject": "the concrete subject (English)", "one_idea": "the one idea the viewer keeps (English)",
+ "entities": ["spoken names, as written"], "numbers": ["spoken numbers, as written"]}
+</extract>
+<brief>
+English visual brief (2-5 sentences): what is seen, where, how it moves, and the reveal on the strongest word.
+</brief>
 <storyboard>
 {JSON visual description with exactly these 13 fields:
  "scene_id", "visual_concept",
@@ -392,8 +406,10 @@ def author_spec(spec: Dict[str, Any], job_dir: str, llm: Optional[Callable[[str,
                 continue
             ctx = pending[sid]["ctx"]
             sb, svg, code = parse_reply(reply)
+            ex, brief = parse_steps(reply)
             pending[sid]["code"] = reply
-            errs = design_errors(sb, svg, code, ctx)  # storyboard contract + SVG gate + the scene draws the SVG
+            # steps 1-2 (extract, translate) + storyboard contract + SVG gate + the scene draws the SVG
+            errs = step_errors(ex, brief, ctx) + design_errors(sb, svg, code, ctx)
             if errs:
                 rep["errors"].append(f"attempt {attempt + 1} design: {errs[:4]}")
                 pending[sid]["errors"] = errs
@@ -410,7 +426,7 @@ def author_spec(spec: Dict[str, Any], job_dir: str, llm: Optional[Callable[[str,
                 pending[sid]["errors"] = errs
                 continue
             sb["scene_id"] = sid  # system-owned
-            designs[sid] = {"storyboard": sb, "svg": svg}
+            designs[sid] = {"storyboard": sb, "svg": svg, "extract": ex, "brief": brief}
             ready[sid] = {"ctx": {**ctx, **_design_data(designs[sid], ctx)}}
         if ready:
             with sync_to_remotion(str(scenes_dir), only={names[s] for s in ready}):
@@ -466,6 +482,8 @@ from .scene_author_prompts import (  # noqa: E402,F401
     hints_for,
     llm_write,
     parse_reply,
+    parse_steps,
+    step_errors,
     state_frames,
     storyboard_errors,
 )

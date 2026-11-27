@@ -49,9 +49,14 @@ STORYBOARD = {
 }
 
 
-def reply(tsx=None, svg=SVG, storyboard=None):
+STEPS = ('<extract>\n{"subject": "Cairo on the Nile", "one_idea": "Cairo is the capital of Egypt", "entities": ["القاهرة"], "numbers": []}\n</extract>\n'
+         "<brief>\nA warm skyline of Cairo rises on the bank of the Nile at the centre of the frame, the river glowing below it, "
+         "and a map pin drops above the city exactly when the word capital is spoken.\n</brief>\n")
+
+
+def reply(tsx=None, svg=SVG, storyboard=None, steps=STEPS):
     sb = json.dumps(storyboard if storyboard is not None else STORYBOARD, ensure_ascii=False)
-    return f"<storyboard>\n{sb}\n</storyboard>\n<hero_svg>\n{svg}\n</hero_svg>\n<tsx>\n{tsx if tsx is not None else GOOD}</tsx>\n"
+    return steps + f"<storyboard>\n{sb}\n</storyboard>\n<hero_svg>\n{svg}\n</hero_svg>\n<tsx>\n{tsx if tsx is not None else GOOD}</tsx>\n"
 
 
 def director(system, user):
@@ -224,3 +229,17 @@ def test_a_scene_that_ignores_the_ready_map_is_rejected(tmp_path, monkeypatch):
     out = sa.author_spec(spec, str(tmp_path / "job"), llm=llm, log=lambda m: None)
     assert len(calls) == 2 and "MapLayer" in calls[1]                  # the first (map-less) attempt went back with the reason
     assert out["scenes"][0]["beats"][0]["kind"] == "authored"
+
+
+def test_reply_without_extract_and_brief_is_rejected():
+    """Steps 1 (extract) and 2 (translate) are part of every scene's reply; a reply that skips them is sent back."""
+    from pipeline.scene_author import parse_steps, step_errors
+    ctx = {"sentence": "القاهرة عاصمة مصر ويعيش فيها 20 مليون"}
+    ex, brief = parse_steps(reply(steps=""))
+    errs = step_errors(ex, brief, ctx)
+    assert any("step 1" in e for e in errs) and any("step 2" in e for e in errs)
+    ex, brief = parse_steps(reply())
+    assert step_errors(ex, brief, ctx) == []
+    bad = STEPS.replace('"numbers": []', '"numbers": ["35"]')    # 35 is not spoken
+    ex, brief = parse_steps(reply(steps=bad))
+    assert any("not spoken" in e for e in step_errors(ex, brief, ctx))

@@ -86,6 +86,42 @@ def extract_code(text: str) -> str:
     return "\n".join(lines[first:]).strip() + "\n"
 
 
+def parse_steps(text: str) -> Tuple[Optional[Dict[str, Any]], str]:
+    """Steps 1-2 of the designer reply: <extract>{JSON}</extract> and <brief>English visual brief</brief>."""
+    t = text or ""
+    ex = None
+    m = re.search(r"<extract>(.*?)</extract>", t, re.S)
+    if m:
+        from .llm_providers import extract_json
+        try:
+            ex = extract_json(m.group(1))
+        except Exception:  # noqa: BLE001 - reported by step_errors
+            ex = None
+    m = re.search(r"<brief>(.*?)</brief>", t, re.S)
+    return (ex if isinstance(ex, dict) else None), (m.group(1).strip() if m else "")
+
+
+STEP_FIELDS = ("subject", "one_idea", "entities", "numbers")
+
+
+def step_errors(ex: Optional[Dict[str, Any]], brief: str, ctx: Dict[str, Any]) -> List[str]:
+    """Step 1 must extract only what the narration says; step 2 must be a real English brief."""
+    from .direct import _number_in_text
+    errs: List[str] = []
+    if not isinstance(ex, dict):
+        errs.append('step 1 is missing: start the reply with <extract>{"subject": ..., "one_idea": ..., "entities": [...], "numbers": [...]}</extract>')
+    else:
+        errs += [f"step 1 <extract> field '{f}' is missing" for f in STEP_FIELDS if f not in ex]
+        for n in ex.get("numbers") or []:
+            if not _number_in_text(n, ctx.get("sentence", "")) and not re.search(r"[؀-ۿ]", str(n)):
+                errs.append(f"step 1 extracted the number {n!r}, which is not spoken in the sentence: extract only spoken numbers")
+    latin = re.findall(r"[A-Za-z]+", brief)
+    if len(latin) < 15:
+        errs.append("step 2 is missing or too short: write <brief>...</brief>, an English visual brief of at least 15 words "
+                    "(what the viewer sees, the composition and the motion), translating the sentence's meaning and the director's concept")
+    return errs
+
+
 def parse_reply(text: str) -> Tuple[Optional[Dict[str, Any]], Optional[str], str]:
     """Designer reply -> (storyboard dict | None, hero svg | None, tsx code). Missing parts come back as None / ''."""
     t = text or ""
