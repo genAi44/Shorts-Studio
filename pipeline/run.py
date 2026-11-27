@@ -226,6 +226,14 @@ def produce(script, style, voice_id, job_dir, log=print, progress=lambda f: None
             log(f"الناقد: {r['passed_scenes']}/{r['total_scenes']} مشاهد ناجحة، تقرير: critic/report.html")
         except Exception as e:  # noqa: BLE001 - the critic must never break a render
             log(f"⚠️ تعذر تشغيل الناقد: {e}")
+    try:  # quality bar: motion / frozen frames / brightness vs the reference videos, + a contact sheet (report only)
+        from . import quality_bar
+        qb = quality_bar.report(job_dir, final)
+        m = qb["metrics"]
+        log(f"معيار الجودة مقابل الفيديوهات المرجعية: حركة {m['motion']} | إطارات ثابتة {m['still_pct']}% | سطوع {m['luma']}"
+            + ("" if qb["passed"] else " ⚠️ " + "؛ ".join(qb["issues"])))
+    except Exception as e:  # noqa: BLE001 - a report must never break a render
+        log(f"⚠️ تعذر قياس معيار الجودة: {e}")
     progress(1.0)
     log("اكتمل.")
     return {"video": "short.mp4", **meta}
