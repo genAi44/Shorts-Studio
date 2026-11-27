@@ -75,6 +75,7 @@ export type MapOverlaySpec = {
   prev_waypoint?: {name_ar: string; x: number; y: number} | null;
   zoom_hierarchy?: string[];
   map_style?: 'historical' | 'modern' | string;
+  attribution?: string;   // ODbL: "© OpenStreetMap contributors" when real city boundaries are drawn
 };
 
 export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBottom?: boolean; mode?: 'hud' | 'split-bottom' | 'full-stage'}> = ({overlay, splitBottom = false, mode}) => {
@@ -358,6 +359,10 @@ export const MapOverlayLayer: React.FC<{overlay?: MapOverlaySpec | null; splitBo
           >
             {pairedCityWp.coords}
           </span>
+          {overlay.attribution ? (
+            // ODbL: real city boundaries come from OpenStreetMap
+            <span style={{fontSize: 12, color: 'rgba(226,232,240,0.75)', direction: 'ltr', fontFamily: 'sans-serif'}}>{overlay.attribution}</span>
+          ) : null}
         </div>
       </div>
     </AbsoluteFill>

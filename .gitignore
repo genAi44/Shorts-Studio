@@ -51,3 +51,4 @@ tests/fixtures/area_map_spec.json
 
 # Playwright QA runs: videos and screenshots (the scenarios are in qa/playwright/)
 test-results/
+data/city_boundaries.json
