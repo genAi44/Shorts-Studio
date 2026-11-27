@@ -444,7 +444,7 @@ def _synthesize_beat_tsx_via_llm(
     for attempt in range(2):
         try:
             resp = get_router().dispatch(
-                role="director",
+                role="scene_writer",
                 system=sys_prompt,
                 user=user_prompt,
                 temperature=0.82,

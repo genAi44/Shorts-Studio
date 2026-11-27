@@ -20,7 +20,7 @@ from .llm_providers import (
 
 logger = logging.getLogger("llm_router")
 
-ROLES = ["script", "director", "style", "factcheck", "chat_edit", "illustrator"]
+ROLES = ["script", "director", "scene_writer", "style", "factcheck", "chat_edit", "illustrator"]
 CONFIG_FILE = ROOT / "pipeline" / "llm_config.json"
 
 
@@ -48,6 +48,14 @@ DEFAULT_ROLES_CONFIG: Dict[str, Dict[str, Any]] = {
         "model": cfg("FACTCHECK_MODEL", "gemini-2.5-flash"),
         "fallback_chain": ["gemini", "freellmapi", "deepseek"],
         "temperature": 0.2,
+    },
+    # scene writer: writes each scene from scratch (extract -> translate -> storyboard + SVG + TSX). Code quality matters, so a
+    # fixed strong model by default (DeepSeek), never a random free model; the user can pick any provider/model in the UI.
+    "scene_writer": {
+        "provider": cfg("SCENE_WRITER_PROVIDER", "deepseek"),
+        "model": cfg("SCENE_WRITER_MODEL", "deepseek-chat"),
+        "fallback_chain": ["deepseek", "gemini", "freellmapi"],
+        "temperature": 0.7,
     },
     # studio illustrator: writes the bespoke SVG drawing of each scene (code quality matters: a fixed, strong model)
     "illustrator": {
