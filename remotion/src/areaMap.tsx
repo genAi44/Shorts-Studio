@@ -32,8 +32,8 @@ const usePulse = (period = 48, delay = 20) => {
 
 // counter block position per layout (the map box is placed on the other side by pipeline/areamap.py BOX)
 const COUNTER: Record<string, {top: number; card: boolean}> = {
-  top: {top: 400, card: false},
-  bottom: {top: 1085, card: false},
+  top: {top: 300, card: false},
+  bottom: {top: 1130, card: false},
   overlay: {top: 1200, card: true},
 };
 

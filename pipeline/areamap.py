@@ -21,7 +21,7 @@ _log = logging.getLogger("shorts_studio")
 
 LAYOUTS = ("top", "bottom", "overlay")
 # (box center y, box height) of the map area per layout; all inside BEAT_ZONE 280..1380
-BOX = {"top": (1010, 600), "bottom": (740, 600), "overlay": (810, 740)}
+BOX = {"top": (960, 840), "bottom": (700, 820), "overlay": (830, 1100)}
 UNITS = {"km2": 1.0, "mi2": 2.589988110336, "ha": 0.01, "m2": 1e-6}
 TOL = 0.10  # narration vs data tolerance
 EARTH_KM = 6371.0088

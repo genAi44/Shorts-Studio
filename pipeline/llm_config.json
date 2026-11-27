@@ -39,6 +39,26 @@
     ],
     "temperature": 0.2
   },
+  "scene_writer": {
+    "provider": "deepseek",
+    "model": "deepseek-chat",
+    "fallback_chain": [
+      "deepseek",
+      "gemini",
+      "freellmapi"
+    ],
+    "temperature": 0.7
+  },
+  "illustrator": {
+    "provider": "deepseek",
+    "model": "deepseek-chat",
+    "fallback_chain": [
+      "deepseek",
+      "gemini",
+      "freellmapi"
+    ],
+    "temperature": 0.6
+  },
   "chat_edit": {
     "provider": "freellmapi",
     "model": "auto",
