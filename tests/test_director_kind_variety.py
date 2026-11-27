@@ -41,3 +41,11 @@ def test_upgrade_photos_breaks_the_longest_drawn_run_with_distinct_queries():
     assert targets[6]["beats"][0]["query"] == "cargo ship rising inside Gatun lock chamber"  # from its own concept
     qs = [t["beats"][0].get("query") for t in targets if t["beats"][0]["kind"] == "photo"]
     assert len(qs) == len(set(q.lower() for q in qs))             # never the same photo twice
+
+
+def test_designer_keeps_director_photo_and_map_scenes():
+    from pipeline.scene_author import has_native_visual
+    assert has_native_visual({"beats": [{"kind": "photo", "img": "media/p1.jpg"}]})
+    assert has_native_visual({"beats": [{"kind": "area_map"}]}) and has_native_visual({"beats": [{"kind": "map"}]})
+    assert not has_native_visual({"beats": [{"kind": "photo"}]})          # no image found: the designer may draw it
+    assert not has_native_visual({"beats": [{"kind": "generative_canvas", "tsx_id": "DynamicScene_x"}]})
