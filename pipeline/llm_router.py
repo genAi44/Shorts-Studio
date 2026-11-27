@@ -73,6 +73,18 @@ DEFAULT_ROLES_CONFIG: Dict[str, Dict[str, Any]] = {
 }
 
 
+REASONING_TIMEOUT = 360  # seconds
+
+
+def request_timeout(model: Optional[str], timeout: int) -> int:
+    """Reasoning models think before answering (DeepSeek V4-Pro: ~14k tokens, ~2 min for the director's 8-scene plan); the usual
+    120 s cut them off right at the end and the router fell through to the next providers for nothing."""
+    m = str(model or "").lower()
+    if any(k in m for k in ("v4-pro", "reasoner", "-r1", "thinking", "-pro")):
+        return max(timeout, REASONING_TIMEOUT)
+    return timeout
+
+
 class LLMRouter:
     def __init__(self, config_path: Optional[Any] = None):
         self._config_file = Path(config_path) if config_path else CONFIG_FILE
@@ -246,7 +258,7 @@ class LLMRouter:
                     temperature=temp,
                     json_mode=json_mode,
                     session_id=session_id,
-                    timeout=timeout,
+                    timeout=request_timeout(target_model, timeout),
                 )
                 latency = int((time.time() - t0) * 1000)
                 fallback_used = prov_id != primary_provider_id
