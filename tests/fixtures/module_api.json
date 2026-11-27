@@ -432,5 +432,30 @@
   "registry",
   "resolve",
   "valid_claim"
+ ],
+ "pipeline.scriptspec": [
+  "DANGLING_ENDS",
+  "DISALLOWED_CTA",
+  "FACT_SYSTEM",
+  "GREET",
+  "OPEN_LOOP_TRIGGERS",
+  "PARTS",
+  "PARTS_BY_ID",
+  "PART_IDS",
+  "SYSTEM",
+  "WPS",
+  "_STRAY_SCRIPT_RE",
+  "_clean_stray_scripts",
+  "_vis",
+  "dumps",
+  "estimate",
+  "normalize",
+  "normalize_part",
+  "nwords",
+  "scenes_of",
+  "script_errors",
+  "total_words",
+  "user_prompt",
+  "validate"
  ]
 }
