@@ -304,6 +304,16 @@ def _design_data(design: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
     return {"storyboard": sb, "hero_svg": design["svg"], "hero_states": state_frames(sb, ctx.get("words") or [], int(ctx.get("dur", 150)))}
 
 
+NATIVE_KINDS = ("map", "map_pin", "area_map")
+
+
+def has_native_visual(scene: Dict[str, Any]) -> bool:
+    """A scene whose director beats show a real map or a found licensed photo: those render with the native
+    components, an authored TSX scene would replace them with a drawing (seen: 0 photos on screen from 9 found)."""
+    return any(isinstance(b, dict) and (b.get("kind") in NATIVE_KINDS or (b.get("kind") == "photo" and b.get("img")))
+               for b in scene.get("beats") or [])
+
+
 def author_spec(spec: Dict[str, Any], job_dir: str, llm: Optional[Callable[[str, str], Optional[str]]] = None, cache_only: bool = False,
                 log: Callable[[str], None] = print, only_ids: Optional[set] = None,
                 director_llm: Optional[Callable[[str, str], Any]] = None) -> Dict[str, Any]:
@@ -317,7 +327,11 @@ def author_spec(spec: Dict[str, Any], job_dir: str, llm: Optional[Callable[[str,
     scenes_dir = Path(job_dir) / "scenes"
     scenes_dir.mkdir(parents=True, exist_ok=True)
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    ctxs = {s["id"]: scene_context(s, theme) for s in spec["scenes"] if only_ids is None or s["id"] in only_ids}
+    native = {s["id"] for s in spec["scenes"] if has_native_visual(s)}
+    for sid in sorted(native):
+        log(f"scene authoring: '{sid}' keeps its director visual (real photo / map), not re-authored")
+    ctxs = {s["id"]: scene_context(s, theme) for s in spec["scenes"]
+            if (only_ids is None or s["id"] in only_ids) and s["id"] not in native}
     names = {sid: scene_name(content_hash(c)) for sid, c in ctxs.items()}  # the director plan is derived from the narration (hashed)
     report: Dict[str, Any] = {"scenes": {}, "started": time.strftime("%Y-%m-%d %H:%M:%S")}
     accepted: Dict[str, str] = {}
