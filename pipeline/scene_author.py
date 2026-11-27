@@ -120,8 +120,8 @@ the scene file (first line an import)
 Storyboard rules: write the SVG first in your head, then list its ids as the "svg" elements (same spelling). State 1 is the opening picture (its trigger_word may be ""); every later state's trigger_word is copied from the
 narration (data.sentence) and the states follow the narration's order. Every element with layer "svg" is drawn in the SVG with
 id="<its id>"; every element of state N >= 2 that appears only from that state is inside <g data-state="N">...</g> (the kit reveals
-that group when its trigger word is spoken). Prefer 1-3 states; a state that only changes TSX text still needs its <g data-state="N">
-around the SVG part that changes with it (e.g. a highlight ring). The SVG is a real illustration of the visual concept (shapes, paths, the hero object),
+that group when its trigger word is spoken). Give the scene one state per ~2.5 s (see MOTION). A state that shows SVG elements needs
+its <g data-state="N"> around them; a state that only changes TSX elements (a text, a counter, an icon) needs no SVG group. The SVG is a real illustration of the visual concept (shapes, paths, the hero object),
 never empty, never a placeholder: >= 3 painted shapes, viewBox required, colours from the theme. The SVG is STATIC: no <animate>,
 <animateTransform>, <animateMotion>, <set>, no CSS animation/transition (the kit reveals each <g data-state> on its word; any extra motion
 goes in the TSX with spring/interpolate). Also no <script>, <style>, <image>, <foreignObject>, external links or event handlers; no text

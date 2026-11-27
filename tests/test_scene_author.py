@@ -253,3 +253,16 @@ def test_a_long_scene_needs_a_visual_change_every_few_seconds():
     assert min_states(300, 24) == 4 and min_states(90, 24) == 2 and min_states(300, 4) == 2
     errs = storyboard_errors(STORYBOARD, {"dur": 300, "words": words}, SVG)
     assert any("changes too rarely" in e for e in errs)
+
+
+def test_a_state_that_only_changes_tsx_needs_no_svg_group():
+    """Only SVG parts are revealed by <g data-state>; a state showing only TSX elements (text/counter) must not be rejected."""
+    import copy
+    from pipeline.scene_author import storyboard_errors
+    sb = copy.deepcopy(STORYBOARD)
+    sb["elements"].append({"id": "count", "draw": "a counter", "role": "the number", "layer": "tsx"})
+    sb["visual_states"].append({"state": 3, "elements": ["count"], "appearance": "counter runs", "positions": "top",
+                                "condition": "the number is spoken", "trigger_word": "عاصمة"})
+    words = [{"t": t, "s": i * 0.5, "e": i * 0.5 + 0.4} for i, t in enumerate("القاهرة عاصمة مصر عاصمة".split())]
+    errs = storyboard_errors(sb, {"dur": 120, "words": words}, SVG)
+    assert not any("data-state=\"3\"" in e for e in errs), errs
