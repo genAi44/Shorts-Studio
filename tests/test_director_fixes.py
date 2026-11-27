@@ -7,6 +7,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from pipeline import direct, visual_tools
+from geodb_marker import needs_geodb
 
 
 class TestDirectorFixes(unittest.TestCase):
@@ -134,6 +135,7 @@ class TestDirectorFixes(unittest.TestCase):
         errors_under = sp.script_errors(script_under)
         self.assertTrue(any("أقل من الحد الأدنى" in e for e in errors_under))
 
+    @needs_geodb
     def test_auto_enrichment_of_scene_visuals_not_empty(self):
         script = {
             "title": "مصر وتاريخ الأهرامات",
@@ -287,6 +289,7 @@ class TestDirectorFixes(unittest.TestCase):
         self.assertEqual(applied["body1"]["beats"][0]["kind"], "stat")
 
 
+    @needs_geodb
     def test_city_detection_and_map_enforcement(self):
         from pipeline import geo as _geo
         g = _geo.get_geo()
@@ -317,6 +320,7 @@ class TestDirectorFixes(unittest.TestCase):
         self.assertEqual(applied["body2"]["beats"][0]["countries"], ["MAR"])
         self.assertEqual(applied["body2"]["beats"][0]["points"][0]["name"], "مراكش")
 
+    @needs_geodb
     def test_photo_query_country_translation_no_raw_iso(self):
         # التأكد من عدم استخدام رموز ISO الثلاثية الخام (مثل MAR) التي تطابق كاليفورنيا
         pb = direct.detect_photo_beat("مراكش عاصمة تاريخية", pt_name="مراكش", cou_iso="MAR")
@@ -325,6 +329,7 @@ class TestDirectorFixes(unittest.TestCase):
         self.assertNotIn("MAR ", pb["query"])
         self.assertIn("Marrakech", pb["query"])
 
+    @needs_geodb
     def test_hook_map_enrichment_multiple_capitals(self):
         from pipeline import geo as _geo
         g = _geo.get_geo()

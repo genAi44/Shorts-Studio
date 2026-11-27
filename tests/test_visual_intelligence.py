@@ -1,6 +1,7 @@
 import unittest
 
 from pipeline.visual_intelligence import analyze_script_visual_intelligence
+from geodb_marker import needs_geodb
 
 
 class TestVisualIntelligenceEngine(unittest.TestCase):
@@ -24,6 +25,7 @@ class TestVisualIntelligenceEngine(unittest.TestCase):
         self.assertIn("modern", sc_by_id["lead"]["avoid"])
         self.assertEqual(sc_by_id["body1"]["visual_mode"], "split_diagram")
 
+    @needs_geodb
     def test_mandatory_geo_overlay_covers_continents_and_landmarks(self):
         from pipeline.geo_overlay import extract_timed_geo_mentions
 

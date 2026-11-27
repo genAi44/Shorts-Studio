@@ -190,7 +190,10 @@ class TestRouterAndFallback(unittest.TestCase):
             fallback_chain=["deepseek", "freellmapi"],
         )
 
-        with patch("pipeline.llm_providers.DeepSeekProvider.complete") as mock_ds, \
+        # the router skips providers without an API key before calling complete(): pretend both are configured
+        with patch("pipeline.llm_providers.DeepSeekProvider.is_configured", return_value=True), \
+             patch("pipeline.llm_providers.FreeLLMAPIProvider.is_configured", return_value=True), \
+             patch("pipeline.llm_providers.DeepSeekProvider.complete") as mock_ds, \
              patch("pipeline.llm_providers.FreeLLMAPIProvider.complete") as mock_free:
             # Primary deepseek fails
             mock_ds.side_effect = LLMError("DeepSeek 503 Overloaded", status_code=503)

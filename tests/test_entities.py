@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT))
 
 from pipeline import entities as E  # noqa: E402
 from pipeline.config import clear_warnings, get_last_warnings  # noqa: E402
+from geodb_marker import needs_geodb
 
 FIXTURE = ROOT / "tests" / "fixtures" / "entities_spec.json"
 
@@ -73,6 +74,7 @@ def test_text_is_only_cut_on_whole_words():
     assert E.cut_words(s, 3) == "وتليها مدينة الكويت"
 
 
+@needs_geodb
 def test_unverifiable_and_non_span_entities_are_dropped_visibly():
     clear_warnings()
     sentence = "قرية سيوة هادئة"
@@ -94,6 +96,7 @@ def test_a_new_entity_type_is_one_registry_entry():
         del E.ENTITY_REGISTRY["color"]
 
 
+@needs_geodb
 def test_injected_extractor_is_validated_locally():
     script = {"hook": {"id": "hook", "role": "hook", "narration": "القاهرة هي عاصمة مصر."}}
     fake = lambda payload: {"scenes": [{"id": "hook", "sentences": [{"i": 0, "entities": [
@@ -105,6 +108,7 @@ def test_injected_extractor_is_validated_locally():
     assert all(e["verified"] in ("geonames", "natural-earth") for per in out["hook"] for e in per)
 
 
+@needs_geodb
 def test_bare_list_sentences_are_read():
     """Real reply shape (short 24, Damascus): "sentences": [[entities of sentence 0], [] ...] instead of {"i","entities"}.
     It used to be dropped silently, so no scene of the video got a map."""
@@ -148,6 +152,7 @@ def test_extractor_garbage_never_raises():
         assert out["hook"] == [[]]
 
 
+@needs_geodb
 def test_ordinary_adjective_is_not_a_historical_place():
     """'جديدة' (new) is also a name-less historical hamlet in Lebanon: it must not hijack «عاصمة جديدة» in a Brazil sentence."""
     from pipeline import geo
