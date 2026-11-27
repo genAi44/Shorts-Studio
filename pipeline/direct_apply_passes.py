@@ -169,8 +169,9 @@ def _storyteller_pass(s):
                         used_environments.add(improved.get("environment"))
                         if was_fallback:
                             improved["_fallback"] = True
-                        if beat_item.get("concept"):
-                            improved["concept"] = beat_item["concept"]
+                        for dk in ("concept", "photo_subject"):  # the director's decision travels to the designer
+                            if beat_item.get(dk):
+                                improved[dk] = beat_item[dk]
                         for gk in ("countries", "highlight", "points"):
                             if beat_item.get(gk):
                                 improved[gk] = beat_item[gk]

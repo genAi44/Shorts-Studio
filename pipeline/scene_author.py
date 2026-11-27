@@ -179,7 +179,8 @@ def content_hash(ctx: Dict[str, Any]) -> str:
     ov = json.dumps(ctx.get("map_overlay"), sort_keys=True, ensure_ascii=False)
     payload = json.dumps({"v": KIT_VERSION, "doc": hashlib.sha1(_kit_text().encode("utf-8")).hexdigest(), "gate": _gate_sig(), "sentence": ctx["sentence"],
                           "entities": ctx["entities"], "decision": ctx.get("director_decision") or [], "theme": ctx["theme"], "dur": ctx["dur"], "role": ctx["role"],
-                          "overlay": hashlib.sha1(ov.encode("utf-8")).hexdigest()}, sort_keys=True, ensure_ascii=False)
+                          "overlay": hashlib.sha1(ov.encode("utf-8")).hexdigest(), "photo": (ctx.get("photo") or {}).get("src", "")},
+                         sort_keys=True, ensure_ascii=False)
     return hashlib.sha1(payload.encode("utf-8")).hexdigest()[:12]
 
 
@@ -209,7 +210,7 @@ def _flat(path: Path) -> bool:
     return float(arr[280:1380, :].std()) < FLAT_STD
 
 
-from .scene_inputs import NATIVE_KINDS, director_decision, has_native_visual  # noqa: E402,F401
+from .scene_inputs import NATIVE_KINDS, attach_photos, director_decision, has_native_visual  # noqa: E402,F401
 from .scene_hook import HOOK_MAX_TEXTS, HOOK_MAX_WORDS, hook_problems  # noqa: E402,F401
 
 
@@ -342,7 +343,8 @@ def _design_data(design: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
 
 def author_spec(spec: Dict[str, Any], job_dir: str, llm: Optional[Callable[[str, str], Optional[str]]] = None, cache_only: bool = False,
                 log: Callable[[str], None] = print, only_ids: Optional[set] = None,
-                director_llm: Optional[Callable[[str, str], Any]] = None) -> Dict[str, Any]:
+                director_llm: Optional[Callable[[str, str], Any]] = None,
+                photo: Optional[Callable[[str, str], Optional[Dict[str, Any]]]] = None) -> Dict[str, Any]:
     """Director plan -> designer (storyboard + hero SVG + TSX) -> gates, for every scene; replaces the built-in beats of a scene when
     its authored version passes all gates. Mutates and returns the spec; writes outputs/<job>/director_plan.json,
     scenes/*.tsx + scenes/*.json (storyboard + SVG), scenes/manifest.json and authoring_report.json."""
@@ -358,6 +360,7 @@ def author_spec(spec: Dict[str, Any], job_dir: str, llm: Optional[Callable[[str,
         log(f"scene authoring: '{sid}' keeps its director visual (real photo / map), not re-authored")
     ctxs = {s["id"]: scene_context(s, theme) for s in spec["scenes"]
             if (only_ids is None or s["id"] in only_ids) and s["id"] not in native}
+    sandbox_media = attach_photos(ctxs, photo, job_dir, log)
     names = {sid: scene_name(content_hash(c)) for sid, c in ctxs.items()}  # the director plan is derived from the narration (hashed)
     report: Dict[str, Any] = {"scenes": {}, "started": time.strftime("%Y-%m-%d %H:%M:%S")}
     accepted: Dict[str, str] = {}
@@ -421,6 +424,9 @@ def author_spec(spec: Dict[str, Any], job_dir: str, llm: Optional[Callable[[str,
             if not errs and ctx.get("map_overlay") and "MapLayer" not in code:
                 errs = ["the sentence names places / lines / ranges and data.map_overlay is ready: the scene must show it with <MapLayer overlay={data.map_overlay} /> "
                         "(it draws the country, drawn mountain ranges and dividing lines, and a country cut in two halves with labels); build your composition around it"]
+            if not errs and ctx.get("photo") and "HeroPhoto" not in code:
+                errs = [f"data.photo is ready (a real photo of '{ctx['photo']['subject']}'): the scene must show it with <HeroPhoto data={{data}} "
+                        "x=.. y=.. w=.. h=.. /> (import it from '../kit'), big (w >= 600), and build the explanation around it"]
             if errs:
                 path.unlink(missing_ok=True)
                 rep["errors"].append(f"attempt {attempt + 1} static: {errs[:4]}")
@@ -471,6 +477,8 @@ def author_spec(spec: Dict[str, Any], job_dir: str, llm: Optional[Callable[[str,
     (scenes_dir / "manifest.json").write_text(json.dumps({sid: {"file": f"{nm}.tsx"} for sid, nm in accepted.items()}, ensure_ascii=False, indent=1), encoding="utf-8")
     (Path(job_dir) / "authoring_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
     log(f"scene authoring: {report['summary']}")
+    for f in sandbox_media:  # the job keeps its photos in its own public/media; the sandbox copies go
+        f.unlink(missing_ok=True)
     return spec
 
 # Re-exported so `pipeline.scene_author.<name>` keeps working.

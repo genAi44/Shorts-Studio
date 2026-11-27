@@ -3,7 +3,8 @@
  * besides 'react' and 'remotion'. Documented in docs/SCENE_KIT.md. Everything here is deterministic (frame-driven).
  */
 import React, {CSSProperties} from 'react';
-import {Easing, interpolate, useCurrentFrame, useVideoConfig} from 'remotion';
+import {Easing, interpolate, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
+import {SafeImg} from './SafeImg';
 import {rgba, useTheme} from './theme';
 import {clamp01, enterStyle, Pop, useFont, useIdle, useProgress, useSpring} from './hooks';
 import {BEAT_ZONE, CANVAS_HEIGHT, CANVAS_WIDTH, CAPTION_ZONE, HEADLINE_ZONE, SAFE_BOTTOM, SAFE_TOP} from './layout';
@@ -150,6 +151,37 @@ export const HeroSvg: React.FC<{data: any; x?: number; y?: number; w?: number; h
     <div id={scope} data-hero-svg="" style={{position: 'absolute', left: x, top: y, width: w, height: h, ...style}}>
       <style>{`#${scope} svg{width:100%;height:100%;display:block;overflow:visible}${css}`}</style>
       <div style={{width: '100%', height: '100%', transform: `translateY(${float.toFixed(2)}px) rotate(${sway.toFixed(3)}deg) scale(${breathe.toFixed(4)})`, transformOrigin: '50% 55%'}} dangerouslySetInnerHTML={{__html: svg}} />
+    </div>
+  );
+};
+
+/**
+ * The scene's real photo (data.photo, licensed, fetched by the pipeline for the director's photo_subject). A cut-out
+ * (data.photo.cut) floats free with a soft drop shadow; a full photo sits in a rounded frame. Enters with a spring at
+ * `delay` (s), then breathes and floats. Groups the scene around one concrete, real subject (the references' look).
+ */
+export const HeroPhoto: React.FC<{data: any; x?: number; y?: number; w?: number; h?: number; delay?: number; style?: CSSProperties}> = ({data, x = 140, y = BEAT_ZONE.top + 40, w = 800, h = 760, delay = 0, style}) => {
+  const frame = useCurrentFrame();
+  const th = useTheme();
+  const p = useSpring(delay, 'smooth');
+  const ph = data?.photo;
+  if (!ph || !ph.src) return null;
+  const t = frame / 30;
+  const breathe = 1 + 0.02 * Math.sin(t * ((2 * Math.PI) / 5));
+  const float = 10 * Math.sin(t * ((2 * Math.PI) / 4.2) + 0.8);
+  const enter = interpolate(p, [0, 1], [0.82, 1]);
+  const box: CSSProperties = {position: 'absolute', left: x, top: y, width: w, height: h, opacity: clamp01(p * 1.4),
+    transform: `translateY(${(float + (1 - p) * 60).toFixed(1)}px) scale(${(enter * breathe).toFixed(4)})`, transformOrigin: '50% 60%', ...style};
+  if (ph.cut) {
+    return (
+      <div data-hero="photo" style={box}>
+        <SafeImg src={staticFile(ph.src)} style={{width: '100%', height: '100%', objectFit: 'contain', filter: `drop-shadow(0 28px 34px ${th.dark ? 'rgba(0,0,0,0.55)' : 'rgba(30,20,10,0.28)'})`}} />
+      </div>
+    );
+  }
+  return (
+    <div data-hero="photo" style={{...box, borderRadius: 36, overflow: 'hidden', boxShadow: `0 30px 60px ${th.dark ? 'rgba(0,0,0,0.5)' : 'rgba(30,20,10,0.25)'}`, border: `6px solid ${rgba(th.p.text, 0.9)}`}}>
+      <SafeImg src={staticFile(ph.src)} style={{width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${(1.04 + 0.04 * t / 10).toFixed(4)})`}} />
     </div>
   );
 };

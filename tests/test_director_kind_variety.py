@@ -18,7 +18,7 @@ def test_short_custom_runs_pass():
 
 def test_prompt_no_longer_forces_custom_scene():
     s = direct.director_system(True)
-    kind_rule = s.split("4. kind:")[1][:900]
+    kind_rule = s.split("4. kind:")[1][:1600]
     assert "mandatory" not in kind_rule and '"photo"' in kind_rule and '"map"' in kind_rule and "Variety rule" in kind_rule
 
 

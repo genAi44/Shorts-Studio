@@ -60,7 +60,8 @@ def build_prompts(ctx: Dict[str, Any], errors: Optional[List[str]] = None, previ
                  + ("\n\nHow to fix:\n- " + "\n- ".join(hints) if hints else "") + "\n\nPrevious reply:\n" + previous)
     from .director_plan import LANGUAGE_CONTRACT
     from .skills import DESIGNER_SKILLS, skills_block
-    system = SYSTEM.replace("{contract}", LANGUAGE_CONTRACT).replace("{kit}", _kit_text()) + skills_block(DESIGNER_SKILLS)
+    from .scene_inputs import PHOTO_RULES
+    system = SYSTEM.replace("{contract}", LANGUAGE_CONTRACT).replace("{kit}", _kit_text()) + PHOTO_RULES + skills_block(DESIGNER_SKILLS)
     if guide:
         system += "\n\nART DIRECTION OF THIS VIDEO (a style guide: follow its essence, its 'not' list and its director rules; it overrides generic taste):\n" + guide
     return system, user

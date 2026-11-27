@@ -20,6 +20,9 @@ For every sentence of the script define in the beat:
    - "area_map": the sentence states the area or size of a place, or compares two sizes (see the area rule).
    - "map": the sentence is about where something is, a route or a border: {"kind":"map","countries":["PAN"],"highlight":["PAN"],"points":[{"name":"Arabic name","lat":9.08,"lon":-79.68}]} (ISO3 codes, real coordinates only).
    - "custom_scene": a drawn motion-graphic scene (the engine writes bespoke Remotion TSX for it) - for mechanisms, causes, comparisons and abstract ideas with no real place to show.
+     Give every custom_scene a "photo_subject": an English search query (2-5 words) for ONE real, photographable thing that anchors the
+     scene - an object, a person, a building or a place of THIS sentence (e.g. "Port of Los Angeles cargo ship", "Detroit Renaissance
+     Center"); the engine shows it as a big cut-out photo and draws the explanation around it. "" only when nothing real fits.
    Variety rule: never more than 2 consecutive scenes of the same kind (drawn, map or photo), at most 2 map scenes per video (where the place is introduced and where its borders matter), and when the script names a real place at least one scene shows it as a photo or a map.
 
 Strict rules:

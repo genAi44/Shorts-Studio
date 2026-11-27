@@ -149,7 +149,12 @@ def produce(script, style, voice_id, job_dir, log=print, progress=lambda f: None
         if cfg("AUTHORED_SCENES", "0") == "1" and studio_left != set():
             try:
                 from . import scene_author
-                spec = scene_author.author_spec(spec, job_dir, log=log, only_ids=studio_left)
+                scene_photo = None
+                if m:  # each drawn scene gets a real cut-out photo of the director's photo_subject (licensed, credited)
+                    scene_photo = lambda subj, sentence: m.resolve(  # noqa: E731
+                        {"kind": "photo", "query": subj, "text": "", "cutout": True, "must_show": subj,
+                         "avoid": "watermark text collage logo", "alt_queries": [subj.split(" ", 1)[-1]]}, sentence)
+                spec = scene_author.author_spec(spec, job_dir, log=log, only_ids=studio_left, photo=scene_photo)
             except Exception as _ae:  # noqa: BLE001
                 from .config import record_fallback
                 record_fallback(f"scene authoring failed ({_ae}): built-in beats", beat_id="authoring")
