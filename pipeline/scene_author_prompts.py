@@ -199,7 +199,10 @@ def storyboard_errors(sb: Optional[Dict[str, Any]], ctx: Dict[str, Any], svg: Op
             errs.append(f"visual state {n}: trigger_word '{trig}' must be copied from the narration, after the previous state's word")
         else:
             pos = i + 1
-        if not re.search(rf'data-state=["\']{n}["\']', svg_txt):
+        svg_ids = {str(e.get("id")) for e in els if isinstance(e, dict) and str(e.get("layer", "svg")) == "svg"}
+        shows_svg = any(str(x) in svg_ids for x in (st.get("elements") or []))
+        # a state that only changes TSX elements (text, counter, icon) needs no SVG group: only SVG parts are revealed by the kit
+        if shows_svg and not re.search(rf'data-state=["\']{n}["\']', svg_txt):
             errs.append(f"visual state {n} has no <g data-state=\"{n}\"> group in the SVG")
     return errs
 

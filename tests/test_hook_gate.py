@@ -6,7 +6,7 @@ HERO = {"box": [190, 500, 890, 1200], "opacity": 1}
 
 def test_a_good_hook_passes():
     assert hook_problems({"texts": 1, "hero": HERO, "strings": ["سفينة تصعد جبلاً"]}, 0, False) == []
-    assert hook_problems({"texts": 2, "hero": HERO, "strings": ["سفينة تصعد", "٢٦ متراً"]}, 1, False) == []
+    assert hook_problems({"texts": 3, "hero": HERO, "strings": ["سفينة تصعد", "٢٦ متراً", "بنما"]}, 1, False) == []
 
 
 def test_empty_first_frame_and_missing_hero_fail():

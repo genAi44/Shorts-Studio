@@ -1,7 +1,7 @@
 """The hook gate: the first scene is the thumbnail and the first 2 s (checked on the real render by scene_author)."""
 from typing import Any, Dict, List
 
-HOOK_MAX_TEXTS = 2      # the hook: one 2-4 word title + at most one label (with the hero: max 3 elements)
+HOOK_MAX_TEXTS = 3      # the hook: one 2-4 word title + a short label and/or one number
 HOOK_MAX_WORDS = 6
 
 
@@ -16,7 +16,7 @@ def hook_problems(aud: Dict[str, Any], idx: int, flat: bool) -> List[str]:
         if not hero.get("box") or hero.get("opacity", 1) < 0.3:
             out.append("the hook's hero is not visible in its first frame: show it from frame 0 (a settle/scale-in of at most 6 frames)")
     if aud.get("texts", 0) > HOOK_MAX_TEXTS:
-        out.append(f"the hook shows {aud.get('texts')} texts: keep one 2-4 word title plus at most one short label (max 3 elements with the hero)")
+        out.append(f"the hook shows {aud.get('texts')} texts: keep one 2-4 word title plus at most a short label and one number")
     for txt in aud.get("strings") or []:
         if len(str(txt).split()) > HOOK_MAX_WORDS:
             out.append(f"hook text too long ('{txt}'): the hook title is 2-4 words, no sentences")
