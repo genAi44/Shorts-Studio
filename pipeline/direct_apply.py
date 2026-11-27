@@ -8,6 +8,31 @@ from .config import record_fallback
 from .direct import BEAT_RULES, CAMERAS, _number_in_text, _words, detect_photo_beat, fallback_beat, guard_beat, normalize_beat, sentences, validate_beat  # noqa: E402
 
 
+MAX_CUSTOM_RUN = 2  # protocol 5.2: never more than ~3 near-equal scenes in a row; photo/map/area_map render natively
+
+
+def variety_reasons(got: Dict[str, Any], scene_ids: List[str]) -> List[str]:
+    """Scenes made only of custom_scene, in runs longer than MAX_CUSTOM_RUN (every one becomes an LLM drawing: no photo, no map)."""
+    run: List[str] = []
+    out: List[str] = []
+
+    def flush():
+        if len(run) > MAX_CUSTOM_RUN:
+            out.append(f"{', '.join(run)}: {len(run)} consecutive scenes are all custom_scene (max {MAX_CUSTOM_RUN}): "
+                       "turn the ones that name a real place, landmark, person or event into kind photo or map")
+
+    for sid in scene_ids:
+        beats = got.get(sid)
+        kinds = [b.get("kind") for b in beats if isinstance(b, dict)] if isinstance(beats, list) else []
+        if kinds and all(k == "custom_scene" for k in kinds):
+            run.append(sid)
+        else:
+            flush()
+            run = []
+    flush()
+    return out
+
+
 def _retry_failed_plan(geo, got, llm_retry_fn, s, scenes_of):
     """Phase of `apply_beats`."""
     # Pre-check LLM beat plan against BEAT_RULES; allow max 1 retry to the LLM before forcing fallbacks
@@ -25,6 +50,7 @@ def _retry_failed_plan(geo, got, llm_retry_fn, s, scenes_of):
                     if not rule or not rule["predicate"](raw_list[i], s_txt, geo):
                         failed_reasons.append(f"{sc['id']}[{i}] ({rk}): {rule['reason'] if rule else 'unknown kind'}")
             failed_reasons += areamap.missing_reasons(sc["id"], raw_list[:len(sents)])
+        failed_reasons += variety_reasons(got, [sc["id"] for sc in scenes_of(s)])
         try:
             from . import entities as _ent
             failed_reasons += _ent.plan_errors(s, got, _ent.ensure_plan(s, geo))
