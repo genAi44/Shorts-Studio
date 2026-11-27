@@ -339,46 +339,6 @@ def covered(e: Dict[str, Any], beats: List[Dict[str, Any]], frame: int) -> bool:
                and not any(a <= frame < c for a, c in (b.get("hide") or [])) for b in beats)
 
 
-INSERT_FRAMES = 66  # an inserted shot lasts ~2.2 s
-
-
-def ensure_visuals(beats: List[Dict[str, Any]], per_sentence: List[List[Dict[str, Any]]], words: List[Dict[str, Any]],
-                   dur_frames: int, photo: Optional[Callable[..., Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
-    """For every required beat-channel entity with no suitable beat on screen when it is spoken, INSERT a visible
-    fallback shot at that moment (the beat under it is hidden for the shot). Logged, marked `_fallback`, never silent."""
-    out = [dict(b) for b in beats]
-    for ents in per_sentence:
-        for e in ents:
-            et = ENTITY_REGISTRY[e["type"]]
-            if not (et.required and et.channel == "beat") or et.fallback is None:
-                continue
-            f = entity_frame(e, words, dur_frames)
-            if covered(e, out, f):
-                continue
-            fb = et.fallback(e, str(e.get("text") or ""))
-            if photo is not None and fb["kind"] in ("photo", "person_card"):
-                try:  # licensed photo for the inserted shot (same resolver the planned photo beats use)
-                    pb = photo({"kind": "photo", "query": fb.get("query") or fb.get("name"), "text": fb.get("text") or fb.get("name"),
-                                "must_show": fb.get("must_show") or fb.get("query") or ""}, str(e.get("text") or ""))
-                    if isinstance(pb, dict) and pb.get("img"):
-                        fb["img"] = pb["img"]
-                except Exception as ex:  # noqa: BLE001
-                    record_fallback(f"photo for {et.id} '{e.get('text')}' unavailable ({ex}): symbolic visual", beat_id=et.id)
-            start = max(0, f - 4)
-            dur = min(INSERT_FRAMES, max(24, dur_frames - start))
-            for b in out:  # an earlier inserted shot ends where this one starts (no two inserted shots stacked)
-                if b.get("_fallback") and int(b.get("from", 0)) < start < int(b.get("from", 0)) + int(b.get("dur", 0)):
-                    b["dur"] = start - int(b.get("from", 0))
-            fb.update({"from": start, "dur": dur, "_fallback": True, "_entity": et.id})
-            for b in out:  # hide whatever is under the inserted shot so texts never stack
-                if isinstance(b, dict) and int(b.get("from", 0)) < start + dur and start < int(b.get("from", 0)) + int(b.get("dur", 0)):
-                    b["hide"] = list(b.get("hide") or []) + [[start, start + dur]]
-            record_fallback(f"{et.id} entity '{e.get('text')}' had no suitable visual when spoken: inserted {fb['kind']} shot", beat_id=f"{et.id}@{f}")
-            out.append(fb)
-    out.sort(key=lambda b: int(b.get("from", 0)))
-    return out
-
-
 def no_consecutive_repeat(beats: List[Dict[str, Any]]) -> List[str]:
     """Names of beat kinds repeated back to back (the same component must not open two consecutive scenes)."""
     bad = []

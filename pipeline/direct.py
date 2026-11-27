@@ -342,7 +342,6 @@ from .direct_apply import (  # noqa: E402,F401
     _merge_visual_plan,
     _retry_failed_plan,
     _storyteller_pass,
-    _upgrade_photos,
     apply_beats,
     auto_beats,
 )

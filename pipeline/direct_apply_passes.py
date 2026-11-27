@@ -1,207 +1,40 @@
 """Split from `pipeline/direct_apply.py` (re-exported there); see that module."""
 from typing import Any, Dict, List
-from .direct import CAMERAS, _number_in_text, _words, detect_photo_beat, sentences
-from .geo import ISO3_TO_COUNTRY_EN
+from .direct import CAMERAS, _number_in_text
 from . import areamap
-import re
 
 
 def _diversify_beats(s, targets):
-    """Phase of `apply_beats`."""
+    """Phase of `apply_beats`: cosmetic variety only (camera move, stat/bigtext layout, area-map layout) plus the truthfulness
+    guard on photo numbers. It never changes a beat's kind: the director's decision is final (an invalid decision goes back
+    to the LLM through the retry in `_retry_failed_plan`, it is not swapped here)."""
     areamap.assign_layouts(targets)
-    # فحص ما بعدي: تنويع المقاطع، منع تكرار الخرائط أو أي نوع مرتين متتاليتين، وتنويع الكاميرا
     stat_choices = ["ring", "bar", "stack", "plain"]
     bigtext_choices = ["center", "stack", "diag", "left"]
     cam_choices = ["zoom-in", "pan-left", "zoom-out", "tilt-up", "parallax", "pan-right", "handheld"]
-    used_stat_layouts = set()
-    used_bigtext_layouts = set()
-    prev_kind = None
-    prev_beat = None
-    prev_cam = None
-    cam_counter = 0
+    used = {"stat": set(), "bigtext": set()}
+    prev_cam, cam_counter = None, 0
     for target in targets:
-        sents = sentences(target.get("narration", ""))
         beats = target.get("beats", [])
-        seen_stat_numbers = set()
-        seen_map_cities = set()
         for bi, b in enumerate(beats):
-            cur_kind = b.get("kind")
-            sent = sents[bi] if bi < len(sents) else ""
-
-            # رقم على صورة لا يظهر في سرد المشهد = رقم لكيان آخر (مثل صورة باريس برقم ميلانو): احذفه
-            if cur_kind == "photo" and b.get("number") and not _number_in_text(b["number"], target.get("narration", "")):
-                b = {k: v for k, v in b.items() if k != "number"}
-                beats[bi] = b
-
-            # في مشهد الخاتمة (cta): حوّل أي photo عشوائي إلى generative_canvas نظيف
-            if (target.get("role") == "cta" or target == targets[-1]) and cur_kind == "photo":
-                from .generative_visuals import compose_generative_canvas
-                b = compose_generative_canvas(sent, context=target.get("on_screen") or "شاركنا برأيك")
-                beats[bi] = b
-                cur_kind = "generative_canvas"
-
-            # منع استخدام icons نهائياً: استبداله بـ stack_pyramid أو generative_canvas
-            if cur_kind == "icons":
-                items = b.get("items") or []
-                if len(items) >= 2:
-                    tiers = [{"label": it.get("label", ""), "value": f"{idx+1}"} for idx, it in enumerate(items)]
-                    b = {"kind": "stack_pyramid", "title": b.get("title") or _words(sent, 5), "tiers": tiers, "camera": "tilt-up"}
-                    beats[bi] = b
-                    cur_kind = "stack_pyramid"
-                else:
-                    from .generative_visuals import compose_generative_canvas
-                    b = compose_generative_canvas(sent, context=b.get("title"))
-                    beats[bi] = b
-                    cur_kind = "generative_canvas"
-
-            # منع تكرار نفس الرقم في مشهد واحد عبر stat_ring_v2 و stat
-            if cur_kind in ("stat", "stat_ring_v2"):
-                num_key = re.sub(r"[^\d.]", "", str(b.get("number") or ""))
-                if num_key and num_key in seen_stat_numbers:
-                    from .generative_visuals import compose_generative_canvas
-                    b = compose_generative_canvas(sent, context=b.get("title"))
-                    beats[bi] = b
-                    cur_kind = "generative_canvas"
-                elif num_key:
-                    seen_stat_numbers.add(num_key)
-
-            # منع تكرار نفس خريطة المدينة أو نفس الصورة للمدينة داخل المشهد الواحد (تثبيت المشهد ومنع الوميض والتشتت)
-            if cur_kind == "map":
-                curr_city = ((b.get("points") or [{}])[0].get("name") or "").strip()
-                if curr_city and curr_city in seen_map_cities:
-                    from .generative_visuals import compose_generative_canvas
-                    b = compose_generative_canvas(sent, context=b.get("title") or curr_city)
-                    beats[bi] = b
-                    cur_kind = "generative_canvas"
-                elif curr_city:
-                    seen_map_cities.add(curr_city)
-
-            # منع تكرار نفس النوع مرتين متتاليتين (مع استثناء الخرائط التي تعرض مدناً أو نقاطاً جغرافية مختلفة)
-            is_diff_map = False
-            if cur_kind == "map" and prev_kind == "map":
-                curr_pt = (b.get("points") or [{}])[0].get("name")
-                prev_pt = (prev_beat.get("points") or [{}])[0].get("name") if prev_beat else None
-                if curr_pt and prev_pt and curr_pt != prev_pt:
-                    is_diff_map = True
-
-            is_repeat = (
-                cur_kind not in ("custom_scene", "generative_canvas", "area_map")
-                and ((cur_kind == prev_kind and not is_diff_map)
-                     or (cur_kind in ("stat", "stat_ring_v2") and prev_kind in ("stat", "stat_ring_v2")))
-            )
-            if is_repeat:
-                if cur_kind == "map":
-                    pts = b.get("points") or []
-                    pt_name = pts[0].get("name", "") if pts else ""
-                    cou = (b.get("countries") or [""])[0]
-                    cou_en = ISO3_TO_COUNTRY_EN.get(cou.upper(), cou)
-                    q = f"{pt_name} {cou_en} landmark historical architecture".strip() if pt_name else f"{cou_en} historical architecture".strip()
-                    if not q:
-                        q = "historical monument architecture"
-                    b = {
-                        "kind": "photo",
-                        "query": q,
-                        "text": _words(sent or pt_name, 5),
-                        "camera": "parallax",
-                        "must_show": pt_name or "historical building",
-                        "avoid": "watermark text collage modern cars",
-                        "alt_queries": [f"{pt_name} landmark", f"{cou_en} historical place"]
-                    }
-                    beats[bi] = b
-                    cur_kind = "photo"
-                elif cur_kind in ("photo", "stat", "stat_ring_v2", "generative_canvas"):
-                    photo_b = detect_photo_beat(sent) if prev_kind != "photo" else None
-                    if photo_b and cur_kind != "photo":
-                        beats[bi] = photo_b
-                        cur_kind = "photo"
-                    elif cur_kind == "generative_canvas":
-                        nums = re.findall(r"\d+[\d,.]*", sent)
-                        if nums and prev_kind not in ("stat", "stat_ring_v2"):
-                            b = {"kind": "stat_ring_v2", "title": "", "number": nums[0], "label": _words(sent, 6), "camera": "zoom-in"}
-                            beats[bi] = b
-                            cur_kind = "stat_ring_v2"
-                    else:
-                        from .generative_visuals import compose_generative_canvas
-                        b = compose_generative_canvas(sent, context=b.get("title") or target.get("on_screen"))
-                        beats[bi] = b
-                        cur_kind = "generative_canvas"
-                elif cur_kind == "bigtext":
-                    photo_b = detect_photo_beat(sent) if prev_kind != "photo" else None
-                    if photo_b:
-                        beats[bi] = photo_b
-                        cur_kind = "photo"
-                    else:
-                        nums = re.findall(r"\d+[\d,.]*", sent)
-                        if nums:
-                            b = {"kind": "stat", "title": "", "number": nums[0], "label": _words(sent, 6), "layout": "ring", "camera": "zoom-in"}
-                            beats[bi] = b
-                            cur_kind = "stat"
-                        else:
-                            from .generative_visuals import compose_generative_canvas
-                            b = compose_generative_canvas(sent, context=b.get("title"))
-                            beats[bi] = b
-                            cur_kind = "generative_canvas"
-
-            # ضمان مشهد بطل للـ hook (أول جملة): ممنوع شاشة سوداء فارغة بنص مجرد
-            if bi == 0 and target == targets[0] and cur_kind == "bigtext":
-                photo_b = detect_photo_beat(sent)
-                if photo_b:
-                    beats[bi] = photo_b
-                    cur_kind = "photo"
-                else:
-                    from .generative_visuals import compose_generative_canvas
-                    b = compose_generative_canvas(sent, context=s.get("title") or b.get("title"))
-                    beats[bi] = b
-                    cur_kind = "generative_canvas"
-
-            # منع إفراط bigtext في غير الـ hook
-            if cur_kind == "bigtext" and (bi > 0 or target != targets[0]):
-                photo_b = detect_photo_beat(sent) if prev_kind != "photo" else None
-                if photo_b:
-                    beats[bi] = photo_b
-                    cur_kind = "photo"
-                else:
-                    nums = re.findall(r"\d+[\d,.]*", sent)
-                    if nums:
-                        b = {"kind": "stat", "title": "", "number": nums[0], "label": _words(sent, 6), "layout": "ring", "camera": "zoom-in"}
-                        beats[bi] = b
-                        cur_kind = "stat"
-                    else:
-                        from .generative_visuals import compose_generative_canvas
-                        b = compose_generative_canvas(sent, context=b.get("title"))
-                        beats[bi] = b
-                        cur_kind = "generative_canvas"
-
-            prev_kind = cur_kind
-            prev_beat = b
-            # تنويع حركة الكاميرا
-            cur_cam = b.get("camera")
-            if not cur_cam or cur_cam == prev_cam or cur_cam not in CAMERAS:
-                cur_cam = cam_choices[cam_counter % len(cam_choices)]
+            if not isinstance(b, dict):
+                continue
+            kind = b.get("kind")
+            # a number on a photo that is not spoken in the scene belongs to another entity: drop it (truthfulness)
+            if kind == "photo" and b.get("number") and not _number_in_text(b["number"], target.get("narration", "")):
+                b = beats[bi] = {k: v for k, v in b.items() if k != "number"}
+            cam = b.get("camera")
+            if not cam or cam == prev_cam or cam not in CAMERAS:
+                cam = b["camera"] = cam_choices[cam_counter % len(cam_choices)]
                 cam_counter += 1
-                b["camera"] = cur_cam
-            prev_cam = cur_cam
-            # تنويع تخطيطات stat و bigtext
-            if cur_kind == "stat":
-                cur_lay = b.get("layout")
-                if not cur_lay or cur_lay in used_stat_layouts:
-                    avail = [x for x in stat_choices if x not in used_stat_layouts]
-                    if not avail:
-                        used_stat_layouts.clear()
-                        avail = stat_choices
-                    cur_lay = avail[0]
-                    b["layout"] = cur_lay
-                used_stat_layouts.add(cur_lay)
-            elif cur_kind == "bigtext":
-                cur_lay = b.get("layout", "center")
-                if cur_lay in used_bigtext_layouts:
-                    avail = [x for x in bigtext_choices if x not in used_bigtext_layouts]
-                    if not avail:
-                        used_bigtext_layouts.clear()
-                        avail = bigtext_choices
-                    cur_lay = avail[0]
-                    b["layout"] = cur_lay
-                used_bigtext_layouts.add(cur_lay)
+            prev_cam = cam
+            if kind in used:
+                choices = stat_choices if kind == "stat" else bigtext_choices
+                lay = b.get("layout") or (None if kind == "stat" else "center")
+                if not lay or lay in used[kind]:
+                    avail = [x for x in choices if x not in used[kind]] or (used[kind].clear() or choices)
+                    lay = b["layout"] = avail[0]
+                used[kind].add(lay)
 
 
 def _storyteller_pass(s):
