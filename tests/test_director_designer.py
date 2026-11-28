@@ -265,7 +265,7 @@ def test_sparse_check_counts_the_hero_svg(tmp_path, monkeypatch):
         returncode, stderr, stdout = 0, "", ""
 
     big = {"box": [100, 420, 980, 1150], "cover": 0.5, "painted": 6, "opacity": 1}
-    hero = {"withhero": big, "nohero": None, "faded": {**big, "opacity": 0.1}}
+    hero = {"withhero": big, "nohero": None, "faded": {**big, "opacity": 0.1}, "sparseink": {**big, "ink": [400, 500, 600, 700]}}
     names = list(hero)
 
     def run(cmd, **k):
@@ -280,9 +280,10 @@ def test_sparse_check_counts_the_hero_svg(tmp_path, monkeypatch):
 
     monkeypatch.setattr(sa.subprocess, "run", run)
     out = sa.sandbox_render({n: {"ctx": {"dur": 60, "words": []}} for n in names}, {"seed": 1}, tmp_path)
-    assert not any("too sparse" in p for p in out["withhero"]), out["withhero"]
-    assert any("too sparse" in p for p in out["nohero"])
-    assert any("too sparse" in p for p in out["faded"])
+    assert not any("fill the stage" in p for p in out["withhero"]), out["withhero"]
+    assert any("fill the stage" in p for p in out["nohero"])
+    assert any("fill the stage" in p for p in out["faded"])
+    assert any("fill the stage" in p for p in out["sparseink"])  # a big svg box that paints little is not a full stage
 
 
 def test_existing_qa_reports_a_bad_authored_svg():

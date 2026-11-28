@@ -206,6 +206,10 @@ def normalize(script):
 def scenes_of(script):
     """يعيد قائمة المشاهد الثمانية بالترتيب الدقيق، بحيث يحصل كل جزء على مشهده الخاص."""
     s = normalize(script)
+    # every scene carries its visual-intelligence plan (locations, needs_map_overlay...): the copies built here used to lose it,
+    # so the map builder never saw the scene's place (no map at all when the entity extractor found nothing, e.g. "مدن أمريكية")
+    vi = script.get("_visual_intelligence") if isinstance(script, dict) else None
+    vi_by_id = {v.get("id"): v for v in (vi.get("scenes") or []) if isinstance(v, dict)} if isinstance(vi, dict) else {}
     scenes = []
     for p in PARTS:
         pid = p["id"]
@@ -216,6 +220,8 @@ def scenes_of(script):
             "title_ar": p["title_ar"],
             **s[pid]
         }
+        if pid in vi_by_id and not sc.get("_vi"):
+            sc["_vi"] = vi_by_id[pid]
         scenes.append(sc)
     return scenes
 

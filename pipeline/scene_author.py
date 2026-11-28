@@ -28,7 +28,7 @@ from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 from .config import FPS, ROOT, record_fallback
 
 REMOTION = ROOT / "remotion"
-MIN_CONTENT_H = 420  # px of vertical extent of everything a scene draws (beat zone is 1100)
+MIN_CONTENT_H, MIN_CONTENT_W = 760, 700  # px the scene's content must span (beat zone 1100 x 920): fill the stage, no empty half
 AUTHORED_SRC = REMOTION / "src" / "authored"
 KIT_DOC = ROOT / "docs" / "SCENE_KIT.md"
 CACHE_DIR = ROOT / "data" / "authored_cache"
@@ -284,11 +284,11 @@ def sandbox_render(items: Dict[str, Dict[str, Any]], style: Dict[str, Any], work
                                               f"{hero.get('painted', 0)} visible shapes): draw a real illustration that fills its viewBox")
             bb = aud.get("bbox")
             hero = aud.get("hero") or {}
-            if bb and hero.get("box") and hero.get("opacity", 1) >= 0.3:  # the hero SVG is content too, not only text/icons
-                hb = hero["box"]
+            if bb and hero.get("box") and hero.get("opacity", 1) >= 0.3:  # the hero SVG is content too: what it PAINTS, not its box
+                hb = hero.get("ink") or hero["box"]
                 bb = [min(bb[0], hb[0]), min(bb[1], hb[1]), max(bb[2], hb[2]), max(bb[3], hb[3])]
-            if idx == 1 and bb and (bb[3] - bb[1]) < MIN_CONTENT_H and not any(i.get("type") == "map" for i in aud.get("issues", [])):
-                problems[name].append(f"the scene is too sparse: all its content spans only {bb[3] - bb[1]} px of height (need >= {MIN_CONTENT_H}); build a real composition - lead line, hero element, supporting elements, spread over y 280..1380")
+            if idx >= 1 and bb and ((bb[3] - bb[1]) < MIN_CONTENT_H or (bb[2] - bb[0]) < MIN_CONTENT_W) and not any(i.get("type") == "map" for i in aud.get("issues", [])):
+                problems[name].append(f"the scene does not fill the stage at {int(TEST_FRAME_FRACTIONS[idx] * 100)} %: its content spans {bb[2] - bb[0]}x{bb[3] - bb[1]} px (need >= {MIN_CONTENT_W}x{MIN_CONTENT_H}); compose over the WHOLE beat zone y 280..1380, x 90..990 - key line at the top, the hero big in the middle, supporting elements in the lower band - and keep it filled until the end")
             for it in aud.get("issues", []):
                 typ, txt = it["type"], f"'{it.get('text', '')}'" + (f" x '{it['other']}'" if it.get("other") else "")
                 where = f"@{it.get('box')}"

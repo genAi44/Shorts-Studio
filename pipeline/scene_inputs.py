@@ -87,6 +87,12 @@ with CSS, animated by ONE GSAP timeline:
     onStart, .call), registerPlugin, setTimeout / setInterval / requestAnimationFrame, Date, Math.random, CSS animation / transition /
     @keyframes / url() in <style> or style objects. Only core GSAP (no plugins).
   - Arabic text stays in ArText (never split into letters); GSAP may move/fade the element that wraps an ArText.
+  - MEANINGFUL MOTION, never random: every tween must SAY something about the sentence and land on its word - the route draws when the
+    narration says the route, the excluded block slides out when it says "excluded", the counter runs on the number, the arrow pushes
+    toward the cause. No decorative wiggles, floating shapes or spins that explain nothing; ask of each tween "what does this movement
+    show the viewer?" and delete it if the answer is "nothing".
+  - FILL THE STAGE: compose over the whole beat zone (y 280..1380, x 90..990) and keep it filled until the scene ends - key line at the
+    top, the hero big in the middle, supporting elements in the lower band. No empty band taller than ~250 px.
 """
 
 
