@@ -282,3 +282,11 @@ def test_a_photo_hero_is_mandatory_when_the_pipeline_found_one():
     assert calls == ["Port of Los Angeles cargo ship"] and ctxs["body1"]["photo"]["src"] == "media/p9.png" and copied == []
     system, _ = build_prompts({"id": "body1", "role": "body", "dur": 150, "sentence": "s", "sentences": ["s"], "entities": [], "words": [], "theme": {}})
     assert "PHOTO HERO" in system and "HeroPhoto" in system
+
+
+def test_photo_subject_is_a_declared_beat_field():
+    """The director's photo_subject must pass the beat schema (a missing declaration rejected the whole director plan)."""
+    import pipeline.direct as direct
+    beat = direct.validate_beat({"kind": "custom_scene", "title": "شريطًا ضيقًا", "concept": "a narrow corridor",
+                                 "photo_subject": "Port of Los Angeles cargo ship", "scene_spec": {"approach": "x"}})
+    assert beat["photo_subject"] == "Port of Los Angeles cargo ship"

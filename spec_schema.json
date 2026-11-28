@@ -19,6 +19,7 @@
     "narration_cues": "array",
     "tsx_id": "string",
     "concept": "string",
+    "photo_subject": "string",
     "narration": "string",
     "video_title": "string",
     "facts_summary": "string",
