@@ -15,12 +15,16 @@ from pipeline.style import normalize as norm_style  # noqa: E402
 
 GOOD = """import React from 'react';
 import {AbsoluteFill} from 'remotion';
-import {Abs, ArText, Card, HeroSvg, LAYOUT, useSpr, enter, SceneProps} from '../kit';
+import {Abs, ArText, Card, HeroSvg, LAYOUT, useSpr, enter, SceneProps, useGsapTimeline} from '../kit';
 
 export default function Scene({dur, data}: SceneProps) {
   const p = useSpr(0.1, 'snappy');
+  const scope = useGsapTimeline<HTMLDivElement>(({timeline: tl, selector: q}) => {
+    tl.from(q('.glow'), {opacity: 0, scale: 0.6, duration: 0.8, ease: 'back.out(1.6)'}, 0.3);
+  });
   return (
     <AbsoluteFill>
+      <div ref={scope} style={{position: 'absolute', inset: 0}}><div className="glow" style={{position: 'absolute', left: 340, top: 900, width: 400, height: 400, borderRadius: 200, background: 'rgba(245,158,11,0.15)'}} /></div>
       <HeroSvg data={data} x={140} y={LAYOUT.beat.top + 260} w={800} h={560} />
       <Abs x={90} y={LAYOUT.beat.top + 40} w={900} style={enter(p, 'rise', 60)}>
         <Card style={{padding: 30}}><ArText size={56}>{String(data.sentence)}</ArText></Card>

@@ -24,7 +24,11 @@ const FORBIDDEN_IDENTS = new Set([
   'Worker', 'SharedWorker', 'importScripts', 'Date', 'performance', 'crypto', 'XMLSerializer', 'Image', 'Audio',
 ]);
 const FORBIDDEN_HOOKS = new Set(['useEffect', 'useLayoutEffect', 'useState', 'useReducer', 'useInsertionEffect', 'useSyncExternalStore']);
-const FORBIDDEN_TAGS = new Set(['script', 'iframe', 'img', 'image', 'link', 'object', 'embed', 'video', 'audio', 'canvas', 'style', 'use']);
+const FORBIDDEN_TAGS = new Set(['script', 'iframe', 'img', 'image', 'link', 'object', 'embed', 'video', 'audio', 'canvas', 'use']);
+// GSAP is allowed only through useGsapTimeline (a paused timeline seeked from the frame): nothing that plays it on GSAP's own
+// clock or runs code from it
+const FORBIDDEN_GSAP = new Set(['play', 'resume', 'restart', 'reverse', 'ticker', 'delayedCall', 'globalTimeline', 'exportRoot', 'call',
+  'eventCallback', 'onUpdate', 'onComplete', 'onStart', 'onRepeat', 'onReverseComplete', 'onInterrupt', 'registerPlugin', 'quickTo', 'quickSetter']);
 const FORBIDDEN_STYLE_PROPS = new Set(['transition', 'transitionProperty', 'transitionDuration', 'animation', 'animationName', 'animationDuration', 'animationDelay', 'willChange']);
 const violations = [];
 const add = (node, msg) => {
@@ -50,6 +54,12 @@ const visit = (node) => {
     if (FORBIDDEN_HOOKS.has(node.text) && !ts.isImportSpecifier(p)) add(node, `hook '${node.text}' is forbidden: frames drive everything, no state or effects`);
   }
   if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'Math' && node.name.text === 'random') add(node, 'Math.random is forbidden (non-deterministic)');
+  if (ts.isPropertyAccessExpression(node) && FORBIDDEN_GSAP.has(node.name.text)) add(node, `GSAP '.${node.name.text}' is forbidden: build the timeline with tl.to/from/fromTo/set at positions in seconds, the frame seeks it`);
+  if (ts.isPropertyAssignment(node) && (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name)) && FORBIDDEN_GSAP.has(node.name.text)) add(node, `GSAP '${node.name.text}' is forbidden: no callbacks, the frame seeks the timeline`);
+  if ((ts.isJsxElement(node)) && node.openingElement.tagName.getText(sf) === 'style') {
+    const css = node.children.map((c) => c.getText(sf)).join(' ');
+    if (/(^|[^-])(animation|transition)\s*:|@keyframes|url\(/i.test(css)) add(node, '<style> may not use animation / transition / @keyframes / url(): animate with GSAP or spring/interpolate');
+  }
   if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'Date') add(node, 'new Date is forbidden');
   if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
     const tag = node.tagName.getText(sf);
