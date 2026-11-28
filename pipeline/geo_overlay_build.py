@@ -159,7 +159,10 @@ def build_scene_map_overlay(
     # validated entity plan (pipeline/entities.py) wins; the legacy dictionary matcher only runs when there is none
     mentions = entity_mentions if entity_mentions is not None else extract_timed_geo_mentions(narration, on_screen, words, dur_frames)
     if not mentions and inherited_locations and role not in ("cta", "loop"):
-        inh_text = " ".join(str(loc.get("name_ar") or "") for loc in inherited_locations[:2] if isinstance(loc, dict))
+        from .place_names import mentions_place
+        # only a place THIS sentence names (its name or its adjective: "مدن أمريكية"), never every scene of the video
+        inh_text = " ".join(str(loc.get("name_ar") or "") for loc in inherited_locations[:2]
+                            if isinstance(loc, dict) and mentions_place(narration, str(loc.get("name_ar") or ""), str(loc.get("name_en") or "")))
         if inh_text.strip():
             mentions = extract_timed_geo_mentions(inh_text, "", words, dur_frames)
     if not mentions:

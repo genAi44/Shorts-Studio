@@ -163,14 +163,18 @@ const heroOf = () => {
     cover = vb && vb.width > 0 && vb.height > 0 ? Math.min(1, (bb.width * bb.height) / (vb.width * vb.height)) : 0;
   } catch { cover = 0; }
   let painted = 0;
+  const ink = [Infinity, Infinity, -Infinity, -Infinity];  // union of what is actually painted (the svg box can be mostly empty)
   svg.querySelectorAll('path, rect, circle, ellipse, line, polyline, polygon').forEach((el) => {
     if (el.closest('defs, clipPath, mask, pattern, symbol, marker')) return;
     const cs = getComputedStyle(el);
     const r = el.getBoundingClientRect();
     const paint = (cs.fill !== 'none' && parseFloat(cs.fillOpacity || '1') > 0.02) || (cs.stroke !== 'none' && parseFloat(cs.strokeWidth || '0') > 0);
-    if (paint && cs.display !== 'none' && cs.visibility !== 'hidden' && ancestorOpacity(el) > 0.05 && (r.width > 0.5 || r.height > 0.5)) painted++;
+    if (paint && cs.display !== 'none' && cs.visibility !== 'hidden' && ancestorOpacity(el) > 0.05 && (r.width > 0.5 || r.height > 0.5)) {
+      painted++;
+      ink[0] = Math.min(ink[0], r.left); ink[1] = Math.min(ink[1], r.top); ink[2] = Math.max(ink[2], r.right); ink[3] = Math.max(ink[3], r.bottom);
+    }
   });
-  return {box: [q.left, q.top, q.right, q.bottom].map(Math.round), cover: Math.round(cover * 1000) / 1000, painted, opacity: Math.round(ancestorOpacity(host) * 100) / 100};
+  return {box: [q.left, q.top, q.right, q.bottom].map(Math.round), ink: painted ? ink.map(Math.round) : null, cover: Math.round(cover * 1000) / 1000, painted, opacity: Math.round(ancestorOpacity(host) * 100) / 100};
 };
 
 /** widest visible [data-hero] element (the scene's main drawing), or null when the scene marks none */
