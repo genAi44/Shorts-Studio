@@ -60,8 +60,9 @@ def build_prompts(ctx: Dict[str, Any], errors: Optional[List[str]] = None, previ
                  + ("\n\nHow to fix:\n- " + "\n- ".join(hints) if hints else "") + "\n\nPrevious reply:\n" + previous)
     from .director_plan import LANGUAGE_CONTRACT
     from .skills import DESIGNER_SKILLS, skills_block
-    from .scene_inputs import PHOTO_RULES
-    system = SYSTEM.replace("{contract}", LANGUAGE_CONTRACT).replace("{kit}", _kit_text()) + PHOTO_RULES + skills_block(DESIGNER_SKILLS)
+    from .scene_inputs import GSAP_RULES, PHOTO_RULES
+    system = (SYSTEM.replace("{contract}", LANGUAGE_CONTRACT).replace("{kit}", _kit_text()) + GSAP_RULES + PHOTO_RULES
+              + skills_block(DESIGNER_SKILLS))
     if guide:
         system += "\n\nART DIRECTION OF THIS VIDEO (a style guide: follow its essence, its 'not' list and its director rules; it overrides generic taste):\n" + guide
     return system, user
@@ -196,8 +197,10 @@ def storyboard_errors(sb: Optional[Dict[str, Any]], ctx: Dict[str, Any], svg: Op
             continue
         trig = str(st.get("trigger_word") or "")
         i = find_word(words, trig, pos) if trig else None
+        if i is None and trig:
+            i = find_word(words, trig, 0)  # out of order: the GSAP timeline syncs the motion, the state still resolves to its word
         if i is None:
-            errs.append(f"visual state {n}: trigger_word '{trig}' must be copied from the narration, after the previous state's word")
+            errs.append(f"visual state {n}: trigger_word '{trig}' must be copied (one word, as written) from the narration")
         else:
             pos = i + 1
         svg_ids = {str(e.get("id")) for e in els if isinstance(e, dict) and str(e.get("layer", "svg")) == "svg"}
@@ -219,6 +222,8 @@ def state_frames(sb: Dict[str, Any], words: List[Dict[str, Any]], dur: int) -> L
             out.append({"state": 1, "from": 0, "word": ""})
             continue
         i = find_word(toks, str(st.get("trigger_word") or ""), pos)
+        if i is None:
+            i = find_word(toks, str(st.get("trigger_word") or ""), 0)  # out of order: still revealed on its word
         if i is None:
             continue
         pos = i + 1

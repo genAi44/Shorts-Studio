@@ -12,6 +12,8 @@ import {Icon} from './icons';
 import {MapOverlayLayer} from './mapOverlay';
 
 export {Icon, useSpring as useSpr, enterStyle as enter, useProgress, useIdle, clamp01};
+// GSAP for the scene's own HTML/SVG: ONE paused timeline, seeked from the Remotion frame (deterministic). Positions in seconds.
+export {useGsapTimeline} from '@remotion/gsap';
 export type {EnterKind, Preset} from './hooks';
 
 /** Props every authored scene receives. `data` = {sentence, entities, map_overlay, ...} prepared by the pipeline. */

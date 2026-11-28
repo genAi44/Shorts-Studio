@@ -210,7 +210,7 @@ def _flat(path: Path) -> bool:
     return float(arr[280:1380, :].std()) < FLAT_STD
 
 
-from .scene_inputs import NATIVE_KINDS, attach_photos, director_decision, has_native_visual  # noqa: E402,F401
+from .scene_inputs import NATIVE_KINDS, attach_photos, director_decision, has_native_visual, scene_requirements  # noqa: E402,F401
 from .scene_hook import HOOK_MAX_TEXTS, HOOK_MAX_WORDS, hook_problems  # noqa: E402,F401
 
 
@@ -380,7 +380,7 @@ def author_spec(spec: Dict[str, Any], job_dir: str, llm: Optional[Callable[[str,
         side = CACHE_DIR / f"{name}.json"
         rep = report["scenes"].setdefault(sid, {"name": name, "attempts": 0, "errors": [], "status": "pending"})
         cached = json.loads(side.read_text(encoding="utf-8")) if hit.exists() and side.exists() else None
-        if cached and not design_errors(cached.get("storyboard"), cached.get("svg"), hit.read_text(encoding="utf-8"), ctx):
+        if cached and not design_errors(cached.get("storyboard"), cached.get("svg"), hit.read_text(encoding="utf-8"), ctx)                 and not scene_requirements(hit.read_text(encoding="utf-8"), ctx):
             shutil.copyfile(hit, scenes_dir / f"{name}.tsx")
             accepted[sid] = name
             designs[sid] = cached
@@ -424,9 +424,8 @@ def author_spec(spec: Dict[str, Any], job_dir: str, llm: Optional[Callable[[str,
             if not errs and ctx.get("map_overlay") and "MapLayer" not in code:
                 errs = ["the sentence names places / lines / ranges and data.map_overlay is ready: the scene must show it with <MapLayer overlay={data.map_overlay} /> "
                         "(it draws the country, drawn mountain ranges and dividing lines, and a country cut in two halves with labels); build your composition around it"]
-            if not errs and ctx.get("photo") and "HeroPhoto" not in code:
-                errs = [f"data.photo is ready (a real photo of '{ctx['photo']['subject']}'): the scene must show it with <HeroPhoto data={{data}} "
-                        "x=.. y=.. w=.. h=.. /> (import it from '../kit'), big (w >= 600), and build the explanation around it"]
+            if not errs:
+                errs = scene_requirements(code, ctx)  # TSX + GSAP timeline, the real photo when there is one
             if errs:
                 path.unlink(missing_ok=True)
                 rep["errors"].append(f"attempt {attempt + 1} static: {errs[:4]}")
